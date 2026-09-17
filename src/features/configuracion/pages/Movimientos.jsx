@@ -115,12 +115,7 @@ export default function Movimientos() {
             key: 'calc_modulo',
             label: 'Módulo',
             mobile: 'meta',
-            render: (r) => (
-              <div>
-                <span className="badge badge-primary">{r.calc_modulo}</span>
-                <div className="caption" style={{ marginTop: 3 }}>{r.tabla}</div>
-              </div>
-            ),
+            render: (r) => <span className="badge badge-primary">{r.calc_modulo}</span>,
           },
           {
             key: 'calc_registro',

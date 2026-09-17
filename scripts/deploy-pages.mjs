@@ -28,7 +28,17 @@ try {
 }
 rmSync(TMP, { recursive: true, force: true });
 mkdirSync(TMP, { recursive: true });
-git('worktree', 'add', '-q', '-B', RAMA, TMP);
+
+/* La rama se recrea SIEMPRE a partir de lo ya publicado en el remoto. Si se
+   partiera de main, el commit nuevo no descenderia del anterior y el push
+   quedaria rechazado por no ser fast-forward. */
+git('fetch', '-q', 'origin');
+const yaPublicada = gitOut('ls-remote', '--heads', 'origin', RAMA) !== '';
+if (yaPublicada) {
+  git('worktree', 'add', '-q', '-B', RAMA, TMP, `origin/${RAMA}`);
+} else {
+  git('worktree', 'add', '-q', '-B', RAMA, TMP);
+}
 
 // Se vacia la rama y se deja solo el contenido de dist/.
 for (const f of readdirSync(TMP)) {

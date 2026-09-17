@@ -11,6 +11,10 @@ implementado según la guía de estilos del equipo.
 
 ---
 
+## Sitio publicado
+
+**https://bananodurisimo.github.io/ParcerosMultiservice/**
+
 ## Cómo ejecutarlo
 
 ```bash
@@ -18,7 +22,27 @@ npm install
 npm run dev      # http://localhost:5173
 ```
 
-Otros comandos: `npm run build` (compila a `dist/`) y `npm run preview`.
+Otros comandos: `npm run build` (compila a `dist/`), `npm run preview` y
+`npm run deploy` (publica el sitio, ver abajo).
+
+## Despliegue
+
+El sitio vive en GitHub Pages y se sirve desde el subdirectorio
+`/ParcerosMultiservice/`, por eso `vite.config.js` fija `base` en la compilación
+y el router usa ese mismo valor como `basename`. Como Pages no reescribe rutas,
+el despliegue copia `index.html` a `404.html`: así recargar `/app/pedidos`
+carga la aplicación en lugar de dar error.
+
+Hay dos caminos, ambos ya configurados:
+
+| | Cuándo se usa | Qué hace |
+|---|---|---|
+| `.github/workflows/deploy.yml` | Automático, en cada push a `main` | Compila y publica con GitHub Actions |
+| `npm run deploy` | Manual, desde tu equipo | Compila y empuja `dist/` a la rama `gh-pages` |
+
+> **Nota:** el workflow automático solo funcionará cuando GitHub Actions esté
+> disponible en la cuenta. Mientras tanto, `npm run deploy` publica igual,
+> porque la rama `gh-pages` no depende de Actions.
 
 ## Usuarios de prueba
 

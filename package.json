@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "node scripts/deploy-pages.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -17,5 +18,10 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.4.8"
+  },
+  "homepage": "https://bananodurisimo.github.io/ParcerosMultiservice/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BananoDurisimo/ParcerosMultiservice.git"
   }
 }

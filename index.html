@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#2563EB" />
+    <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+    <link rel="apple-touch-icon" href="/logo.jpg" />
+    <title>Parceros Multiservice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      // Evita el parpadeo (FOUC) aplicando el tema antes del primer render
+      (function () {
+        try {
+          var t = localStorage.getItem('pm-theme');
+          if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+        // Marca de tiempo del splash: define su duracion minima (ver Splash.jsx)
+        window.__pmSplash = Date.now();
+      })();
+    </script>
+    <style>
+      /* Splash: estilos en linea para que se pinte antes de cargar la hoja
+         de estilos y el paquete de la aplicacion. */
+      #pm-splash {
+        position: fixed; inset: 0; z-index: 9999;
+        display: grid; place-items: center;
+        background: #F8FAFC; color: #111827;
+        font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        transition: opacity .5s ease, visibility .5s ease;
+      }
+      [data-theme='dark'] #pm-splash { background: #0B111C; color: #E5E7EB; }
+      #pm-splash.is-out { opacity: 0; visibility: hidden; pointer-events: none; }
+
+      .pm-splash-box { display: grid; justify-items: center; gap: 14px; padding: 24px; text-align: center; }
+      .pm-splash-logo {
+        width: 92px; height: 92px; border-radius: 22px; object-fit: cover;
+        background: #0B0B0B; box-shadow: 0 18px 45px rgba(16, 24, 40, .18);
+        animation: pmSplashIn .6s cubic-bezier(.22, 1, .36, 1) both;
+      }
+      .pm-splash-name { font-size: 25px; font-weight: 700; letter-spacing: -.9px; line-height: 1.1; animation: pmSplashIn .6s cubic-bezier(.22, 1, .36, 1) .1s both; }
+      .pm-splash-name span { display: block; font-size: 15px; font-weight: 500; letter-spacing: -.2px; color: #6B7280; }
+      [data-theme='dark'] .pm-splash-name span { color: #9AA4B2; }
+      .pm-splash-bar { width: 148px; height: 4px; border-radius: 99px; overflow: hidden; background: rgba(37, 99, 235, .18); animation: pmSplashIn .6s cubic-bezier(.22, 1, .36, 1) .2s both; }
+      .pm-splash-bar i { display: block; width: 42%; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #2563EB, #7C3AED); animation: pmSplashBar 1.15s ease-in-out infinite; }
+      .pm-splash-txt { font-size: 12.5px; color: #6B7280; animation: pmSplashIn .6s cubic-bezier(.22, 1, .36, 1) .3s both; }
+      [data-theme='dark'] .pm-splash-txt { color: #9AA4B2; }
+
+      @keyframes pmSplashIn  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+      @keyframes pmSplashBar { 0% { transform: translateX(-105%); } 100% { transform: translateX(240%); } }
+
+      @media (prefers-reduced-motion: reduce) {
+        #pm-splash * { animation: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="pm-splash" role="status" aria-live="polite" aria-label="Cargando Parceros Multiservice">
+      <div class="pm-splash-box">
+        <img class="pm-splash-logo" src="/logo.jpg" alt="" width="92" height="92" />
+        <div class="pm-splash-name">Parceros<span>Multiservice</span></div>
+        <div class="pm-splash-bar"><i></i></div>
+        <p class="pm-splash-txt">Uniformes 100% personalizados</p>
+      </div>
+    </div>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -291,26 +291,26 @@ export const seed = {
   // Tabla: categoria (id_categoria, nombre)
   categorias: [
     { id: 1, nombre: 'Uniformes deportivos' },
-    { id: 2, nombre: 'Uniformes empresariales' },
-    { id: 3, nombre: 'Uniformes escolares' },
-    { id: 4, nombre: 'Chaquetas y abrigos' },
+    { id: 2, nombre: 'Uniformes de ciclismo' },
+    { id: 3, nombre: 'Uniformes de baloncesto' },
+    { id: 4, nombre: 'Chaquetas deportivas' },
     { id: 5, nombre: 'Accesorios' },
-    { id: 6, nombre: 'Línea promocional' },
+    { id: 6, nombre: 'Jerseys con patrocinador' },
   ],
 
   // Tabla: producto (id_producto, id_categoria, nombre, descripcion, precio, estado)
   productos: [
     { id: 1, id_categoria: 1, nombre: 'Camiseta deportiva sublimada', descripcion: 'Camiseta en tela Dry-Fit con sublimación full color.', precio: 420 },
     { id: 2, id_categoria: 1, nombre: 'Short deportivo Dry-Fit', descripcion: 'Short liviano con pretina elástica y cordón ajustable.', precio: 310 },
-    { id: 3, id_categoria: 2, nombre: 'Camisa empresarial manga larga', descripcion: 'Camisa formal con bordado institucional en el pecho.', precio: 560 },
-    { id: 4, id_categoria: 2, nombre: 'Polo corporativo bordado', descripcion: 'Polo piqué con cuello tejido y logotipo bordado.', precio: 480 },
+    { id: 3, id_categoria: 2, nombre: 'Jersey de ciclismo manga larga', descripcion: 'Jersey con cierre completo y tela transpirable.', precio: 560 },
+    { id: 4, id_categoria: 2, nombre: 'Licra de ciclismo con badana', descripcion: 'Licra con badana acolchada y bandas de silicona.', precio: 480 },
     { id: 5, id_categoria: 4, nombre: 'Chaqueta cortaviento', descripcion: 'Chaqueta impermeable con forro interno y capucha.', precio: 950 },
-    { id: 6, id_categoria: 3, nombre: 'Uniforme escolar completo', descripcion: 'Conjunto de camisa y pantalón según diseño del colegio.', precio: 780 },
+    { id: 6, id_categoria: 3, nombre: 'Uniforme de baloncesto completo', descripcion: 'Camiseta sin mangas y short según el diseño del equipo.', precio: 780 },
     { id: 7, id_categoria: 5, nombre: 'Gorra personalizada', descripcion: 'Gorra de seis paneles con bordado frontal.', precio: 195 },
     { id: 8, id_categoria: 1, nombre: 'Medias deportivas altas', descripcion: 'Medias de compresión con franjas del equipo.', precio: 130 },
     { id: 9, id_categoria: 1, nombre: 'Sudadera deportiva', descripcion: 'Sudadera de algodón perchado con estampado.', precio: 690 },
     { id: 10, id_categoria: 5, nombre: 'Bolso deportivo', descripcion: 'Bolso de lona reforzada con compartimento para calzado.', precio: 640 },
-    { id: 11, id_categoria: 2, nombre: 'Camibuso institucional', descripcion: 'Camibuso de manga corta con logotipo bordado.', precio: 520 },
+    { id: 11, id_categoria: 2, nombre: 'Enterizo de ciclismo', descripcion: 'Enterizo sublimado de una pieza con badana.', precio: 520 },
   ],
 
   // Tabla: varianteproducto (id_varianteproducto, id_producto, id_talla, url_imagen, stock)
@@ -456,6 +456,6 @@ export const seed = {
     { id: 15, tabla: 'compra', id_registro: 4, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_proveedor: 4, fecha: '2026-08-18', estado: 'En tránsito' }, id_usuario: 5, fecha_cambio: '2026-08-18T09:36:40' },
     { id: 16, tabla: 'cliente', id_registro: 3, accion: 'UPDATE', valor_anterior: { nombre: 'Ferretería La Estrella', telefono: '2255 3321', correo: 'compras@laestrella.ni', direccion: 'Masaya, Barrio San Jerónimo' }, valor_nuevo: { nombre: 'Ferretería La Estrella', telefono: '2255 3321', correo: 'compras@laestrella.ni', direccion: 'Masaya, Centro' }, id_usuario: 7, fecha_cambio: '2026-08-17T15:51:06' },
     { id: 17, tabla: 'abono', id_registro: 12, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_pedido: 12, monto: 2400, fecha: '2026-07-15', metodo_pago: 'Efectivo', url_comprobante: '' }, id_usuario: 4, fecha_cambio: '2026-07-15T12:03:55' },
-    { id: 18, tabla: 'producto', id_registro: 11, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_categoria: 2, nombre: 'Camibuso institucional', descripcion: 'Camibuso de manga corta con logotipo bordado.', precio: 520 }, id_usuario: 2, fecha_cambio: '2026-07-10T10:47:33' },
+    { id: 18, tabla: 'producto', id_registro: 11, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_categoria: 2, nombre: 'Enterizo de ciclismo', descripcion: 'Enterizo sublimado de una pieza con badana.', precio: 520 }, id_usuario: 2, fecha_cambio: '2026-07-10T10:47:33' },
   ],
 };

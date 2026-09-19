@@ -3,7 +3,7 @@ import Icon from '@shared/components/Icon.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
 import { waLink } from '@features/home/data/contacto.js';
 
-const TIPOS = ['Uniforme deportivo', 'Ropa de ciclismo', 'Jersey publicitario', 'Uniforme empresarial', 'Uniforme escolar', 'Otro'];
+const TIPOS = ['Uniforme de fútbol', 'Ropa de ciclismo', 'Jersey con patrocinador', 'Otro deporte'];
 const VACIO = { nombre: '', tipo: '', cantidad: '', telefono: '', mensaje: '' };
 
 /**

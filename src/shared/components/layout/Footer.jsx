@@ -1,6 +1,7 @@
 import Icon from '@shared/components/Icon.jsx';
 import Logo from '@shared/components/Logo.jsx';
 import { IG_PERFIL, IG_FACEBOOK } from '@features/home/data/instagram.js';
+import { waLink } from '@features/home/data/contacto.js';
 
 const AYUDA = [
   ['FAQ', '#faq'],
@@ -18,7 +19,7 @@ const OTROS = [
 const REDES = [
   ['facebook', 'Facebook', IG_FACEBOOK],
   ['instagram', 'Instagram', IG_PERFIL],
-  ['whatsapp', 'WhatsApp', 'https://wa.me/50584552210'],
+  ['whatsapp', 'WhatsApp', waLink()],
 ];
 
 /** Punto 6: pie de pagina institucional. */

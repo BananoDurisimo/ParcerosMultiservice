@@ -7,7 +7,7 @@ import { useAuth, iniciales } from '@shared/context/AuthContext.jsx';
 import { useTheme } from '@shared/context/ThemeContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { fecha } from '@shared/data/mock.js';
+import { fecha, fechaHora } from '@shared/data/mock.js';
 
 const TABS = [
   { id: 'perfil', label: 'Mi perfil', icon: 'user' },
@@ -17,36 +17,50 @@ const TABS = [
 ];
 
 export default function Cuenta() {
-  const { user, update, logout } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
-  const { db } = useData();
+  const { db, update } = useData();
   const toast = useToast();
   const nav = useNavigate();
 
   const [tab, setTab] = useState('perfil');
   const [salir, setSalir] = useState(false);
+  const perfil = db.usuarios.find((u) => u.id === user?.id);
   const [form, setForm] = useState({
-    nombre: user?.nombre || '',
-    correo: user?.correo || '',
-    usuario: user?.usuario || '',
-    telefono: '8992 0326',
-    direccion: 'Managua, Nicaragua',
+    nombre: perfil?.nombre_empleado || '',
+    correo: perfil?.correo_empresarial || '',
+    usuario: perfil?.nombre_usuario || '',
+    telefono: perfil?.telefono || '',
   });
   const [claves, setClaves] = useState({ actual: '', nueva: '', repetir: '' });
   const [errs, setErrs] = useState({});
   const [notifs, setNotifs] = useState({ stock: true, pedidos: true, abonos: true, correo: false });
 
-  const perfilRegistro = db.usuarios.find((u) => u.correo_empresarial === user?.correo);
+  /* Ultimos cambios que este usuario registro en el historial de movimientos. */
+  const actividad = db.movimientos
+    .filter((m) => m.id_usuario === user?.id)
+    .sort((a, b) => b.fecha_cambio.localeCompare(a.fecha_cambio))
+    .slice(0, 6);
 
   const guardarPerfil = (e) => {
     e.preventDefault();
     const n = {};
+    const otros = db.usuarios.filter((u) => u.id !== user.id);
+    const igual = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
     if (!form.nombre.trim()) n.nombre = 'Este campo no puede estar vacío.';
+    if (!form.usuario.trim()) n.usuario = 'Este campo no puede estar vacío.';
+    else if (otros.some((u) => igual(u.nombre_usuario, form.usuario))) n.usuario = 'Ese nombre de usuario ya está en uso.';
     if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(form.correo)) n.correo = 'Ingrese un correo electrónico válido.';
+    else if (otros.some((u) => igual(u.correo_empresarial, form.correo))) n.correo = 'Ya existe otro usuario con este correo.';
     if (!/^[\d\s()+-]{7,}$/.test(form.telefono)) n.telefono = 'Ingrese un teléfono válido.';
     setErrs(n);
     if (Object.keys(n).length) { toast.error('Revise los campos marcados.', 'Validación de campos'); return; }
-    update({ nombre: form.nombre, correo: form.correo, usuario: form.usuario });
+    update('usuarios', user.id, {
+      nombre_empleado: form.nombre.trim(),
+      nombre_usuario: form.usuario.trim(),
+      correo_empresarial: form.correo.trim(),
+      telefono: form.telefono.trim(),
+    });
     toast.success('Su información de perfil se actualizó correctamente.');
   };
 
@@ -54,10 +68,12 @@ export default function Cuenta() {
     e.preventDefault();
     const n = {};
     if (!claves.actual) n.actual = 'Ingrese su contraseña actual.';
+    else if (claves.actual !== perfil?.contrasena) n.actual = 'La contraseña actual no es correcta.';
     if (claves.nueva.length < 6) n.nueva = 'La nueva contraseña debe tener al menos 6 caracteres.';
     if (claves.nueva !== claves.repetir) n.repetir = 'Las contraseñas no coinciden.';
     setErrs(n);
     if (Object.keys(n).length) { toast.error('No fue posible actualizar la contraseña.', 'Validación de campos'); return; }
+    update('usuarios', user.id, { contrasena: claves.nueva });
     setClaves({ actual: '', nueva: '', repetir: '' });
     toast.success('Su contraseña se actualizó correctamente.');
   };
@@ -83,13 +99,13 @@ export default function Cuenta() {
             <div className="caption row" style={{ gap: 6, marginTop: 3 }}><Icon name="mail" size={13} /> {user?.correo}</div>
             <div className="row" style={{ gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
               <span className="badge badge-primary"><Icon name="shield" size={12} /> {user?.rol}</span>
-              <Badge>{perfilRegistro?.estado || 'Activo'}</Badge>
+              <Badge>{perfil?.estado || '—'}</Badge>
               <span className="badge badge-neutral">@{user?.usuario}</span>
             </div>
           </div>
           <div className="stack right">
             <span className="caption">Fecha de ingreso</span>
-            <strong>{fecha(perfilRegistro?.fecha_ingreso)}</strong>
+            <strong>{fecha(perfil?.fecha_ingreso)}</strong>
           </div>
         </div>
       </div>
@@ -119,10 +135,6 @@ export default function Cuenta() {
                 {errs[k] && <span className="field-error"><Icon name="alert" size={12} /> {errs[k]}</span>}
               </div>
             ))}
-            <div className="field full">
-              <label htmlFor="dir">Dirección</label>
-              <input id="dir" className="input" value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} />
-            </div>
           </div>
           <div className="row" style={{ justifyContent: 'flex-end', marginTop: 18 }}>
             <button className="btn btn-primary" type="submit"><Icon name="check" size={16} /> Guardar cambios</button>
@@ -150,7 +162,7 @@ export default function Cuenta() {
             </div>
             <div className="alert alert-info" style={{ marginTop: 16 }}>
               <Icon name="info" size={18} />
-              <div>Use al menos 6 caracteres, combinando letras y números. Su sesión se cerrará automáticamente tras 5 minutos de inactividad.</div>
+              <div>Use al menos 6 caracteres, combinando letras y números.</div>
             </div>
             <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
               <button className="btn btn-primary" type="submit"><Icon name="lock" size={16} /> Actualizar contraseña</button>
@@ -160,7 +172,7 @@ export default function Cuenta() {
           <div className="card card-pad" style={{ marginTop: 16 }}>
             <h2 style={{ marginBottom: 12 }}>Permisos de mi rol</h2>
             <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-              {(db.roles.find((r) => r.nombre === user?.rol)?.calc_permisos || []).map((p) => (
+              {(user?.permisos || []).map((p) => (
                 <span key={p} className="badge badge-primary"><Icon name="check" size={12} /> {p}</span>
               ))}
             </div>
@@ -227,20 +239,18 @@ export default function Cuenta() {
       {tab === 'actividad' && (
         <div className="card card-pad anim-in">
           <h2 style={{ marginBottom: 14 }}>Actividad reciente</h2>
-          <div className="timeline">
-            {[
-              ['done', 'Inicio de sesión', 'Acceso desde navegador web · 02/09/2026 09:14'],
-              ['done', 'Pedido PED-0128 registrado', 'Academia FC Juvenil · C$ 18,250.00'],
-              ['done', 'Abono AB-0231 registrado', 'Transferencia · C$ 9,125.00'],
-              ['done', 'Compra CMP-0042 recibida', 'Textiles Nicaragua S.A · C$ 24,600.00'],
-              ['pend', 'Cierre de sesión automático', 'Tras 5 minutos de inactividad'],
-            ].map(([est, t, d], i) => (
-              <div className={`tl-item ${est}`} key={i}>
-                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{t}</div>
-                <div className="caption">{d}</div>
-              </div>
-            ))}
-          </div>
+          {actividad.length === 0 ? (
+            <p className="caption">Aún no registra cambios en el historial de movimientos.</p>
+          ) : (
+            <div className="timeline">
+              {actividad.map((m) => (
+                <div className="tl-item done" key={m.id}>
+                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{m.calc_accion} en {m.calc_modulo}</div>
+                  <div className="caption">{m.calc_registro} · {fechaHora(m.fecha_cambio)}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

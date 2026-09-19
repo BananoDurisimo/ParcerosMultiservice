@@ -8,9 +8,9 @@ export default function AppProviders({ children }) {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <AuthProvider>
-          <DataProvider>{children}</DataProvider>
-        </AuthProvider>
+        <DataProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </DataProvider>
       </ToastProvider>
     </ThemeProvider>
   );

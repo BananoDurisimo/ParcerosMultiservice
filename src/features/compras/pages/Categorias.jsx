@@ -11,12 +11,13 @@ export default function Categorias() {
       entidad="categorías"
       singular="categoría"
       searchKeys={['nombre']}
+      conDetalle={false}
       columnas={[
         { key: 'nombre', label: 'Categoría', mobile: 'title', render: (r) => <span className="cell-main">{r.nombre}</span> },
         { key: 'calc_productos', label: 'Productos', align: 'center', mobile: 'value', render: (r) => <span className="badge badge-info">{r.calc_productos}</span> },
       ]}
       campos={[
-        { name: 'nombre', label: 'Nombre de la categoría', type: 'text', required: true, noSpecial: true, full: true, hint: 'No puede repetirse: la columna es única.' },
+        { name: 'nombre', label: 'Nombre de la categoría', type: 'text', required: true, noSpecial: true, unique: true, full: true, hint: 'No puede repetirse: la columna es única.' },
       ]}
     />
   );

@@ -60,7 +60,7 @@ export default function Compras() {
       defaults={{ detalle_insumos: [], detalle_productos: [], estado: 'En tránsito', fecha: hoyISO() }}
       etiquetaRegistro={codigo}
       resumen={[
-        <KpiCard key="a" label="Compras del mes" value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={8} />,
+        <KpiCard key="a" label="Compras del mes" value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={stats.tendencias.compras} />,
         <KpiCard key="b" label="Compras registradas" value={db.compras.length} icon="clipboard" tono="info" />,
         <KpiCard key="c" label="En tránsito" value={db.compras.filter((c) => c.estado === 'En tránsito').length} icon="truck" tono="warning" />,
       ]}

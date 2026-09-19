@@ -58,19 +58,18 @@ const LINEAS = [
 ];
 
 const PASOS = [
-  { icon: 'send', t: 'Cotice', d: 'Cuéntenos qué necesita por WhatsApp o con el formulario y le enviamos la cotización.' },
-  { icon: 'sparkle', t: 'Apruebe el diseño', d: 'Elaboramos la propuesta gráfica sin costo y le enviamos una prueba digital.' },
+  { icon: 'send', t: 'Cotice', d: 'Cuéntenos qué necesita por WhatsApp y le agendamos una cita.' },
+  { icon: 'sparkle', t: 'Apruebe el diseño', d: 'Elaboramos la propuesta gráfica sin costo y le mostramos una prueba digital.' },
   { icon: 'coin', t: 'Confirme con el 50%', d: 'Con el abono inicial reservamos los insumos y arranca la producción.' },
-  { icon: 'truck', t: 'Reciba sus prendas', d: 'Entre 7 y 12 días hábiles, en Managua o por encomienda a todo el país.' },
+  { icon: 'truck', t: 'Reciba sus prendas', d: 'Entre 7 y 12 días hábiles.' },
 ];
 
 const FAQ = [
   { q: '¿Cuál es el tiempo de entrega?', a: 'Entre 7 y 12 días hábiles después de aprobado el diseño y registrado el abono inicial. En temporada alta le confirmamos la fecha exacta en la cotización.' },
-  { q: '¿Cuál es la cantidad mínima de pedido?', a: 'Diez prendas por diseño en la línea deportiva y escolar. En la línea empresarial trabajamos desde cinco prendas.' },
-  { q: '¿Cómo se realiza el pago?', a: 'Con un abono del 50% se confirma el pedido y se reservan los insumos; el saldo se cancela contra entrega. Aceptamos efectivo, transferencia y tarjeta.' },
+  { q: '¿Cuál es la cantidad mínima de pedido?', a: 'No hay cantidad minima de prendas que puedas pedir' },
+  { q: '¿Cómo se realiza el pago?', a: 'Con un abono del 50% o también puedes pagar el 100% se confirma el pedido y se reservan los insumos; el saldo se cancela contra entrega. Aceptamos efectivo, transferencia y tarjeta.' },
   { q: '¿Puedo enviar mi propio diseño?', a: 'Sí. Recibimos su arte en formato vectorial o de alta resolución y le enviamos una prueba digital antes de producir.' },
-  { q: '¿Hacen envíos fuera de Managua?', a: 'Sí, despachamos a todo el país por encomienda. El costo del envío se agrega a la cotización según el destino.' },
-  { q: '¿Puedo seguir el estado de mi pedido?', a: 'Sí. Cada pedido queda registrado en el sistema y le informamos su avance: cotización aprobada, en proceso, completado y entregado.' },
+  { q: '¿Puedo seguir el estado de mi pedido?', a: 'Sí. Cada pedido queda registrado en el sistema y puede pedir su estado,le informamos su avance: cotización aprobada, en proceso, completado y entregado.' },
 ];
 
 /** Encabezado de seccion: antetitulo, titulo y descripcion. */

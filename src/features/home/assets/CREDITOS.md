@@ -10,7 +10,7 @@ código, porque `src/pages/Home.jsx` importa cada archivo por su ruta.
 
 | Archivo | Uso en la página | Autoría | Origen |
 |---|---|---|---|
-| `hero-deportivo.jpg` | Líneas · 01 Fútbol | Kyi Htetlinn | [Pexels 38083557](https://www.pexels.com/photo/38083557/) |
+| `linea-futbol.jpg` | Líneas · 01 Fútbol | Parceros Multiservice | Material propio (Instagram) |
 | `prod-futbol.jpg` | Tarjeta · Uniformes deportivos | Parceros Multiservice | Material propio (Instagram) |
 | `prod-publicitario.jpg` | Tarjeta y Líneas · 03 Patrocinio | Parceros Multiservice | Material propio (Instagram) |
 | `prod-ciclismo.jpg` | Tarjeta y Líneas · 02 Ciclismo | Parceros Multiservice | Material propio (Instagram) |

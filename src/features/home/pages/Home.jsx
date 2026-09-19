@@ -14,10 +14,10 @@ import Contador from '@features/home/components/Contador.jsx';
 import CotizaForm from '@features/home/components/CotizaForm.jsx';
 import useReveal from '@features/home/hooks/useReveal.js';
 
-/* Fotografias de referencia (Pexels, licencia libre). Ver assets/CREDITOS.md */
-import heroDeportivo from '@features/home/assets/hero-deportivo.jpg';
+/* Fotografia de referencia (Pexels, licencia libre). Ver assets/CREDITOS.md */
 import imgTaller from '@features/home/assets/taller.jpg';
 /* Fotografias propias del taller (publicaciones de la cuenta oficial) */
+import lineaFutbol from '@features/home/assets/linea-futbol.jpg';
 import prodFutbol from '@features/home/assets/prod-futbol.jpg';
 import prodPublicitario from '@features/home/assets/prod-publicitario.jpg';
 import prodCiclismo from '@features/home/assets/prod-ciclismo.jpg';
@@ -39,8 +39,8 @@ const PRODUCTOS = [
 
 const LINEAS = [
   {
-    n: '01', tag: 'Línea fútbol', t: 'Uniformes de fútbol', img: heroDeportivo,
-    alt: 'Equipo de fútbol con camisetas numeradas confeccionadas a medida',
+    n: '01', tag: 'Línea fútbol', t: 'Uniformes de fútbol', img: lineaFutbol,
+    alt: 'Equipo FC Halcones de Puerto Cabezas con el uniforme rosado confeccionado por Parceros Sports',
     puntos: ['Camisetas, shorts y medias sublimadas', 'El diseño, los colores y el número de cada jugador', 'Sin cantidad mínima de pedido'],
   },
   {

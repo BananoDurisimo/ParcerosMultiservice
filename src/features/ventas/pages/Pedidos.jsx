@@ -89,7 +89,7 @@ export default function Pedidos() {
       defaults={{ detalles: [], estado: 'Cotización aprobada', fecha_inicio: hoyISO() }}
       etiquetaRegistro={codigo}
       resumen={[
-        <KpiCard key="a" label="Ventas del mes" value={stats.ventasMes} prefix="C$ " icon="coin" tono="success" trend={12} />,
+        <KpiCard key="a" label="Ventas del mes" value={stats.ventasMes} prefix="C$ " icon="coin" tono="success" trend={stats.tendencias.ventas} />,
         <KpiCard key="b" label="Pedidos activos" value={stats.pedidosActivos} icon="clipboard" tono="primary" />,
         <KpiCard key="c" label="Por cobrar" value={stats.porCobrar} prefix="C$ " icon="alert" tono="warning" />,
       ]}

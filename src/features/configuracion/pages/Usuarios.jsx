@@ -48,9 +48,9 @@ export default function Usuarios() {
       campos={[
         { name: 'nombre_empleado', label: 'Nombre del empleado', type: 'text', noSpecial: true },
         { name: 'documento', label: 'Documento', type: 'text' },
-        { name: 'nombre_usuario', label: 'Nombre de usuario', type: 'text', required: true, noSpecial: true, hint: 'Único en el sistema, sin espacios.' },
-        { name: 'contrasena', label: 'Contraseña', type: 'password', required: true, placeholder: 'Mínimo 6 caracteres' },
-        { name: 'correo_empresarial', label: 'Correo empresarial', type: 'email' },
+        { name: 'nombre_usuario', label: 'Nombre de usuario', type: 'text', required: true, noSpecial: true, unique: true, hint: 'Único en el sistema, sin espacios.' },
+        { name: 'contrasena', label: 'Contraseña', type: 'password', required: true, placeholder: 'Mínimo 6 caracteres', ocultarEnDetalle: true },
+        { name: 'correo_empresarial', label: 'Correo empresarial', type: 'email', unique: true },
         { name: 'telefono', label: 'Teléfono', type: 'tel' },
         { name: 'cargo', label: 'Cargo', type: 'text' },
         { name: 'fecha_ingreso', label: 'Fecha de ingreso', type: 'date' },

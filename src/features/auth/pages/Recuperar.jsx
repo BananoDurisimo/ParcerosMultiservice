@@ -28,8 +28,6 @@ export default function Recuperar() {
   return (
     <div className="auth">
       <div className="auth-art">
-        <span className="blob" style={{ width: 280, height: 280, background: '#3B82F6', top: -50, right: -40 }} />
-        <span className="blob" style={{ width: 240, height: 240, background: '#A855F7', bottom: -50, left: -30 }} />
         <div style={{ position: 'relative' }}>
           <div className="brand">
             <Logo className="brand-mark" size={34} radius={10} />

@@ -1,13 +1,15 @@
 import CrudPage from '@shared/components/CrudPage.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import Icon from '@shared/components/Icon.jsx';
+import { abrirComprobante, esImagenAdjunta } from '@shared/components/ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { money, fecha, hoyISO, METODOS_PAGO } from '@shared/data/mock.js';
 
 /** Tabla `abono`: id_pedido, monto, fecha, metodo_pago, url_comprobante.
  *  El cliente y el saldo se obtienen del pedido asociado. */
 export default function Abonos() {
-  const { db, stats, opciones } = useData();
+  const { db, stats, getStats, opciones } = useData();
+  const tendencia = getStats('Mes').tendencias.recaudado;
   const pedidos = opciones('pedidos', (p) => `PED-${String(p.id).padStart(4, '0')} · ${p.calc_cliente}`);
 
   const codigo = (r) => `AB-${String(r.id).padStart(4, '0')}`;
@@ -28,7 +30,7 @@ export default function Abonos() {
       defaults={{ metodo_pago: 'Efectivo', fecha: hoyISO(), url_comprobante: '' }}
       etiquetaRegistro={codigo}
       resumen={[
-        <KpiCard key="a" label="Total recaudado" value={stats.recaudado} prefix="C$ " icon="coin" tono="success" trend={9} />,
+        <KpiCard key="a" label="Total recaudado" value={stats.recaudado} prefix="C$ " icon="coin" tono="success" trend={tendencia} trendLabel="recaudo vs. mes anterior" />,
         <KpiCard key="b" label="Saldo por cobrar" value={stats.porCobrar} prefix="C$ " icon="alert" tono="warning" />,
         <KpiCard key="c" label="Abonos registrados" value={db.abonos.length} icon="clipboard" tono="primary" />,
       ]}
@@ -43,7 +45,7 @@ export default function Abonos() {
         {
           key: 'url_comprobante', label: 'Comprobante', sortable: false,
           render: (r) => r.url_comprobante
-            ? <a className="row" style={{ gap: 5, fontSize: 12.5 }} href={r.url_comprobante} target="_blank" rel="noreferrer"><Icon name="download" size={14} /> Ver</a>
+            ? <button type="button" className="link-btn row" style={{ gap: 5, fontSize: 12.5 }} onClick={() => abrirComprobante(r.url_comprobante)}><Icon name="download" size={14} /> Ver</button>
             : <span className="caption">—</span>,
         },
       ]}
@@ -52,7 +54,7 @@ export default function Abonos() {
         { name: 'fecha', label: 'Fecha del pago', type: 'date', required: true },
         { name: 'monto', label: 'Monto abonado (C$)', type: 'money', required: true, min: 0 },
         { name: 'metodo_pago', label: 'Método de pago', type: 'select', options: METODOS_PAGO, required: true },
-        { name: 'url_comprobante', label: 'URL del comprobante', type: 'url', full: true, placeholder: 'https://…', hint: 'Opcional: enlace al soporte del pago.' },
+        { name: 'url_comprobante', label: 'Comprobante', type: 'comprobante', full: true, placeholder: 'https://…', hint: 'Opcional: pegue el enlace o suba la imagen del soporte (JPG, PNG, WEBP o GIF, máx. 5 MB).' },
       ]}
       renderDetalle={(r) => (
         <div>
@@ -68,9 +70,14 @@ export default function Abonos() {
             <div className="detail-item full">
               <div className="dl">Comprobante</div>
               <div className="dv">
-                {r.url_comprobante
-                  ? <a href={r.url_comprobante} target="_blank" rel="noreferrer">{r.url_comprobante}</a>
-                  : 'Sin comprobante adjunto'}
+                {!r.url_comprobante ? 'Sin comprobante adjunto'
+                  : esImagenAdjunta(r.url_comprobante)
+                    ? (
+                      <button type="button" className="link-btn" onClick={() => abrirComprobante(r.url_comprobante)}>
+                        <img className="file-preview" src={r.url_comprobante} alt="Comprobante del abono" />
+                      </button>
+                    )
+                    : <a href={r.url_comprobante} target="_blank" rel="noreferrer">{r.url_comprobante}</a>}
               </div>
             </div>
           </div>

@@ -9,7 +9,7 @@ import DonutChart from '@shared/components/charts/DonutChart.jsx';
 import HBarChart from '@shared/components/charts/HBarChart.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
-import { series, money, shortMoney, fecha, ESTADOS_PEDIDO, UMBRAL_STOCK_BAJO } from '@shared/data/mock.js';
+import { money, fecha, ESTADOS_PEDIDO, UMBRAL_STOCK_BAJO } from '@shared/data/mock.js';
 
 const PERIODOS = ['Hoy', 'Semana', 'Mes', 'Año'];
 
@@ -41,11 +41,10 @@ function CabeceraGrafico({ titulo, tipo, tono = 'neutral' }) {
 
 export default function Dashboard() {
   const { db, getStats } = useData();
-  const { user } = useAuth();
+  const { user, puede } = useAuth();
   const [periodo, setPeriodo] = useState('Mes');
 
   const stats = getStats(periodo);
-  const s = series[periodo];
   const et = ETIQUETA_PERIODO[periodo];
   const t = stats.tendencias;
 
@@ -87,7 +86,7 @@ export default function Dashboard() {
             {stats.bajoStock.slice(0, 3).map((i) => i.nombre).join(', ')}
             {stats.bajoStock.length > 3 ? '…' : '.'}
           </div>
-          <Link className="btn btn-sm btn-warning" to="/app/insumos">Revisar</Link>
+          {puede('Insumos') && <Link className="btn btn-sm btn-warning" to="/app/insumos">Revisar</Link>}
         </div>
       )}
 
@@ -102,11 +101,11 @@ export default function Dashboard() {
       {/* ---------- Gráficos 1 y 2 ---------- */}
       <div className="grid-2" style={{ marginTop: 16 }}>
         <div className="card chart-box">
-          <CabeceraGrafico titulo="Ventas / Compras" tipo={`Línea de área · ${periodo}`} tono="info" />
+          <CabeceraGrafico titulo="Ventas / Compras" tipo={`Línea de área · ${periodo === 'Hoy' ? 'últimos 7 días' : periodo}`} tono="info" />
           <AreaChart
             series={[
-              { name: 'Ventas', color: 'var(--primary)', data: s.ventas },
-              { name: 'Compras', color: 'var(--success)', data: s.compras },
+              { name: 'Ventas', color: 'var(--primary)', data: stats.serie.ventas },
+              { name: 'Compras', color: 'var(--success)', data: stats.serie.compras },
             ]}
           />
         </div>
@@ -120,16 +119,6 @@ export default function Dashboard() {
       {/* ---------- Gráficos 3 y 4 ---------- */}
       <div className="grid-2-eq" style={{ marginTop: 16 }}>
         <div className="card chart-box">
-          <CabeceraGrafico titulo="Productos más vendidos" tipo="Barras horizontales" tono="primary" />
-          <HBarChart
-            data={stats.topProductos}
-            color="var(--primary)"
-            formato={shortMoney}
-            vacio="No se registraron ventas en el período seleccionado."
-          />
-        </div>
-
-        <div className="card chart-box">
           <CabeceraGrafico titulo="Compras por tipo de insumo" tipo="Dona" tono="warning" />
           {stats.comprasPorCategoria.length > 0 ? (
             <DonutChart data={stats.comprasPorCategoria} />
@@ -139,10 +128,7 @@ export default function Dashboard() {
             </p>
           )}
         </div>
-      </div>
 
-      {/* ---------- Gráficos 5 y 6 ---------- */}
-      <div className="grid-2-eq" style={{ marginTop: 16 }}>
         <div className="card chart-box">
           <CabeceraGrafico titulo="Recaudo por método de pago" tipo="Dona" tono="success" />
           {stats.recaudoPorMetodo.length > 0 ? (
@@ -153,16 +139,6 @@ export default function Dashboard() {
             </p>
           )}
         </div>
-
-        <div className="card chart-box">
-          <CabeceraGrafico titulo="Insumos con menores existencias" tipo="Barras horizontales · actual" tono="error" />
-          <HBarChart
-            data={stats.existencias}
-            formato={(v) => v.toLocaleString('es-NI')}
-            umbral={UMBRAL_STOCK_BAJO}
-            etiquetaUmbral="Existencias mínimas"
-          />
-        </div>
       </div>
 
       {/* ---------- Detalle operativo ---------- */}
@@ -170,7 +146,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="card-head">
             <h2>Pedidos recientes</h2>
-            <Link className="btn btn-sm btn-ghost" to="/app/pedidos">Ver todos <Icon name="chevR" size={14} /></Link>
+            {puede('Pedidos') && <Link className="btn btn-sm btn-ghost" to="/app/pedidos">Ver todos <Icon name="chevR" size={14} /></Link>}
           </div>
           <div className="table-scroll">
             <table className="tbl">
@@ -184,7 +160,7 @@ export default function Dashboard() {
                     <td className="muted">{p.calc_cliente}</td>
                     <td className="caption">{fecha(p.fecha_inicio)}</td>
                     <td className="right"><span className="money">{money(p.calc_total)}</span></td>
-                    <td><EstadoCell row={p} coleccion="pedidos" etiqueta="estado del pedido" options={ESTADOS_PEDIDO} /></td>
+                    <td><EstadoCell row={p} coleccion="pedidos" etiqueta="estado del pedido" options={ESTADOS_PEDIDO} disabled={!puede('Pedidos')} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -195,12 +171,22 @@ export default function Dashboard() {
               <div className="mrow" key={p.id}>
                 <div className="m-body">
                   <div className="m-title">PED-{String(p.id).padStart(4, '0')} · {p.calc_cliente}</div>
-                  <div className="m-meta"><span>{fecha(p.fecha_inicio)}</span><EstadoCell row={p} coleccion="pedidos" etiqueta="estado del pedido" options={ESTADOS_PEDIDO} /></div>
+                  <div className="m-meta"><span>{fecha(p.fecha_inicio)}</span><EstadoCell row={p} coleccion="pedidos" etiqueta="estado del pedido" options={ESTADOS_PEDIDO} disabled={!puede('Pedidos')} /></div>
                 </div>
                 <span className="money">{money(p.calc_total)}</span>
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="card chart-box">
+          <CabeceraGrafico titulo="Insumos con menores existencias" tipo="Barras horizontales · actual" tono="error" />
+          <HBarChart
+            data={stats.existencias}
+            formato={(v) => v.toLocaleString('es-NI')}
+            umbral={UMBRAL_STOCK_BAJO}
+            etiquetaUmbral="Existencias mínimas"
+          />
         </div>
       </div>
     </div>

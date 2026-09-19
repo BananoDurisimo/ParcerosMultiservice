@@ -31,8 +31,9 @@ export default function CrudPage({
   pageActions,
   etiquetaRegistro,
   validarExtra,
+  conDetalle = true,
 }) {
-  const { db, create, update, remove } = useData();
+  const { db, create, update, remove, dependencias } = useData();
   const toast = useToast();
   const rows = db[coleccion];
 
@@ -52,8 +53,21 @@ export default function CrudPage({
     if (errors[name]) setErrors((e) => ({ ...e, [name]: undefined }));
   };
 
+  /** Campos `unique`: el valor no puede repetirse en otra fila (sin distinguir mayusculas). */
+  const repetidos = () => {
+    const norm = (v) => String(v ?? '').trim().toLowerCase();
+    const errs = {};
+    campos.forEach((f) => {
+      if (!f.unique || !norm(values[f.name])) return;
+      if (rows.some((r) => r.id !== actual?.id && norm(r[f.name]) === norm(values[f.name]))) {
+        errs[f.name] = 'Ya existe un registro con este valor.';
+      }
+    });
+    return errs;
+  };
+
   const guardar = () => {
-    const errs = { ...validar(campos, values), ...(validarExtra ? validarExtra(values, modo, actual) : null) };
+    const errs = { ...repetidos(), ...validar(campos, values), ...(validarExtra ? validarExtra(values, modo, actual) : null) };
     Object.keys(errs).forEach((k) => errs[k] === undefined && delete errs[k]);
     if (Object.keys(errs).length) {
       setErrors(errs);
@@ -78,6 +92,15 @@ export default function CrudPage({
       toast.success(`El registro de ${singular} se actualizó correctamente.`);
     }
     cerrar();
+  };
+
+  const pedirBorrado = (r) => {
+    const deps = dependencias(coleccion, r.id);
+    if (deps.length) {
+      toast.error(`"${etiqueta(r)}" tiene ${deps.join(' y ')} asociados.`, 'No se puede eliminar');
+      return;
+    }
+    setBorrar(r);
   };
 
   const confirmarBorrado = () => {
@@ -130,9 +153,9 @@ export default function CrudPage({
         pageSize={pageSize}
         onCreate={abrirCrear}
         createLabel={`Agregar ${singular}`}
-        onView={abrirVer}
+        onView={conDetalle ? abrirVer : undefined}
         onEdit={abrirEditar}
-        onDelete={setBorrar}
+        onDelete={pedirBorrado}
         onExport={exportar}
       />
 
@@ -196,7 +219,7 @@ export default function CrudPage({
         onClose={() => setBorrar(null)}
         onConfirm={confirmarBorrado}
         titulo={`Eliminar ${singular}`}
-        mensaje={`Si elimina "${etiqueta(borrar)}", se eliminarán también los registros asociados. Esta acción no se puede deshacer.`}
+        mensaje={`¿Desea eliminar "${etiqueta(borrar)}"? Esta acción no se puede deshacer.`}
       />
     </div>
   );

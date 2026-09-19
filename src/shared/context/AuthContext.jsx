@@ -1,61 +1,66 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { seed } from '@shared/data/mock.js';
+import { useData } from '@shared/context/DataContext.jsx';
 
 const AuthContext = createContext(null);
-const KEY = 'pm-user';
+const KEY = 'pm-sesion';
 
-/** Usuarios de demostracion tomados de la tabla `usuario` (la validacion real
- *  ira contra la API REST). Se expone un usuario activo por rol. */
+/** Accesos rapidos de la pantalla de login: un usuario activo por rol,
+ *  tomado de los datos semilla (la validacion real ira contra la API REST). */
 export const DEMO = seed.roles
   .map((rol) => {
     const u = seed.usuarios.find((x) => x.id_rol === rol.id && x.estado === 'Activo');
     if (!u) return null;
-    return {
-      id: u.id,
-      correo: u.correo_empresarial,
-      clave: u.contrasena,
-      nombre: u.nombre_empleado,
-      usuario: u.nombre_usuario,
-      rol: rol.nombre,
-      id_rol: rol.id,
-    };
+    return { correo: u.correo_empresarial, clave: u.contrasena, rol: rol.nombre };
   })
   .filter(Boolean);
 
+const leerSesion = () => {
+  try { return Number(JSON.parse(localStorage.getItem(KEY) || 'null')?.id) || null; } catch { return null; }
+};
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; }
-  });
+  const { db } = useData();
+  const [idSesion, setIdSesion] = useState(leerSesion);
+
+  /* El usuario de la sesion se lee siempre de la tabla `usuario`: si lo
+     editan, lo desactivan o le cambian el rol, el cambio aplica de inmediato. */
+  const user = useMemo(() => {
+    const u = db.usuarios.find((x) => x.id === idSesion && x.estado === 'Activo');
+    if (!u) return null;
+    return {
+      id: u.id,
+      correo: u.correo_empresarial,
+      nombre: u.nombre_empleado,
+      usuario: u.nombre_usuario,
+      rol: u.calc_rol,
+      id_rol: u.id_rol,
+      permisos: db.roles.find((r) => r.id === u.id_rol)?.calc_permisos || [],
+    };
+  }, [db, idSesion]);
 
   const login = useCallback((correo, clave) => {
-    const found = DEMO.find((u) => u.correo.toLowerCase() === String(correo).trim().toLowerCase());
-    if (!found) return { ok: false, error: 'No existe un usuario registrado con ese correo.' };
-    if (found.clave !== clave) return { ok: false, error: 'La contraseña es incorrecta.' };
-    const u = { ...found };
-    delete u.clave;
-    setUser(u);
-    try { localStorage.setItem(KEY, JSON.stringify(u)); } catch { /* noop */ }
-    return { ok: true, user: u };
-  }, []);
+    const c = String(correo).trim().toLowerCase();
+    const u = db.usuarios.find((x) => (x.correo_empresarial || '').toLowerCase() === c);
+    // Un solo mensaje: no revela si el correo existe.
+    if (!u || u.contrasena !== clave) return { ok: false, error: 'Correo o contraseña incorrectos.' };
+    if (u.estado !== 'Activo') return { ok: false, error: 'El usuario está inactivo. Contacte al administrador.' };
+    setIdSesion(u.id);
+    try { localStorage.setItem(KEY, JSON.stringify({ id: u.id })); } catch { /* modo privado */ }
+    return { ok: true, user: { nombre: u.nombre_empleado } };
+  }, [db]);
 
   const logout = useCallback(() => {
-    setUser(null);
-    try { localStorage.removeItem(KEY); } catch { /* noop */ }
+    setIdSesion(null);
+    try { localStorage.removeItem(KEY); } catch { /* modo privado */ }
   }, []);
 
-  const update = useCallback((patch) => {
-    setUser((u) => {
-      const nu = { ...u, ...patch };
-      try { localStorage.setItem(KEY, JSON.stringify(nu)); } catch { /* noop */ }
-      return nu;
-    });
-  }, []);
+  /** `permiso` es el nombre de la tabla `permiso`; sin permiso, el acceso es libre. */
+  const puede = useCallback((permiso) => !permiso || !!user?.permisos.includes(permiso), [user]);
 
-  return (
-    <AuthContext.Provider value={{ user, login, logout, update, isAuth: !!user }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = useMemo(() => ({ user, login, logout, puede, isAuth: !!user }), [user, login, logout, puede]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);

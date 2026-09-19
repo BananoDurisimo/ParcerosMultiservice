@@ -14,12 +14,10 @@ import Contador from '@features/home/components/Contador.jsx';
 import CotizaForm from '@features/home/components/CotizaForm.jsx';
 import useReveal from '@features/home/hooks/useReveal.js';
 
-/* Fotografias de referencia (Pexels, licencia libre). Ver assets/CREDITOS.md */
-import heroDeportivo from '@features/home/assets/hero-deportivo.jpg';
-import heroEmpresarial from '@features/home/assets/hero-empresarial.jpg';
-import heroEscolar from '@features/home/assets/hero-escolar.jpg';
+/* Fotografia de referencia (Pexels, licencia libre). Ver assets/CREDITOS.md */
 import imgTaller from '@features/home/assets/taller.jpg';
 /* Fotografias propias del taller (publicaciones de la cuenta oficial) */
+import lineaFutbol from '@features/home/assets/linea-futbol.jpg';
 import prodFutbol from '@features/home/assets/prod-futbol.jpg';
 import prodPublicitario from '@features/home/assets/prod-publicitario.jpg';
 import prodCiclismo from '@features/home/assets/prod-ciclismo.jpg';
@@ -41,19 +39,19 @@ const PRODUCTOS = [
 
 const LINEAS = [
   {
-    n: '01', tag: 'Línea deportiva', t: 'Uniformes deportivos', img: heroDeportivo,
-    alt: 'Equipo de fútbol con camisetas numeradas confeccionadas a medida',
-    puntos: ['Camisetas, shorts y medias sublimadas', 'El diseño, los colores y el número de cada jugador', 'Pedidos desde diez prendas por diseño'],
+    n: '01', tag: 'Línea fútbol', t: 'Uniformes de fútbol', img: lineaFutbol,
+    alt: 'Equipo FC Halcones de Puerto Cabezas con el uniforme rosado confeccionado por Parceros Sports',
+    puntos: ['Camisetas, shorts y medias sublimadas', 'El diseño, los colores y el número de cada jugador', 'Sin cantidad mínima de pedido'],
   },
   {
-    n: '02', tag: 'Línea empresarial', t: 'Uniformes empresariales', img: heroEmpresarial,
-    alt: 'Personal de una empresa con polos y gorras del uniforme institucional',
-    puntos: ['Camisas, polos y camibusos', 'Logotipo institucional bordado', 'Pedidos desde cinco prendas'],
+    n: '02', tag: 'Línea ciclismo', t: 'Ropa de ciclismo', img: prodCiclismo,
+    alt: 'Pareja de ciclistas con enterizo negro y jersey azul de Parceros Sports',
+    puntos: ['Enterizos, jerseys y licras a la medida', 'Línea PRO, intermedia y básica', 'Sublimación full color con el diseño que usted elija'],
   },
   {
-    n: '03', tag: 'Línea escolar', t: 'Uniformes escolares', img: heroEscolar,
-    alt: 'Estudiantes con el uniforme escolar completo en el patio del colegio',
-    puntos: ['Prendas completas para colegios e institutos', 'Tallas de XS a XXL, para dama, caballero y niño', 'Entrega puntual antes del ciclo escolar'],
+    n: '03', tag: 'Línea patrocinio', t: 'Jerseys con patrocinador', img: prodPublicitario,
+    alt: 'Jerseys de ciclismo con los logotipos de los patrocinadores Cool Wave y Banpro',
+    puntos: ['El logotipo de su marca o patrocinador en la prenda', 'Para clubes, torneos y academias deportivas', 'Prueba digital del diseño antes de producir'],
   },
 ];
 
@@ -105,7 +103,7 @@ export default function Home() {
       {/* Franja de eslogan */}
       <div className="lp-strip">
         <Icon name="sparkle" size={13} />
-        Uniformes 100% personalizados, hechos en Nicaragua para su equipo o empresa
+        Uniformes deportivos 100% personalizados, hechos en Nicaragua para su equipo o club
       </div>
 
       {/* Barra de navegación */}
@@ -142,7 +140,7 @@ export default function Home() {
               Uniformes personalizados <span>para campeones</span>
             </h1>
             <p className="lp-rise" style={{ '--d': '160ms' }}>
-              Deportivos, empresariales y escolares, con sublimación y bordado propio.
+              Fútbol, ciclismo y equipos con patrocinador, con sublimación y bordado propio.
               Hechos en Managua y enviados a toda Nicaragua.
             </p>
             <div className="lp-cta lp-rise" style={{ '--d': '240ms' }}>
@@ -167,7 +165,7 @@ export default function Home() {
       {/* 2. Nuestros productos */}
       <section className="section lp-cats" id="galeria">
         <div className="lp-wrap">
-          <Titulo kicker="Nuestros productos" texto="Fabricamos la prenda que su equipo o empresa necesita, con la calidad que nos caracteriza.">
+          <Titulo kicker="Nuestros productos" texto="Fabricamos la prenda que su equipo o club necesita, con la calidad que nos caracteriza.">
             Trabajos que hablan por nosotros
           </Titulo>
           <div className="lp-cat-grid">
@@ -233,10 +231,10 @@ export default function Home() {
           <div className="about-grid">
             <div className="about-text reveal">
               <span className="lp-kicker">Sobre nosotros</span>
-              <h2>Fabricamos uniformes <span className="grad">100% personalizados</span></h2>
+              <h2>Fabricamos uniformes deportivos <span className="grad">100% personalizados</span></h2>
               <p>
                 Parceros Multiservice es un taller nicaragüense con más de ocho años confeccionando
-                uniformes deportivos, empresariales y escolares. Trabajamos con tela nacional e importada,
+                uniformes deportivos para equipos, clubes y academias. Trabajamos con tela nacional e importada,
                 sublimación y bordado propio, de modo que cada prenda sale con el diseño exacto que el
                 cliente aprobó.
               </p>
@@ -306,7 +304,7 @@ export default function Home() {
             <Logo size={52} radius={99} />
             <div className="ig-perfil-txt">
               <strong>@{IG_USUARIO}</strong>
-              <span>Uniformes deportivos, empresariales y escolares · Managua, Nicaragua</span>
+              <span>Uniformes deportivos personalizados · Managua, Nicaragua</span>
             </div>
             <span className="btn btn-primary btn-sm">
               <Icon name="instagram" size={15} /> Seguir

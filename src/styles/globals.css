@@ -994,7 +994,7 @@ table.tbl tbody tr:last-child td { border-bottom: 0; }
 .lp-line-list { display: grid; gap: 56px; }
 .lp-line { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
 .lp-line:nth-child(even) .lp-line-img { order: 2; }
-.lp-line-img { position: relative; margin: 0; aspect-ratio: 4 / 3; border-radius: var(--radius-lg); overflow: hidden; background: var(--surface-3); }
+.lp-line-img { position: relative; margin: 0; aspect-ratio: 1 / 1; border-radius: var(--radius-lg); overflow: hidden; background: var(--surface-3); }
 .lp-line-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .lp-line-n {
   position: absolute; left: 16px; bottom: 6px; font-family: var(--font-display); font-weight: 800; font-size: 76px; line-height: 1;

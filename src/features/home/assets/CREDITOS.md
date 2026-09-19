@@ -10,12 +10,10 @@ código, porque `src/pages/Home.jsx` importa cada archivo por su ruta.
 
 | Archivo | Uso en la página | Autoría | Origen |
 |---|---|---|---|
-| `hero-deportivo.jpg` | Líneas · 01 Deportiva | Kyi Htetlinn | [Pexels 38083557](https://www.pexels.com/photo/38083557/) |
-| `hero-empresarial.jpg` | Líneas · 02 Empresarial | Jopwell | [Pexels 1325702](https://www.pexels.com/photo/1325702/) |
-| `hero-escolar.jpg` | Líneas · 03 Escolar | Green Odette | [Pexels 32165222](https://www.pexels.com/photo/32165222/) |
+| `linea-futbol.jpg` | Líneas · 01 Fútbol | Parceros Multiservice | Material propio (Instagram) |
 | `prod-futbol.jpg` | Tarjeta · Uniformes deportivos | Parceros Multiservice | Material propio (Instagram) |
-| `prod-publicitario.jpg` | Tarjeta · Jerseys publicitarios | Parceros Multiservice | Material propio (Instagram) |
-| `prod-ciclismo.jpg` | Tarjeta · Ropa de ciclismo | Parceros Multiservice | Material propio (Instagram) |
+| `prod-publicitario.jpg` | Tarjeta y Líneas · 03 Patrocinio | Parceros Multiservice | Material propio (Instagram) |
+| `prod-ciclismo.jpg` | Tarjeta y Líneas · 02 Ciclismo | Parceros Multiservice | Material propio (Instagram) |
 | `taller-video.mp4` | Portada · video del taller (360×640, H.264, ~700 KB) | Parceros Multiservice | Material propio (Instagram) |
 | `taller.jpg` | Sobre la empresa · foto del taller | Pavel Danilyuk | [Pexels 6461121](https://www.pexels.com/photo/6461121/) |
 

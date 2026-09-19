@@ -52,7 +52,7 @@ export default function Footer({ compact = false }) {
         <div className="footer-cols">
           <div className="footer-brand">
             <p className="footer-eslogan">
-              Uniformes 100% personalizados, hechos en Nicaragua para su equipo o empresa.
+              Uniformes deportivos 100% personalizados, hechos en Nicaragua para su equipo o club.
             </p>
             <Logo className="footer-logo" size={62} radius={12} />
             <div className="social">

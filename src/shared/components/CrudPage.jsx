@@ -36,7 +36,7 @@ export default function CrudPage({
   pageActions,
   etiquetaRegistro,
   validarExtra,
-  verDetalle = true,
+  conDetalle = true,
   tablaCompacta = false,
   anulacion = null, // { valor, campo = 'estado', mensaje(reg) }
 }) {
@@ -60,8 +60,21 @@ export default function CrudPage({
     if (errors[name]) setErrors((e) => ({ ...e, [name]: undefined }));
   };
 
+  /** Campos `unique`: el valor no puede repetirse en otra fila (sin distinguir mayusculas). */
+  const repetidos = () => {
+    const norm = (v) => String(v ?? '').trim().toLowerCase();
+    const errs = {};
+    campos.forEach((f) => {
+      if (!f.unique || !norm(values[f.name])) return;
+      if (rows.some((r) => r.id !== actual?.id && norm(r[f.name]) === norm(values[f.name]))) {
+        errs[f.name] = 'Ya existe un registro con este valor.';
+      }
+    });
+    return errs;
+  };
+
   const guardar = () => {
-    const errs = { ...validar(campos, values), ...(validarExtra ? validarExtra(values, modo, actual) : null) };
+    const errs = { ...repetidos(), ...validar(campos, values), ...(validarExtra ? validarExtra(values, modo, actual) : null) };
     Object.keys(errs).forEach((k) => errs[k] === undefined && delete errs[k]);
     if (Object.keys(errs).length) {
       setErrors(errs);
@@ -147,7 +160,7 @@ export default function CrudPage({
         compacta={tablaCompacta}
         onCreate={abrirCrear}
         createLabel={`Agregar ${singular}`}
-        onView={verDetalle ? abrirVer : undefined}
+        onView={conDetalle ? abrirVer : undefined}
         onEdit={abrirEditar}
         onExport={exportar}
       />
@@ -200,7 +213,7 @@ export default function CrudPage({
 
       {/* Detalle */}
       <Modal
-        open={verDetalle && modo === 'ver'}
+        open={conDetalle && modo === 'ver'}
         onClose={cerrar}
         title={`Detalle de ${singular}`}
         subtitle={etiqueta(actual)}

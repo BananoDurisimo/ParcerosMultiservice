@@ -151,7 +151,7 @@ export default function Pedidos() {
         mensaje: (r) => `El pedido ${codigo(r)} de ${r.calc_cliente} quedará marcado como anulado: se conserva en el listado y en el historial, pero deja de sumar en las ventas y en el saldo por cobrar.`,
       }}
       resumen={[
-        <KpiCard key="a" label="Ventas del mes" value={stats.ventasMes} prefix="C$ " icon="coin" tono="success" trend={12} />,
+        <KpiCard key="a" label="Ventas del mes" value={stats.ventasMes} prefix="C$ " icon="coin" tono="success" trend={stats.tendencias.ventas} />,
         <KpiCard key="b" label="Pedidos activos" value={stats.pedidosActivos} icon="clipboard" tono="primary" />,
         <KpiCard key="c" label="Por cobrar" value={stats.porCobrar} prefix="C$ " icon="alert" tono="warning" />,
       ]}

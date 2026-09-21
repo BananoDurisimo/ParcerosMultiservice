@@ -43,8 +43,6 @@ export default function Login() {
   return (
     <div className="auth">
       <div className="auth-art">
-        <span className="blob" style={{ width: 300, height: 300, background: '#3B82F6', top: -60, left: -40 }} />
-        <span className="blob" style={{ width: 260, height: 260, background: '#A855F7', bottom: -60, right: -30 }} />
         <div style={{ position: 'relative' }}>
           <div className="brand auth-brand">
             <Logo className="brand-mark" size={124} radius={26} />

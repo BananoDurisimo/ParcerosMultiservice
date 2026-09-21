@@ -47,8 +47,8 @@ export default function Clientes() {
       campos={[
         { name: 'nombre', label: 'Nombre o razón social', type: 'text', required: true },
         { name: 'tipodocumento', label: 'Tipo de documento', type: 'select', options: TIPOS_DOCUMENTO, required: true },
-        { name: 'documento', label: 'Número de documento', type: 'text', required: true, hint: 'No puede repetirse: la columna es única.' },
-        { name: 'correo', label: 'Correo electrónico', type: 'email', required: true, hint: 'No puede repetirse: la columna es única.' },
+        { name: 'documento', label: 'Número de documento', type: 'text', required: true, unique: true, hint: 'No puede repetirse: la columna es única.' },
+        { name: 'correo', label: 'Correo electrónico', type: 'email', required: true, unique: true, hint: 'No puede repetirse: la columna es única.' },
         { name: 'telefono', label: 'Teléfono', type: 'tel' },
         { name: 'direccion', label: 'Dirección', type: 'text', full: true },
       ]}

@@ -23,7 +23,7 @@ export default function Roles() {
         { key: 'calc_usuarios', label: 'Usuarios', align: 'center', mobile: 'value', render: (r) => <strong>{r.calc_usuarios}</strong> },
       ]}
       campos={[
-        { name: 'nombre', label: 'Nombre del rol', type: 'text', required: true, noSpecial: true, maxLength: 40, full: true },
+        { name: 'nombre', label: 'Nombre del rol', type: 'text', required: true, noSpecial: true, unique: true, maxLength: 40, full: true },
         {
           name: 'permisos', label: 'Permisos asociados', type: 'multiselect', options: permisos,
           full: true, required: true, buscable: true, buscarPlaceholder: 'Buscar permiso…',

@@ -18,6 +18,96 @@ const valorDe = (opts, texto) => {
 };
 
 /* --------------------------------------------------------------
+   Comprobante: URL externa o imagen subida desde el equipo.
+   El archivo se guarda como data URL (no hay backend); cuando llegue
+   la API, basta con subirlo y guardar la URL que devuelva.
+   -------------------------------------------------------------- */
+const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_IMAGEN_MB = 5;
+
+export const esImagenAdjunta = (v) => typeof v === 'string' && v.startsWith('data:image/');
+
+/** Abre en otra pestaña una URL o una imagen adjunta (los navegadores
+    bloquean abrir data URLs directamente, por eso se convierte a blob). */
+export async function abrirComprobante(v) {
+  if (!esImagenAdjunta(v)) { window.open(v, '_blank', 'noopener'); return; }
+  const blob = await (await fetch(v)).blob();
+  window.open(URL.createObjectURL(blob), '_blank', 'noopener');
+}
+
+/** Valida tipo, tamaño y contenido real (que el navegador pueda decodificarla). */
+function leerImagen(file) {
+  return new Promise((resolve, reject) => {
+    if (!TIPOS_IMAGEN.includes(file.type)) {
+      reject(new Error('El archivo debe ser una imagen JPG, PNG, WEBP o GIF.'));
+      return;
+    }
+    if (file.size > MAX_IMAGEN_MB * 1024 * 1024) {
+      reject(new Error(`La imagen no puede superar ${MAX_IMAGEN_MB} MB.`));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo seleccionado.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => resolve(reader.result);
+      img.onerror = () => reject(new Error('El archivo no es una imagen válida.'));
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function ComprobanteField({ f, value, error, onChange, id, label }) {
+  const inputFile = useRef(null);
+  const [errArchivo, setErrArchivo] = useState('');
+  const [nombre, setNombre] = useState('');
+  const adjunta = esImagenAdjunta(value);
+  const msg = errArchivo || error;
+
+  const subir = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      onChange(await leerImagen(file));
+      setNombre(file.name);
+      setErrArchivo('');
+    } catch (err) {
+      setErrArchivo(err.message);
+    }
+  };
+
+  const quitar = () => { onChange(''); setNombre(''); setErrArchivo(''); };
+
+  return (
+    <div className={`field ${f.full ? 'full' : ''}`}>
+      {label}
+      <div className="file-row">
+        <input
+          id={id}
+          className={`input ${msg ? 'has-error' : ''}`}
+          type="text"
+          value={adjunta ? (nombre || 'Imagen adjunta') : (value ?? '')}
+          readOnly={adjunta}
+          placeholder={f.placeholder}
+          onChange={(e) => { setErrArchivo(''); onChange(e.target.value); }}
+        />
+        <input ref={inputFile} type="file" accept={TIPOS_IMAGEN.join(',')} hidden onChange={subir} />
+        {adjunta ? (
+          <button type="button" className="btn" onClick={quitar}><Icon name="x" size={15} /> Quitar</button>
+        ) : (
+          <button type="button" className="btn" onClick={() => inputFile.current?.click()}><Icon name="download" size={15} /> Subir imagen</button>
+        )}
+      </div>
+      {adjunta && <img className="file-preview" src={value} alt="Vista previa del comprobante" />}
+      {f.hint && !msg && <span className="caption">{f.hint}</span>}
+      {msg && <span className="field-error"><Icon name="alert" size={12} /> {msg}</span>}
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------
    Validaciones (punto 7: notificacion de validacion de campos)
    -------------------------------------------------------------- */
 export function validar(fields, values) {
@@ -35,6 +125,7 @@ export function validar(fields, values) {
     if (f.type === 'tel' && !/^[\d\s()+-]{7,}$/.test(v)) errs[f.name] = 'Ingrese un teléfono válido (mínimo 7 dígitos).';
     if (f.type === 'url' && !/^https?:\/\/\S+$/i.test(v)) errs[f.name] = 'Ingrese una URL válida (debe iniciar con http:// o https://).';
     if (f.type === 'file' && !/^(https?:\/\/|blob:|data:)/i.test(v)) errs[f.name] = 'Adjunte un archivo o ingrese un enlace válido (http:// o https://).';
+    if (f.type === 'comprobante' && !esImagenAdjunta(v) && !/^https?:\/\/\S+$/i.test(v)) errs[f.name] = 'Ingrese una URL válida o suba una imagen.';
     if ((f.type === 'number' || f.type === 'money') && (isNaN(Number(v)) || Number(v) < 0)) errs[f.name] = 'Ingrese un valor numérico válido.';
     if (f.min !== undefined && Number(v) < f.min) errs[f.name] = `El valor mínimo permitido es ${f.min}.`;
     if (f.type === 'text' && f.noSpecial && /[<>{}[\]$%^*]/.test(v)) errs[f.name] = 'Este campo no puede contener caracteres especiales.';
@@ -60,6 +151,10 @@ export function Field({ f, value, error, onChange, readOnly }) {
 
   if (f.type === 'multiselect') {
     return <MultiSelectField f={f} value={value} error={error} onChange={onChange} readOnly={readOnly} />;
+  }
+
+  if (f.type === 'comprobante') {
+    return <ComprobanteField f={f} value={value} error={error} onChange={onChange} id={id} label={label} />;
   }
 
   if (f.type === 'switch') {
@@ -295,6 +390,8 @@ export function ItemsEditor({ f, value = [], onChange, error, readOnly }) {
   const opts = normOpciones(f.options);
   const vacio = { [f.itemKey]: '', cantidad: '', precio_unitario: '' };
   const [draft, setDraft] = useState(vacio);
+  const [errLinea, setErrLinea] = useState('');
+  const msg = errLinea || error;
 
   const etiqueta = (v) => opts.find((o) => String(o.value) === String(v))?.label ?? v;
   const total = value.reduce((s, it) => s + Number(it.cantidad) * Number(it.precio_unitario), 0);
@@ -310,13 +407,17 @@ export function ItemsEditor({ f, value = [], onChange, error, readOnly }) {
   };
 
   const add = () => {
-    if (draft[f.itemKey] === '' || !draft.cantidad || !draft.precio_unitario) return;
-    onChange([...value, {
-      [f.itemKey]: draft[f.itemKey],
-      cantidad: Number(draft.cantidad),
-      precio_unitario: Number(draft.precio_unitario),
-    }]);
+    const cantidad = Number(draft.cantidad);
+    const precio = Number(draft.precio_unitario);
+    if (draft[f.itemKey] === '' || draft.cantidad === '' || draft.precio_unitario === '') {
+      setErrLinea(`Seleccione ${f.itemLabel.toLowerCase()} e ingrese la cantidad y el precio.`);
+      return;
+    }
+    if (!(cantidad > 0)) { setErrLinea('La cantidad debe ser mayor que cero.'); return; }
+    if (!(precio >= 0)) { setErrLinea('El precio unitario no puede ser negativo.'); return; }
+    onChange([...value, { [f.itemKey]: draft[f.itemKey], cantidad, precio_unitario: precio }]);
     setDraft(vacio);
+    setErrLinea('');
   };
 
   return (
@@ -357,8 +458,8 @@ export function ItemsEditor({ f, value = [], onChange, error, readOnly }) {
           <span className="money" style={{ fontSize: 15 }}>{f.totalLabel || 'Total'}: {money(total)}</span>
         </div>
       </div>
-      {f.hint && !error && <span className="caption">{f.hint}</span>}
-      {error && <span className="field-error"><Icon name="alert" size={12} /> {error}</span>}
+      {f.hint && !msg && <span className="caption">{f.hint}</span>}
+      {msg && <span className="field-error"><Icon name="alert" size={12} /> {msg}</span>}
     </div>
   );
 }

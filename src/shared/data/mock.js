@@ -29,7 +29,14 @@ export const fecha = (iso) => {
   return `${d}/${m}/${y}`;
 };
 
-export const hoyISO = () => new Date().toISOString().slice(0, 10);
+/** Fecha local en formato ISO (yyyy-mm-dd), sin el corrimiento a UTC de toISOString(). */
+export const toISO = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** "Hoy" del sistema. Los datos semilla giran alrededor de esta fecha; al
+    conectar la API basta con devolver toISO(new Date()). */
+export const FECHA_SISTEMA = '2026-08-30';
+export const hoyISO = () => FECHA_SISTEMA;
 
 /** Fecha y hora de un timestamp ISO ("2026-08-30T14:22:10") -> "30/08/2026, 02:22 p.m." */
 export const fechaHora = (iso) => {
@@ -296,27 +303,27 @@ export const seed = {
 
   // Tabla: categoria (id_categoria, nombre)
   categorias: [
-    { id: 1, nombre: 'Fútbol' },
-    { id: 2, nombre: 'Baloncesto' },
-    { id: 3, nombre: 'Béisbol y softbol' },
-    { id: 4, nombre: 'Ciclismo y running' },
-    { id: 5, nombre: 'Accesorios deportivos' },
-    { id: 6, nombre: 'Entrenamiento y calentamiento' },
+    { id: 1, nombre: 'Uniformes deportivos' },
+    { id: 2, nombre: 'Uniformes de ciclismo' },
+    { id: 3, nombre: 'Uniformes de baloncesto' },
+    { id: 4, nombre: 'Chaquetas deportivas' },
+    { id: 5, nombre: 'Accesorios' },
+    { id: 6, nombre: 'Jerseys con patrocinador' },
   ],
 
   // Tabla: producto (id_producto, id_categoria, nombre, descripcion, precio, estado)
   productos: [
-    { id: 1, id_categoria: 1, nombre: 'Camiseta de fútbol sublimada', descripcion: 'Tela Dry-Fit con sublimación full color, nombre y número del jugador.', precio: 420, estado: 'Activo' },
-    { id: 2, id_categoria: 1, nombre: 'Short de fútbol Dry-Fit', descripcion: 'Short liviano con pretina elástica, cordón ajustable y número.', precio: 310, estado: 'Activo' },
-    { id: 3, id_categoria: 2, nombre: 'Uniforme de baloncesto', descripcion: 'Camiseta sin mangas y short en mesh, sublimados con los colores del equipo.', precio: 560, estado: 'Activo' },
-    { id: 4, id_categoria: 3, nombre: 'Camisola de béisbol', descripcion: 'Camisola abotonada con nombre del equipo, número y escudo bordado.', precio: 480, estado: 'Activo' },
-    { id: 5, id_categoria: 6, nombre: 'Chaqueta de calentamiento', descripcion: 'Chaqueta cortaviento con forro de malla y escudo del club.', precio: 950, estado: 'Activo' },
-    { id: 6, id_categoria: 4, nombre: 'Uniforme de ciclismo', descripcion: 'Jersey y licra con badana, sublimados con el diseño del club.', precio: 780, estado: 'Activo' },
-    { id: 7, id_categoria: 5, nombre: 'Gorra deportiva personalizada', descripcion: 'Gorra de seis paneles con el escudo del equipo.', precio: 195, estado: 'Activo' },
-    { id: 8, id_categoria: 1, nombre: 'Medias deportivas altas', descripcion: 'Medias de compresión con las franjas del equipo.', precio: 130, estado: 'Activo' },
-    { id: 9, id_categoria: 6, nombre: 'Sudadera de entrenamiento', descripcion: 'Conjunto de chaqueta y pantalón para entrenamiento, con estampado.', precio: 690, estado: 'Activo' },
-    { id: 10, id_categoria: 5, nombre: 'Bolso deportivo', descripcion: 'Bolso de lona reforzada con compartimento para calzado.', precio: 640, estado: 'Inactivo' },
-    { id: 11, id_categoria: 3, nombre: 'Camisola de softbol femenina', descripcion: 'Corte entallado en tela Dry-Fit, con nombre y número sublimados.', precio: 520, estado: 'Activo' },
+    { id: 1, id_categoria: 1, nombre: 'Camiseta deportiva sublimada', descripcion: 'Camiseta en tela Dry-Fit con sublimación full color.', precio: 420 },
+    { id: 2, id_categoria: 1, nombre: 'Short deportivo Dry-Fit', descripcion: 'Short liviano con pretina elástica y cordón ajustable.', precio: 310 },
+    { id: 3, id_categoria: 2, nombre: 'Jersey de ciclismo manga larga', descripcion: 'Jersey con cierre completo y tela transpirable.', precio: 560 },
+    { id: 4, id_categoria: 2, nombre: 'Licra de ciclismo con badana', descripcion: 'Licra con badana acolchada y bandas de silicona.', precio: 480 },
+    { id: 5, id_categoria: 4, nombre: 'Chaqueta cortaviento', descripcion: 'Chaqueta impermeable con forro interno y capucha.', precio: 950 },
+    { id: 6, id_categoria: 3, nombre: 'Uniforme de baloncesto completo', descripcion: 'Camiseta sin mangas y short según el diseño del equipo.', precio: 780 },
+    { id: 7, id_categoria: 5, nombre: 'Gorra personalizada', descripcion: 'Gorra de seis paneles con bordado frontal.', precio: 195 },
+    { id: 8, id_categoria: 1, nombre: 'Medias deportivas altas', descripcion: 'Medias de compresión con franjas del equipo.', precio: 130 },
+    { id: 9, id_categoria: 1, nombre: 'Sudadera deportiva', descripcion: 'Sudadera de algodón perchado con estampado.', precio: 690 },
+    { id: 10, id_categoria: 5, nombre: 'Bolso deportivo', descripcion: 'Bolso de lona reforzada con compartimento para calzado.', precio: 640 },
+    { id: 11, id_categoria: 2, nombre: 'Enterizo de ciclismo', descripcion: 'Enterizo sublimado de una pieza con badana.', precio: 520 },
   ],
 
   // Tabla: varianteproducto (id_varianteproducto, id_producto, id_talla, url_imagen, stock)
@@ -451,8 +458,8 @@ export const seed = {
     { id: 3, tabla: 'insumo', id_registro: 3, accion: 'UPDATE', valor_anterior: { nombre: 'Tela Mesh deportiva', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 35, precio_unitario: 165 }, valor_nuevo: { nombre: 'Tela Mesh deportiva', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 0, precio_unitario: 165 }, id_usuario: 5, fecha_cambio: '2026-08-30T11:02:41' },
     { id: 4, tabla: 'usuario', id_registro: 6, accion: 'UPDATE', valor_anterior: { nombre_empleado: 'Karla Jirón Soza', cargo: 'Auxiliar de almacén', id_rol: 4, estado: 'Activo' }, valor_nuevo: { nombre_empleado: 'Karla Jirón Soza', cargo: 'Auxiliar de almacén', id_rol: 4, estado: 'Inactivo' }, id_usuario: 1, fecha_cambio: '2026-08-29T15:33:18' },
     { id: 5, tabla: 'compra', id_registro: 7, accion: 'UPDATE', valor_anterior: { id_proveedor: 3, fecha: '2026-08-04', estado: 'En tránsito' }, valor_nuevo: { id_proveedor: 3, fecha: '2026-08-04', estado: 'Anulada' }, id_usuario: 5, fecha_cambio: '2026-08-29T10:20:57' },
-    { id: 6, tabla: 'producto', id_registro: 10, accion: 'UPDATE', valor_anterior: { id_categoria: 5, nombre: 'Bolso deportivo', precio: 590, estado: 'Activo' }, valor_nuevo: { id_categoria: 5, nombre: 'Bolso deportivo', precio: 640, estado: 'Inactivo' }, id_usuario: 2, fecha_cambio: '2026-08-28T17:05:09' },
-    { id: 7, tabla: 'cliente', id_registro: 9, accion: 'INSERT', valor_anterior: null, valor_nuevo: { nombre: 'Liga de Softbol Femenino Estelí', tipodocumento: 'RUC', documento: 'J0310001566', telefono: '2713 4402', correo: 'softbolfem@ligaesteli.ni', direccion: 'Estelí, Km 3 Carretera Panamericana' }, id_usuario: 4, fecha_cambio: '2026-08-28T08:41:30' },
+    { id: 6, tabla: 'producto', id_registro: 10, accion: 'UPDATE', valor_anterior: { id_categoria: 5, nombre: 'Bolso deportivo', precio: 590 }, valor_nuevo: { id_categoria: 5, nombre: 'Bolso deportivo', precio: 640 }, id_usuario: 2, fecha_cambio: '2026-08-28T17:05:09' },
+    { id: 7, tabla: 'cliente', id_registro: 9, accion: 'INSERT', valor_anterior: null, valor_nuevo: { nombre: 'Cooperativa Agro Norte', tipodocumento: 'RUC', documento: 'J0310001566', telefono: '2713 4402', correo: 'agronorte@coop.ni', direccion: 'Estelí, Km 3 Carretera Panamericana' }, id_usuario: 4, fecha_cambio: '2026-08-28T08:41:30' },
     { id: 8, tabla: 'proveedor', id_registro: 2, accion: 'UPDATE', valor_anterior: { nombre: 'Distribuidora El Cosido', nombrepersonacontacto: 'Marta Aguilar', telefono: '2255 1100', correo: 'contacto@elcosido.ni' }, valor_nuevo: { nombre: 'Distribuidora El Cosido', nombrepersonacontacto: 'Marta Aguilar', telefono: '2255 9032', correo: 'contacto@elcosido.ni' }, id_usuario: 5, fecha_cambio: '2026-08-27T14:12:44' },
     { id: 9, tabla: 'rol', id_registro: 3, accion: 'UPDATE', valor_anterior: { nombre: 'Vendedor', permisos: [5, 8, 9] }, valor_nuevo: { nombre: 'Vendedor', permisos: [5, 8, 9, 10] }, id_usuario: 1, fecha_cambio: '2026-08-26T09:57:12' },
     { id: 10, tabla: 'categoria', id_registro: 6, accion: 'INSERT', valor_anterior: null, valor_nuevo: { nombre: 'Entrenamiento y calentamiento' }, id_usuario: 2, fecha_cambio: '2026-08-25T11:30:02' },
@@ -463,26 +470,6 @@ export const seed = {
     { id: 15, tabla: 'compra', id_registro: 4, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_proveedor: 4, fecha: '2026-08-18', estado: 'En tránsito' }, id_usuario: 5, fecha_cambio: '2026-08-18T09:36:40' },
     { id: 16, tabla: 'cliente', id_registro: 3, accion: 'UPDATE', valor_anterior: { nombre: 'Liga Municipal de Baloncesto Masaya', telefono: '2255 3321', correo: 'liga@basketmasaya.ni', direccion: 'Masaya, Barrio San Jerónimo' }, valor_nuevo: { nombre: 'Liga Municipal de Baloncesto Masaya', telefono: '2255 3321', correo: 'liga@basketmasaya.ni', direccion: 'Masaya, Centro' }, id_usuario: 7, fecha_cambio: '2026-08-17T15:51:06' },
     { id: 17, tabla: 'abono', id_registro: 12, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_pedido: 12, monto: 2400, fecha: '2026-07-15', metodo_pago: 'Efectivo', url_comprobante: '' }, id_usuario: 4, fecha_cambio: '2026-07-15T12:03:55' },
-    { id: 18, tabla: 'producto', id_registro: 11, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_categoria: 3, nombre: 'Camisola de softbol femenina', descripcion: 'Corte entallado en tela Dry-Fit, con nombre y número sublimados.', precio: 520, estado: 'Activo' }, id_usuario: 2, fecha_cambio: '2026-07-10T10:47:33' },
+    { id: 18, tabla: 'producto', id_registro: 11, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_categoria: 2, nombre: 'Enterizo de ciclismo', descripcion: 'Enterizo sublimado de una pieza con badana.', precio: 520 }, id_usuario: 2, fecha_cambio: '2026-07-10T10:47:33' },
   ],
-};
-
-/* Series para los graficos del dashboard --------- */
-export const series = {
-  Hoy: {
-    ventas: [{ l: '8am', v: 1200 }, { l: '10am', v: 2600 }, { l: '12m', v: 2100 }, { l: '2pm', v: 4800 }, { l: '4pm', v: 3900 }, { l: '6pm', v: 6200 }],
-    compras: [{ l: '8am', v: 800 }, { l: '10am', v: 1400 }, { l: '12m', v: 1900 }, { l: '2pm', v: 1500 }, { l: '4pm', v: 2600 }, { l: '6pm', v: 2200 }],
-  },
-  Semana: {
-    ventas: [{ l: 'Lun', v: 8400 }, { l: 'Mar', v: 11200 }, { l: 'Mié', v: 9800 }, { l: 'Jue', v: 14600 }, { l: 'Vie', v: 17300 }, { l: 'Sáb', v: 21400 }, { l: 'Dom', v: 6200 }],
-    compras: [{ l: 'Lun', v: 5200 }, { l: 'Mar', v: 4100 }, { l: 'Mié', v: 7300 }, { l: 'Jue', v: 6200 }, { l: 'Vie', v: 9100 }, { l: 'Sáb', v: 8400 }, { l: 'Dom', v: 1200 }],
-  },
-  Mes: {
-    ventas: [{ l: 'S1', v: 28400 }, { l: 'S2', v: 34100 }, { l: 'S3', v: 30900 }, { l: 'S4', v: 41200 }],
-    compras: [{ l: 'S1', v: 18200 }, { l: 'S2', v: 15400 }, { l: 'S3', v: 22600 }, { l: 'S4', v: 19100 }],
-  },
-  'Año': {
-    ventas: [{ l: 'Ene', v: 92000 }, { l: 'Feb', v: 81000 }, { l: 'Mar', v: 104000 }, { l: 'Abr', v: 98000 }, { l: 'May', v: 121000 }, { l: 'Jun', v: 115000 }, { l: 'Jul', v: 132000 }, { l: 'Ago', v: 145000 }],
-    compras: [{ l: 'Ene', v: 52000 }, { l: 'Feb', v: 48000 }, { l: 'Mar', v: 61000 }, { l: 'Abr', v: 55000 }, { l: 'May', v: 72000 }, { l: 'Jun', v: 64000 }, { l: 'Jul', v: 78000 }, { l: 'Ago', v: 83000 }],
-  },
 };

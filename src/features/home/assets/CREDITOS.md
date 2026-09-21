@@ -10,9 +10,12 @@ su README) y estas dejan de mostrarse solas.
 
 | Archivo | Uso en la página | Autoría | Origen |
 |---|---|---|---|
-| `hero-deportivo.jpg` | Carrusel · respaldo "Uniformes para todo su equipo" | Kyi Htetlinn | [Pexels 38083557](https://www.pexels.com/photo/38083557/) |
-| `prod-deportivo.jpg` | Carrusel · respaldo "Sublimación full color" | Thato Moiketsi | [Pexels 32422419](https://www.pexels.com/photo/32422419/) |
-| `taller.jpg` | Sección "Nosotros" y carrusel · respaldo "Confección propia" | Pavel Danilyuk | [Pexels 6461121](https://www.pexels.com/photo/6461121/) |
+| `linea-futbol.jpg` | Líneas · 01 Fútbol | Parceros Multiservice | Material propio (Instagram) |
+| `prod-futbol.jpg` | Tarjeta · Uniformes deportivos | Parceros Multiservice | Material propio (Instagram) |
+| `prod-publicitario.jpg` | Tarjeta y Líneas · 03 Patrocinio | Parceros Multiservice | Material propio (Instagram) |
+| `prod-ciclismo.jpg` | Tarjeta y Líneas · 02 Ciclismo | Parceros Multiservice | Material propio (Instagram) |
+| `taller-video.mp4` | Portada · video del taller (360×640, H.264, ~700 KB) | Parceros Multiservice | Material propio (Instagram) |
+| `taller.jpg` | Sobre la empresa · foto del taller | Pavel Danilyuk | [Pexels 6461121](https://www.pexels.com/photo/6461121/) |
 
 Las publicaciones de Instagram de la sección "Redes sociales" no usan archivos
 locales: se muestran con el reproductor oficial de la red (ver

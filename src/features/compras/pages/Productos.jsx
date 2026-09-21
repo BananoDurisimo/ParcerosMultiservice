@@ -2,7 +2,7 @@ import CrudPage from '@shared/components/CrudPage.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { money } from '@shared/data/mock.js';
 
-/** Tabla `producto`: id_categoria, nombre, descripcion, precio, estado.
+/** Tabla `producto`: id_categoria, nombre, descripcion, precio.
  *  Las tallas y las existencias pertenecen a `varianteproducto`, por eso
  *  aparecen como información derivada y no como campos del formulario.
  *  La columna `estado` se conserva en la base de datos, pero no se administra
@@ -23,7 +23,6 @@ export default function Productos() {
       filtros={[
         { key: 'id_categoria', label: 'Categoría', options: categorias },
       ]}
-      beforeSave={(data, modo, actual) => ({ ...data, estado: actual?.estado || 'Activo' })}
       columnas={[
         {
           key: 'nombre', label: 'Producto', mobile: 'title',

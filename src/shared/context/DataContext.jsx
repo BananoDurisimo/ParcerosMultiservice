@@ -10,13 +10,64 @@ import {
   ETIQUETA_ACCION,
   camposCambiados,
   etiquetaFila,
+  toISO,
+  hoyISO,
 } from '@shared/data/mock.js';
 
 const DataContext = createContext(null);
 
-/** Fecha local en formato ISO (yyyy-mm-dd), sin el corrimiento de toISOString(). */
-const toISO = (d) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+/**
+ * Tramos del grafico de area para un periodo: dias de la semana, semanas del
+ * mes o meses del año. Los pedidos no guardan hora, por eso "Hoy" muestra los
+ * siete dias que terminan hoy.
+ */
+function tramosPeriodo(periodo, refISO) {
+  const hoy = new Date(refISO + 'T00:00:00');
+  const y = hoy.getFullYear(), m = hoy.getMonth();
+  switch (periodo) {
+    case 'Hoy':
+    case 'Semana':
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(y, m, hoy.getDate() - 6 + i);
+        return { l: `${DIAS[d.getDay()]} ${d.getDate()}`, desde: toISO(d), hasta: toISO(d) };
+      });
+    case 'Año':
+      return Array.from({ length: m + 1 }, (_, i) => ({
+        l: MESES[i], desde: toISO(new Date(y, i, 1)), hasta: toISO(new Date(y, i + 1, 0)),
+      }));
+    case 'Mes':
+    default: {
+      const out = [];
+      for (let ini = 1, n = 1; ini <= hoy.getDate(); ini += 7, n++) {
+        const fin = Math.min(ini + 6, hoy.getDate());
+        out.push({ l: `S${n}`, desde: toISO(new Date(y, m, ini)), hasta: toISO(new Date(y, m, fin)) });
+      }
+      return out;
+    }
+  }
+}
+
+/**
+ * Llaves foraneas que apuntan a cada coleccion. Eliminar un registro con
+ * dependientes dejaria filas huerfanas (la base de datos lo rechazaria), asi
+ * que la eliminacion se bloquea y se informa que registros lo usan.
+ */
+const REFERENCIAS = {
+  roles: [{ col: 'usuarios', txt: 'usuario(s)', usa: (r, id) => r.id_rol === id }],
+  usuarios: [{ col: 'movimientos', txt: 'movimiento(s) en el historial; desactívelo en su lugar', usa: (r, id) => r.id_usuario === id }],
+  categorias: [{ col: 'productos', txt: 'producto(s)', usa: (r, id) => r.id_categoria === id }],
+  productos: [{ col: 'variantes', txt: 'variante(s) por talla', usa: (r, id) => r.id_producto === id }],
+  insumos: [
+    { col: 'compras', txt: 'compra(s)', usa: (r, id) => (r.detalle_insumos || []).some((l) => l.id_insumo === id) },
+    { col: 'fichas_tecnicas', txt: 'ficha(s) técnica(s)', usa: (r, id) => r.id_insumo === id },
+  ],
+  proveedores: [{ col: 'compras', txt: 'compra(s)', usa: (r, id) => r.id_proveedor === id }],
+  clientes: [{ col: 'pedidos', txt: 'pedido(s)', usa: (r, id) => r.id_cliente === id }],
+  pedidos: [{ col: 'abonos', txt: 'abono(s)', usa: (r, id) => r.id_pedido === id }],
+};
 
 /**
  * Rango [desde, hasta] de un período, tomando "ref" como el "hoy" virtual.
@@ -81,6 +132,16 @@ export function DataProvider({ children }) {
   const remove = useCallback((col, id) => {
     setRaw((d) => ({ ...d, [col]: d[col].filter((r) => r.id !== id) }));
   }, []);
+
+  /** Registros que impiden eliminar la fila `id` de `col`, p. ej. ["3 pedido(s)"]. */
+  const dependencias = useCallback(
+    (col, id) =>
+      (REFERENCIAS[col] || [])
+        .map(({ col: hija, txt, usa }) => ({ n: raw[hija].filter((r) => usa(r, id)).length, txt }))
+        .filter((d) => d.n > 0)
+        .map((d) => `${d.n} ${d.txt}`),
+    [raw]
+  );
 
   /* --------------------------------------------------------------
      Valores derivados.
@@ -275,12 +336,9 @@ export function DataProvider({ children }) {
     [db]
   );
 
-  /* "Hoy" virtual = la fecha más reciente presente en los datos, para que
-     los filtros Hoy/Semana/Mes/Año funcionen sobre el histórico de ejemplo. */
-  const refFecha = useMemo(() => {
-    const fechas = [...db.pedidos.map((p) => p.fecha_inicio), ...db.compras.map((c) => c.fecha)].filter(Boolean);
-    return fechas.length ? fechas.reduce((a, b) => (a > b ? a : b)) : new Date().toISOString().slice(0, 10);
-  }, [db]);
+  /* "Hoy" del sistema: fijo, para que crear un registro no desplace los
+     filtros Hoy/Semana/Mes/Año del dashboard. */
+  const refFecha = hoyISO();
 
   /* ---- Indicadores globales (no dependen del período) ----
      Los pedidos anulados se conservan en el listado, pero no se toman en
@@ -318,6 +376,13 @@ export function DataProvider({ children }) {
     const ventasMes = suma(pedidosPeriodo, (p) => p.calc_total);
     const comprasMes = suma(comprasPeriodo, (c) => c.calc_total);
     const recaudadoPeriodo = suma(abonosPeriodo, (a) => a.monto);
+
+    /* 0. Ventas / Compras por tramo del periodo (linea de area) */
+    const tramos = tramosPeriodo(periodo, refFecha);
+    const serie = {
+      ventas: tramos.map((t) => ({ l: t.l, v: suma(pedidosDe(t), (p) => p.calc_total) })),
+      compras: tramos.map((t) => ({ l: t.l, v: suma(comprasDe(t), (c) => c.calc_total) })),
+    };
 
     /* 1. Pedidos por estado (barras) */
     const porEstado = {};
@@ -366,7 +431,7 @@ export function DataProvider({ children }) {
       .map(([label, value]) => ({ label, value, color: COLOR_METODO_PAGO[label] || 'var(--text-sec)' }))
       .sort((a, b) => b.value - a.value);
 
-    /* 5. Existencias más bajas (barras horizontales): no depende del período,
+    /* 4. Existencias más bajas (barras horizontales): no depende del período,
           es la foto actual de la tabla `insumo`. */
     const existencias = [...db.insumos]
       .sort((a, b) => a.stock - b.stock)
@@ -385,7 +450,8 @@ export function DataProvider({ children }) {
       porCobrar: stats.porCobrar,
       pedidosActivos: stats.pedidosActivos,
       bajoStock: stats.bajoStock,
-      // series de los seis gráficos
+      // series de los cinco gráficos
+      serie,
       porEstado,
       comprasPorCategoria,
       topProductos,
@@ -441,7 +507,7 @@ export function DataProvider({ children }) {
   }, [db, stats]);
 
   return (
-    <DataContext.Provider value={{ db, opciones, create, update, remove, stats, getStats, notificaciones }}>
+    <DataContext.Provider value={{ db, opciones, create, update, remove, dependencias, stats, getStats, notificaciones }}>
       {children}
     </DataContext.Provider>
   );

@@ -4,14 +4,13 @@ import Icon from '@shared/components/Icon.jsx';
 const ESPERA_MS = 9000;
 
 /**
- * Publicacion de Instagram dentro del carrusel.
+ * Marco con el reproductor oficial de Instagram.
  *
- * El reproductor oficial solo se monta cuando la tarjeta entra en pantalla,
- * para no pedir doce publicaciones al abrir la pagina. Si Instagram no
- * responde (sin conexion o red que lo bloquea) se muestra una tarjeta de
- * respaldo que sigue llevando a la publicacion.
+ * Solo se monta cuando entra en pantalla, para no pedir doce publicaciones al
+ * abrir la pagina. Si Instagram no responde (sin conexion o red que lo
+ * bloquea) queda una tarjeta de respaldo que sigue llevando a la publicacion.
  */
-export default function IgPost({ post }) {
+export function IgFrame({ post, className = '' }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
   const [cargado, setCargado] = useState(false);
@@ -44,36 +43,43 @@ export default function IgPost({ post }) {
   }, [visible, cargado]);
 
   return (
-    <article className="card ig-card" ref={ref}>
-      <div className="ig-frame">
-        {visible && (
-          <iframe
-            src={post.embed}
-            title={`Publicación de Instagram: ${post.t}`}
-            loading="lazy"
-            scrolling="no"
-            allowTransparency="true"
-            onLoad={() => setCargado(true)}
-          />
-        )}
+    <div className={`ig-frame ${className}`} ref={ref}>
+      {visible && (
+        <iframe
+          src={post.embed}
+          title={`Publicación de Instagram: ${post.t}`}
+          loading="lazy"
+          scrolling="no"
+          allowTransparency="true"
+          onLoad={() => setCargado(true)}
+        />
+      )}
 
-        {/* Respaldo: se ve mientras carga y queda fijo si Instagram falla. */}
-        {!cargado && (
-          <a
-            className="ig-fallback"
-            href={post.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{ background: post.grad }}
-          >
-            <Icon name="instagram" size={26} />
-            <div className="ig-cap">
-              <strong>{post.t}</strong>
-              <span>{falla ? 'Ver la publicación en Instagram' : 'Cargando publicación…'}</span>
-            </div>
-          </a>
-        )}
-      </div>
+      {/* Respaldo: se ve mientras carga y queda fijo si Instagram falla. */}
+      {!cargado && (
+        <a
+          className="ig-fallback"
+          href={post.url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ background: post.grad }}
+        >
+          <Icon name="instagram" size={26} />
+          <div className="ig-cap">
+            <strong>{post.t}</strong>
+            <span>{falla ? 'Ver la publicación en Instagram' : 'Cargando publicación…'}</span>
+          </div>
+        </a>
+      )}
+    </div>
+  );
+}
+
+/** Publicacion de Instagram dentro del carrusel de la seccion "Redes". */
+export default function IgPost({ post }) {
+  return (
+    <article className="card ig-card">
+      <IgFrame post={post} />
 
       <div className="ig-meta">
         <div>

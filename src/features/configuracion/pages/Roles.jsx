@@ -24,7 +24,11 @@ export default function Roles() {
       ]}
       campos={[
         { name: 'nombre', label: 'Nombre del rol', type: 'text', required: true, noSpecial: true, maxLength: 40, full: true },
-        { name: 'permisos', label: 'Permisos asociados', type: 'multiselect', options: permisos, full: true, required: true, hint: 'Cada permiso marcado crea una fila en rolxpermiso.' },
+        {
+          name: 'permisos', label: 'Permisos asociados', type: 'multiselect', options: permisos,
+          full: true, required: true, buscable: true, buscarPlaceholder: 'Buscar permiso…',
+          hint: 'Cada permiso marcado crea una fila en rolxpermiso.',
+        },
       ]}
       renderDetalle={(r) => (
         <div>

@@ -54,7 +54,7 @@ export default function Login() {
         <div style={{ position: 'relative', maxWidth: 420 }}>
           <h1 style={{ fontSize: 34, lineHeight: 1.15, fontWeight: 700 }}>Gestione compras, pedidos y ventas en un solo lugar.</h1>
           <p style={{ opacity: .82, marginTop: 14, fontSize: 15 }}>
-            Sistema de gestión para la elaboración de uniformes personalizados: inventario, cotizaciones,
+            Sistema de gestión para la elaboración de uniformes deportivos personalizados: inventario, cotizaciones,
             pedidos, abonos y reportes con trazabilidad completa.
           </p>
           <div className="stack" style={{ gap: 10, marginTop: 26 }}>

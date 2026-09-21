@@ -9,8 +9,13 @@ import { useToast } from '@shared/context/ToastContext.jsx';
 import { etiquetaFila } from '@shared/data/mock.js';
 
 /**
- * Pagina CRUD reutilizable: cabecera, resumen, tabla, formulario,
- * detalle y confirmacion de eliminacion. La usan los 11 modulos.
+ * Pagina CRUD reutilizable: cabecera, resumen, tabla, formulario y detalle.
+ * La usan los 11 modulos.
+ *
+ * Los registros nunca se eliminan (no hay boton de borrar en la tabla): los
+ * modulos que mueven dinero -compras y pedidos- reciben la prop `anulacion`
+ * para dar de baja el documento desde el formulario de edicion, dejandolo en
+ * la base de datos con su estado en "Anulada"/"Anulado".
  */
 export default function CrudPage({
   titulo,
@@ -31,8 +36,11 @@ export default function CrudPage({
   pageActions,
   etiquetaRegistro,
   validarExtra,
+  verDetalle = true,
+  tablaCompacta = false,
+  anulacion = null, // { valor, campo = 'estado', mensaje(reg) }
 }) {
-  const { db, create, update, remove } = useData();
+  const { db, create, update } = useData();
   const toast = useToast();
   const rows = db[coleccion];
 
@@ -40,7 +48,7 @@ export default function CrudPage({
   const [actual, setActual] = useState(null);
   const [values, setValues] = useState({});
   const [errors, setErrors] = useState({});
-  const [borrar, setBorrar] = useState(null);
+  const [anular, setAnular] = useState(null);
 
   const abrirCrear = () => { setValues({ ...defaults }); setErrors({}); setActual(null); setModo('crear'); };
   const abrirEditar = (r) => { setValues({ ...r }); setErrors({}); setActual(r); setModo('editar'); };
@@ -65,6 +73,7 @@ export default function CrudPage({
        vienen en la fila al editar nunca se escriben en la "base de datos". */
     let data = { ...defaults };
     campos.forEach((f) => {
+      if (f.type === 'custom') return; // solo presentacion: no es una columna
       const v = values[f.name];
       data[f.name] = f.type === 'number' || f.type === 'money' ? Number(v || 0) : v;
     });
@@ -80,10 +89,17 @@ export default function CrudPage({
     cerrar();
   };
 
-  const confirmarBorrado = () => {
-    remove(coleccion, borrar.id);
-    toast.warning(`Se eliminó el registro de ${singular} seleccionado.`, 'Registro eliminado');
-    setBorrar(null);
+  /* Anular no borra la fila: solo cambia su estado, de modo que el documento
+     siga apareciendo en los listados y en el historial de movimientos. */
+  const campoAnulacion = anulacion?.campo || 'estado';
+  const estaAnulado = (r) => !!anulacion && r?.[campoAnulacion] === anulacion.valor;
+  const puedeAnular = !!anulacion && modo === 'editar' && !estaAnulado(actual);
+
+  const confirmarAnulacion = () => {
+    update(coleccion, anular.id, { [campoAnulacion]: anulacion.valor });
+    toast.warning(`Se anuló el registro de ${singular}: ${etiqueta(anular)}.`, 'Registro anulado');
+    setAnular(null);
+    cerrar();
   };
 
   /** Resuelve el texto de un campo en el modal de detalle (los select y
@@ -128,11 +144,11 @@ export default function CrudPage({
         filters={filtros}
         entidad={entidad}
         pageSize={pageSize}
+        compacta={tablaCompacta}
         onCreate={abrirCrear}
         createLabel={`Agregar ${singular}`}
-        onView={abrirVer}
+        onView={verDetalle ? abrirVer : undefined}
         onEdit={abrirEditar}
-        onDelete={setBorrar}
         onExport={exportar}
       />
 
@@ -145,6 +161,11 @@ export default function CrudPage({
         subtitle={modo === 'crear' ? 'Complete la información requerida.' : `Modificando: ${etiqueta(actual)}`}
         footer={
           <>
+            {puedeAnular && (
+              <button className="btn btn-danger" style={{ marginRight: 'auto' }} onClick={() => setAnular(actual)}>
+                <Icon name="xC" size={16} /> Anular {singular}
+              </button>
+            )}
             <button className="btn" onClick={cerrar}>Cancelar</button>
             <button className="btn btn-primary" onClick={guardar}>
               <Icon name="check" size={16} /> {modo === 'crear' ? 'Guardar' : 'Actualizar'}
@@ -152,9 +173,23 @@ export default function CrudPage({
           </>
         }
       >
+        {estaAnulado(actual) && (
+          <div className="alert alert-error" style={{ marginBottom: 16 }}>
+            <Icon name="xC" size={20} />
+            <div>
+              Estado actual: <strong>{anulacion.valor}</strong>. El registro se conserva como referencia y no se
+              toma en cuenta en los totales; para reactivarlo cambie su estado.
+            </div>
+          </div>
+        )}
+
         <div className="form-grid">
           {campos.map((f) =>
-            f.type === 'items' ? (
+            f.type === 'custom' ? (
+              /* Bloque de solo lectura calculado con los valores del formulario
+                 (por ejemplo, el total en vivo de un pedido). */
+              <div key={f.name} className={`field ${f.full ? 'full' : ''}`}>{f.render(values)}</div>
+            ) : f.type === 'items' ? (
               <ItemsEditor key={f.name} f={f} value={values[f.name] || []} error={errors[f.name]} onChange={(v) => setVal(f.name, v)} />
             ) : (
               <Field key={f.name} f={f} value={values[f.name]} error={errors[f.name]} onChange={(v) => setVal(f.name, v)} />
@@ -165,7 +200,7 @@ export default function CrudPage({
 
       {/* Detalle */}
       <Modal
-        open={modo === 'ver'}
+        open={verDetalle && modo === 'ver'}
         onClose={cerrar}
         title={`Detalle de ${singular}`}
         subtitle={etiqueta(actual)}
@@ -181,7 +216,7 @@ export default function CrudPage({
       >
         {actual && (renderDetalle ? renderDetalle(actual) : (
           <div className="detail-grid">
-            {campos.filter((f) => f.type !== 'items' && !f.ocultarEnDetalle).map((f) => (
+            {campos.filter((f) => f.type !== 'items' && f.type !== 'custom' && !f.ocultarEnDetalle).map((f) => (
               <div className="detail-item" key={f.name}>
                 <div className="dl">{f.label}</div>
                 <div className="dv">{textoDetalle(f, actual[f.name])}</div>
@@ -191,13 +226,21 @@ export default function CrudPage({
         ))}
       </Modal>
 
-      <ConfirmDialog
-        open={!!borrar}
-        onClose={() => setBorrar(null)}
-        onConfirm={confirmarBorrado}
-        titulo={`Eliminar ${singular}`}
-        mensaje={`Si elimina "${etiqueta(borrar)}", se eliminarán también los registros asociados. Esta acción no se puede deshacer.`}
-      />
+      {anulacion && (
+        <ConfirmDialog
+          open={!!anular}
+          onClose={() => setAnular(null)}
+          onConfirm={confirmarAnulacion}
+          titulo={`Anular ${singular}`}
+          confirmLabel="Anular"
+          icono="xC"
+          mensaje={
+            anular && anulacion.mensaje
+              ? anulacion.mensaje(anular)
+              : `El registro "${etiqueta(anular)}" pasará al estado "${anulacion.valor}" y dejará de contar en los totales. No se elimina de la base de datos.`
+          }
+        />
+      )}
     </div>
   );
 }

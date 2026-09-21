@@ -11,7 +11,7 @@ const AYUDA = [
 
 const OTROS = [
   ['Política de privacidad', '#privacidad'],
-  ['Mapa del sitio', '#galeria'],
+  ['Mapa del sitio', '#nosotros'],
   ['Suscripciones', '#redes'],
 ];
 
@@ -28,7 +28,7 @@ export default function Footer({ compact = false }) {
       <footer className="footer">
         <div className="footer-inner center">
           <Logo className="footer-logo" size={62} radius={12} style={{ margin: '0 auto' }} />
-          <p style={{ color: '#C3CAD5', fontSize: 13, marginTop: 12 }}>Fabricamos uniformes 100% personalizados.</p>
+          <p style={{ color: '#C3CAD5', fontSize: 13, marginTop: 12 }}>Fabricamos uniformes deportivos 100% personalizados.</p>
           <div className="row" style={{ justifyContent: 'center', gap: 16, flexWrap: 'wrap', marginTop: 12 }}>
             {AYUDA.map(([t, h]) => <a key={t} href={h}>{t}</a>)}
           </div>
@@ -51,7 +51,7 @@ export default function Footer({ compact = false }) {
         <div className="footer-cols">
           <div className="footer-brand">
             <p className="footer-eslogan">
-              Uniformes 100% personalizados, hechos en Nicaragua para su equipo o empresa.
+              Uniformes deportivos 100% personalizados, hechos en Nicaragua para su equipo.
             </p>
             <Logo className="footer-logo" size={62} radius={12} />
             <div className="social">

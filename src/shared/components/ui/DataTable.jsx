@@ -6,6 +6,8 @@ import { normOpciones } from './Form.jsx';
 /**
  * Tabla estandar del sistema: busqueda, filtros, orden, paginacion,
  * acciones CRUD (punto 1) y version movil en lista.
+ * Los registros no se eliminan: se consultan y se editan, y en los modulos
+ * de compras y pedidos la baja se hace anulando desde el formulario.
  */
 export default function DataTable({
   columns,
@@ -14,11 +16,11 @@ export default function DataTable({
   filters = [],
   entidad = 'registros',
   pageSize = 8,
+  compacta = false,
   onCreate,
   createLabel = 'Agregar',
   onView,
   onEdit,
-  onDelete,
   onExport,
   emptyText = 'No hay registros que coincidan con la búsqueda.',
 }) {
@@ -67,7 +69,6 @@ export default function DataTable({
     <>
       {onView && <button className="icon-btn is-view" onClick={() => onView(r)} title="Ver detalle"><Icon name="eye" size={16} /></button>}
       {onEdit && <button className="icon-btn is-edit" onClick={() => onEdit(r)} title="Editar"><Icon name="edit" size={16} /></button>}
-      {onDelete && <button className="icon-btn is-delete" onClick={() => onDelete(r)} title="Eliminar"><Icon name="trash" size={16} /></button>}
     </>
   );
 
@@ -125,7 +126,7 @@ export default function DataTable({
         <>
           {/* --- Vista escritorio --- */}
           <div className="table-scroll">
-            <table className="tbl">
+            <table className={`tbl ${compacta ? 'tbl-compacta' : ''}`}>
               <thead>
                 <tr>
                   {columns.map((c) => (
@@ -141,7 +142,7 @@ export default function DataTable({
                       </span>
                     </th>
                   ))}
-                  {(onView || onEdit || onDelete) && <th style={{ textAlign: 'right' }}>Acciones</th>}
+                  {(onView || onEdit) && <th style={{ textAlign: 'right' }}>Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -152,7 +153,7 @@ export default function DataTable({
                         {c.render ? c.render(r) : r[c.key]}
                       </td>
                     ))}
-                    {(onView || onEdit || onDelete) && <td><div className="cell-actions">{acciones(r)}</div></td>}
+                    {(onView || onEdit) && <td><div className="cell-actions">{acciones(r)}</div></td>}
                   </tr>
                 ))}
               </tbody>
@@ -160,7 +161,7 @@ export default function DataTable({
           </div>
 
           {/* --- Vista movil --- */}
-          <div className="mlist">
+          <div className={`mlist ${compacta ? 'tbl-compacta' : ''}`}>
             {slice.map((r, i) => (
               <div className="mrow" key={r.id} style={{ animationDelay: i * 30 + 'ms' }}>
                 <div className="m-body">

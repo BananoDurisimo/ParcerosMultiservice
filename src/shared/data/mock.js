@@ -61,7 +61,14 @@ export const ESTADOS_PEDIDO = [
   'Entregado / vendido',
 ];
 
+/** Un pedido anulado sale del flujo de trabajo: no es una etapa mas de la
+ *  trazabilidad, por eso se declara aparte y la linea de tiempo del detalle
+ *  sigue recorriendo unicamente ESTADOS_PEDIDO. */
+export const PEDIDO_ANULADO = 'Anulado';
+export const ESTADOS_PEDIDO_TODOS = [...ESTADOS_PEDIDO, PEDIDO_ANULADO];
+
 export const ESTADOS_COMPRA = ['Recibida', 'En tránsito', 'Anulada'];
+export const COMPRA_ANULADA = 'Anulada';
 export const ESTADOS_REGISTRO = ['Activo', 'Inactivo'];
 export const TIPOS_DOCUMENTO = ['Cédula', 'RUC', 'Pasaporte', 'Cédula de residencia'];
 export const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque'];
@@ -138,6 +145,8 @@ export const ETIQUETA_CAMPO = {
   id_tipo_insumo: 'Tipo de insumo',
   id_unidad_medida: 'Unidad de medida',
   permisos: 'Permisos',
+  detalles: 'Productos',
+  insumos: 'Insumos',
 };
 
 /** La contrasena nunca se registra en el historial (nota del modelo de datos). */
@@ -170,6 +179,7 @@ export const ESTADO_TONO = {
   Recibida: 'success',
   'En tránsito': 'info',
   Anulada: 'error',
+  Anulado: 'error',
   'Cotización aprobada': 'info',
   'Pedido en proceso': 'warning',
   'Completado - falta pago': 'warning',
@@ -241,6 +251,7 @@ export const seed = {
     { id: 4, nombre: 'Rollo', abreviatura: 'rollo' },
     { id: 5, nombre: 'Kilogramo', abreviatura: 'kg' },
     { id: 6, nombre: 'Docena', abreviatura: 'doc' },
+    { id: 7, nombre: 'Litro', abreviatura: 'L' },
   ],
 
   /* ---------- Configuracion ---------- */
@@ -270,7 +281,7 @@ export const seed = {
   insumos: [
     { id: 1, nombre: 'Tela Dry-Fit', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 278, precio_unitario: 145 },
     { id: 2, nombre: 'Tela Lycra', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 130, precio_unitario: 180 },
-    { id: 3, nombre: 'Tela Piqué', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 0, precio_unitario: 165 },
+    { id: 3, nombre: 'Tela Mesh deportiva', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 0, precio_unitario: 165 },
     { id: 4, nombre: 'Tela Micro-perforada', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 64, precio_unitario: 190 },
     { id: 5, nombre: 'Hilo poliéster', id_tipo_insumo: 2, id_unidad_medida: 4, stock: 92, precio_unitario: 65 },
     { id: 6, nombre: 'Vinil textil', id_tipo_insumo: 3, id_unidad_medida: 1, stock: 14, precio_unitario: 210 },
@@ -278,32 +289,34 @@ export const seed = {
     { id: 8, nombre: 'Botones metálicos', id_tipo_insumo: 4, id_unidad_medida: 6, stock: 310, precio_unitario: 40 },
     { id: 9, nombre: 'Cierre nylon 20cm', id_tipo_insumo: 4, id_unidad_medida: 3, stock: 8, precio_unitario: 22 },
     { id: 10, nombre: 'Elástico 3cm', id_tipo_insumo: 4, id_unidad_medida: 1, stock: 175, precio_unitario: 18 },
-    { id: 11, nombre: 'Etiquetas bordadas', id_tipo_insumo: 4, id_unidad_medida: 6, stock: 88, precio_unitario: 55 },
+    { id: 11, nombre: 'Escudos bordados', id_tipo_insumo: 4, id_unidad_medida: 6, stock: 88, precio_unitario: 55 },
+    { id: 13, nombre: 'Tinta textil negra', id_tipo_insumo: 3, id_unidad_medida: 7, stock: 24, precio_unitario: 380 },
+    { id: 14, nombre: 'Tinta textil roja', id_tipo_insumo: 3, id_unidad_medida: 7, stock: 18, precio_unitario: 395 },
   ],
 
   // Tabla: categoria (id_categoria, nombre)
   categorias: [
-    { id: 1, nombre: 'Uniformes deportivos' },
-    { id: 2, nombre: 'Uniformes empresariales' },
-    { id: 3, nombre: 'Uniformes escolares' },
-    { id: 4, nombre: 'Chaquetas y abrigos' },
-    { id: 5, nombre: 'Accesorios' },
-    { id: 6, nombre: 'Línea promocional' },
+    { id: 1, nombre: 'Fútbol' },
+    { id: 2, nombre: 'Baloncesto' },
+    { id: 3, nombre: 'Béisbol y softbol' },
+    { id: 4, nombre: 'Ciclismo y running' },
+    { id: 5, nombre: 'Accesorios deportivos' },
+    { id: 6, nombre: 'Entrenamiento y calentamiento' },
   ],
 
   // Tabla: producto (id_producto, id_categoria, nombre, descripcion, precio, estado)
   productos: [
-    { id: 1, id_categoria: 1, nombre: 'Camiseta deportiva sublimada', descripcion: 'Camiseta en tela Dry-Fit con sublimación full color.', precio: 420, estado: 'Activo' },
-    { id: 2, id_categoria: 1, nombre: 'Short deportivo Dry-Fit', descripcion: 'Short liviano con pretina elástica y cordón ajustable.', precio: 310, estado: 'Activo' },
-    { id: 3, id_categoria: 2, nombre: 'Camisa empresarial manga larga', descripcion: 'Camisa formal con bordado institucional en el pecho.', precio: 560, estado: 'Activo' },
-    { id: 4, id_categoria: 2, nombre: 'Polo corporativo bordado', descripcion: 'Polo piqué con cuello tejido y logotipo bordado.', precio: 480, estado: 'Activo' },
-    { id: 5, id_categoria: 4, nombre: 'Chaqueta cortaviento', descripcion: 'Chaqueta impermeable con forro interno y capucha.', precio: 950, estado: 'Activo' },
-    { id: 6, id_categoria: 3, nombre: 'Uniforme escolar completo', descripcion: 'Conjunto de camisa y pantalón según diseño del colegio.', precio: 780, estado: 'Activo' },
-    { id: 7, id_categoria: 5, nombre: 'Gorra personalizada', descripcion: 'Gorra de seis paneles con bordado frontal.', precio: 195, estado: 'Activo' },
-    { id: 8, id_categoria: 1, nombre: 'Medias deportivas altas', descripcion: 'Medias de compresión con franjas del equipo.', precio: 130, estado: 'Activo' },
-    { id: 9, id_categoria: 1, nombre: 'Sudadera deportiva', descripcion: 'Sudadera de algodón perchado con estampado.', precio: 690, estado: 'Activo' },
+    { id: 1, id_categoria: 1, nombre: 'Camiseta de fútbol sublimada', descripcion: 'Tela Dry-Fit con sublimación full color, nombre y número del jugador.', precio: 420, estado: 'Activo' },
+    { id: 2, id_categoria: 1, nombre: 'Short de fútbol Dry-Fit', descripcion: 'Short liviano con pretina elástica, cordón ajustable y número.', precio: 310, estado: 'Activo' },
+    { id: 3, id_categoria: 2, nombre: 'Uniforme de baloncesto', descripcion: 'Camiseta sin mangas y short en mesh, sublimados con los colores del equipo.', precio: 560, estado: 'Activo' },
+    { id: 4, id_categoria: 3, nombre: 'Camisola de béisbol', descripcion: 'Camisola abotonada con nombre del equipo, número y escudo bordado.', precio: 480, estado: 'Activo' },
+    { id: 5, id_categoria: 6, nombre: 'Chaqueta de calentamiento', descripcion: 'Chaqueta cortaviento con forro de malla y escudo del club.', precio: 950, estado: 'Activo' },
+    { id: 6, id_categoria: 4, nombre: 'Uniforme de ciclismo', descripcion: 'Jersey y licra con badana, sublimados con el diseño del club.', precio: 780, estado: 'Activo' },
+    { id: 7, id_categoria: 5, nombre: 'Gorra deportiva personalizada', descripcion: 'Gorra de seis paneles con el escudo del equipo.', precio: 195, estado: 'Activo' },
+    { id: 8, id_categoria: 1, nombre: 'Medias deportivas altas', descripcion: 'Medias de compresión con las franjas del equipo.', precio: 130, estado: 'Activo' },
+    { id: 9, id_categoria: 6, nombre: 'Sudadera de entrenamiento', descripcion: 'Conjunto de chaqueta y pantalón para entrenamiento, con estampado.', precio: 690, estado: 'Activo' },
     { id: 10, id_categoria: 5, nombre: 'Bolso deportivo', descripcion: 'Bolso de lona reforzada con compartimento para calzado.', precio: 640, estado: 'Inactivo' },
-    { id: 11, id_categoria: 2, nombre: 'Camibuso institucional', descripcion: 'Camibuso de manga corta con logotipo bordado.', precio: 520, estado: 'Activo' },
+    { id: 11, id_categoria: 3, nombre: 'Camisola de softbol femenina', descripcion: 'Corte entallado en tela Dry-Fit, con nombre y número sublimados.', precio: 520, estado: 'Activo' },
   ],
 
   // Tabla: varianteproducto (id_varianteproducto, id_producto, id_talla, url_imagen, stock)
@@ -373,31 +386,32 @@ export const seed = {
   // Tabla: cliente
   clientes: [
     { id: 1, nombre: 'Club Deportivo Los Andes', tipodocumento: 'RUC', documento: 'J0310000123', telefono: '8712 3344', correo: 'losandes@club.ni', direccion: 'Managua, Villa Fontana' },
-    { id: 2, nombre: 'Colegio San Ignacio', tipodocumento: 'RUC', documento: 'J0310000455', telefono: '2277 9911', correo: 'admin@sanignacio.edu.ni', direccion: 'Managua, Altamira' },
-    { id: 3, nombre: 'Ferretería La Estrella', tipodocumento: 'RUC', documento: 'J0310000788', telefono: '2255 3321', correo: 'compras@laestrella.ni', direccion: 'Masaya, Centro' },
+    { id: 2, nombre: 'Club de Ciclismo Pedal Nica', tipodocumento: 'RUC', documento: 'J0310000455', telefono: '2277 9911', correo: 'directiva@pedalnica.ni', direccion: 'Managua, Altamira' },
+    { id: 3, nombre: 'Liga Municipal de Baloncesto Masaya', tipodocumento: 'RUC', documento: 'J0310000788', telefono: '2255 3321', correo: 'liga@basketmasaya.ni', direccion: 'Masaya, Centro' },
     { id: 4, nombre: 'Marcia Ortega Bermúdez', tipodocumento: 'Cédula', documento: '0012509880012B', telefono: '8877 1290', correo: 'marcia.ortega@gmail.com', direccion: 'Granada, Calle La Calzada' },
-    { id: 5, nombre: 'Restaurante El Fogón', tipodocumento: 'RUC', documento: 'J0310000992', telefono: '2552 7788', correo: 'gerencia@elfogon.ni', direccion: 'Rivas, Barrio Central' },
+    { id: 5, nombre: 'Tigres de Rivas Béisbol Club', tipodocumento: 'RUC', documento: 'J0310000992', telefono: '2552 7788', correo: 'tigres@beisbolrivas.ni', direccion: 'Rivas, Barrio Central' },
     { id: 6, nombre: 'Academia FC Juvenil', tipodocumento: 'RUC', documento: 'J0310001177', telefono: '8990 4412', correo: 'fcjuvenil@correo.ni', direccion: 'León, Sutiaba' },
-    { id: 7, nombre: 'Hotel Vista Lago', tipodocumento: 'RUC', documento: 'J0310001344', telefono: '2266 5510', correo: 'reservas@vistalago.ni', direccion: 'Managua, Carretera Sur' },
+    { id: 7, nombre: 'Liga de Béisbol Carretera Sur', tipodocumento: 'RUC', documento: 'J0310001344', telefono: '2266 5510', correo: 'directiva@beisbolcsur.ni', direccion: 'Managua, Carretera Sur' },
     { id: 8, nombre: 'Danilo Espinoza Cruz', tipodocumento: 'Cédula', documento: '0011806770018C', telefono: '8433 2277', correo: 'danilo.espinoza@gmail.com', direccion: 'Estelí, Barrio Milenio' },
-    { id: 9, nombre: 'Cooperativa Agro Norte', tipodocumento: 'RUC', documento: 'J0310001566', telefono: '2713 4402', correo: 'agronorte@coop.ni', direccion: 'Estelí, Km 3 Carretera Panamericana' },
+    { id: 9, nombre: 'Liga de Softbol Femenino Estelí', tipodocumento: 'RUC', documento: 'J0310001566', telefono: '2713 4402', correo: 'softbolfem@ligaesteli.ni', direccion: 'Estelí, Km 3 Carretera Panamericana' },
   ],
 
-  /* Tabla: pedido (id_pedido, id_cliente, estado, fecha_inicio)
-     Las lineas replican detalle_pedido. */
+  /* Tabla: pedido (id_pedido, id_cliente, estado, fecha_inicio, descripcion)
+     `detalles` replica detalle_pedido (productos base) e `insumos` replica
+     detalle_pedido_insumo (materiales que se gastan en la personalizacion). */
   pedidos: [
-    { id: 1, id_cliente: 6, estado: 'Pedido en proceso', fecha_inicio: '2026-08-30', detalles: [{ id_varianteproducto: 2, cantidad: 25, precio_unitario: 420, subtotal: 10500 }, { id_varianteproducto: 6, cantidad: 25, precio_unitario: 310, subtotal: 7750 }] },
-    { id: 2, id_cliente: 2, estado: 'Pedido en proceso', fecha_inicio: '2026-08-27', detalles: [{ id_varianteproducto: 21, cantidad: 40, precio_unitario: 780, subtotal: 31200 }] },
-    { id: 3, id_cliente: 5, estado: 'Pedido completado', fecha_inicio: '2026-08-24', detalles: [{ id_varianteproducto: 13, cantidad: 18, precio_unitario: 480, subtotal: 8640 }] },
-    { id: 4, id_cliente: 1, estado: 'Entregado / vendido', fecha_inicio: '2026-08-20', detalles: [{ id_varianteproducto: 3, cantidad: 30, precio_unitario: 420, subtotal: 12600 }, { id_varianteproducto: 25, cantidad: 30, precio_unitario: 130, subtotal: 3900 }] },
-    { id: 5, id_cliente: 3, estado: 'Completado - falta pago', fecha_inicio: '2026-08-18', detalles: [{ id_varianteproducto: 9, cantidad: 12, precio_unitario: 560, subtotal: 6720 }] },
-    { id: 6, id_cliente: 9, estado: 'Cotización aprobada', fecha_inicio: '2026-08-15', detalles: [{ id_varianteproducto: 32, cantidad: 22, precio_unitario: 520, subtotal: 11440 }] },
-    { id: 7, id_cliente: 4, estado: 'Entregado / vendido', fecha_inicio: '2026-08-11', detalles: [{ id_varianteproducto: 17, cantidad: 4, precio_unitario: 950, subtotal: 3800 }] },
-    { id: 8, id_cliente: 6, estado: 'Entregado / vendido', fecha_inicio: '2026-08-06', detalles: [{ id_varianteproducto: 28, cantidad: 15, precio_unitario: 690, subtotal: 10350 }] },
-    { id: 9, id_cliente: 8, estado: 'Completado - falta pago', fecha_inicio: '2026-08-02', detalles: [{ id_varianteproducto: 23, cantidad: 50, precio_unitario: 195, subtotal: 9750 }] },
-    { id: 10, id_cliente: 1, estado: 'Entregado / vendido', fecha_inicio: '2026-07-28', detalles: [{ id_varianteproducto: 7, cantidad: 28, precio_unitario: 310, subtotal: 8680 }] },
-    { id: 11, id_cliente: 2, estado: 'Entregado / vendido', fecha_inicio: '2026-07-22', detalles: [{ id_varianteproducto: 22, cantidad: 26, precio_unitario: 780, subtotal: 20280 }] },
-    { id: 12, id_cliente: 7, estado: 'Completado - falta pago', fecha_inicio: '2026-07-15', detalles: [{ id_varianteproducto: 14, cantidad: 10, precio_unitario: 480, subtotal: 4800 }] },
+    { id: 1, id_cliente: 6, estado: 'Pedido en proceso', fecha_inicio: '2026-08-30', detalles: [{ id_varianteproducto: 2, cantidad: 25, precio_unitario: 420, subtotal: 10500 }, { id_varianteproducto: 6, cantidad: 25, precio_unitario: 310, subtotal: 7750 }], descripcion: 'Escudo de la academia sublimado en el pecho, nombre y número en la espalda, franjas rojas en las mangas.', insumos: [{ id_insumo: 7, cantidad: 2, precio_unitario: 320, subtotal: 640 }, { id_insumo: 14, cantidad: 1.5, precio_unitario: 395, subtotal: 592.5 }, { id_insumo: 11, cantidad: 5, precio_unitario: 55, subtotal: 275 }] },
+    { id: 2, id_cliente: 2, estado: 'Pedido en proceso', fecha_inicio: '2026-08-27', detalles: [{ id_varianteproducto: 21, cantidad: 40, precio_unitario: 780, subtotal: 31200 }], descripcion: 'Jersey y licra sublimados con el diseño del club; logos de patrocinadores en la espalda.', insumos: [{ id_insumo: 7, cantidad: 3, precio_unitario: 320, subtotal: 960 }, { id_insumo: 13, cantidad: 2, precio_unitario: 380, subtotal: 760 }] },
+    { id: 3, id_cliente: 5, estado: 'Pedido completado', fecha_inicio: '2026-08-24', detalles: [{ id_varianteproducto: 13, cantidad: 18, precio_unitario: 480, subtotal: 8640 }], descripcion: 'Nombre del equipo en letras bordadas al frente y número en la espalda.', insumos: [] },
+    { id: 4, id_cliente: 1, estado: 'Entregado / vendido', fecha_inicio: '2026-08-20', detalles: [{ id_varianteproducto: 3, cantidad: 30, precio_unitario: 420, subtotal: 12600 }, { id_varianteproducto: 25, cantidad: 30, precio_unitario: 130, subtotal: 3900 }], descripcion: 'Camisetas y medias con los colores del club; número sublimado en camiseta y short.', insumos: [] },
+    { id: 5, id_cliente: 3, estado: 'Completado - falta pago', fecha_inicio: '2026-08-18', detalles: [{ id_varianteproducto: 9, cantidad: 12, precio_unitario: 560, subtotal: 6720 }], descripcion: 'Camiseta sin mangas y short en mesh, con número y logo de la liga.', insumos: [] },
+    { id: 6, id_cliente: 9, estado: 'Cotización aprobada', fecha_inicio: '2026-08-15', detalles: [{ id_varianteproducto: 32, cantidad: 22, precio_unitario: 520, subtotal: 11440 }], descripcion: 'Camisola entallada con nombre y número sublimados en negro y rojo; botones metálicos al frente.', insumos: [{ id_insumo: 13, cantidad: 2, precio_unitario: 380, subtotal: 760 }, { id_insumo: 14, cantidad: 2, precio_unitario: 395, subtotal: 790 }, { id_insumo: 8, cantidad: 3, precio_unitario: 40, subtotal: 120 }] },
+    { id: 7, id_cliente: 4, estado: 'Entregado / vendido', fecha_inicio: '2026-08-11', detalles: [{ id_varianteproducto: 17, cantidad: 4, precio_unitario: 950, subtotal: 3800 }], descripcion: 'Chaquetas con el nombre bordado en el pecho.', insumos: [] },
+    { id: 8, id_cliente: 6, estado: 'Entregado / vendido', fecha_inicio: '2026-08-06', detalles: [{ id_varianteproducto: 28, cantidad: 15, precio_unitario: 690, subtotal: 10350 }], descripcion: 'Sudaderas con el escudo estampado en el pecho y el nombre de la academia en la pierna.', insumos: [] },
+    { id: 9, id_cliente: 8, estado: 'Completado - falta pago', fecha_inicio: '2026-08-02', detalles: [{ id_varianteproducto: 23, cantidad: 50, precio_unitario: 195, subtotal: 9750 }], descripcion: 'Gorras con el logo del equipo bordado al frente.', insumos: [] },
+    { id: 10, id_cliente: 1, estado: 'Entregado / vendido', fecha_inicio: '2026-07-28', detalles: [{ id_varianteproducto: 7, cantidad: 28, precio_unitario: 310, subtotal: 8680 }], descripcion: 'Shorts con número sublimado en la pierna izquierda.', insumos: [] },
+    { id: 11, id_cliente: 2, estado: 'Entregado / vendido', fecha_inicio: '2026-07-22', detalles: [{ id_varianteproducto: 22, cantidad: 26, precio_unitario: 780, subtotal: 20280 }], descripcion: 'Jersey de ciclismo con el diseño del club y banderas de Nicaragua en las mangas.', insumos: [] },
+    { id: 12, id_cliente: 7, estado: 'Completado - falta pago', fecha_inicio: '2026-07-15', detalles: [{ id_varianteproducto: 14, cantidad: 10, precio_unitario: 480, subtotal: 4800 }], descripcion: 'Camisolas con el escudo de la liga bordado y número en la espalda.', insumos: [] },
   ],
 
   // Tabla: abono (id_abono, id_pedido, monto, fecha, metodo_pago, url_comprobante)
@@ -434,22 +448,22 @@ export const seed = {
   movimientos: [
     { id: 1, tabla: 'pedido', id_registro: 1, accion: 'UPDATE', valor_anterior: { id_cliente: 6, estado: 'Cotización aprobada', fecha_inicio: '2026-08-30' }, valor_nuevo: { id_cliente: 6, estado: 'Pedido en proceso', fecha_inicio: '2026-08-30' }, id_usuario: 3, fecha_cambio: '2026-08-31T09:14:22' },
     { id: 2, tabla: 'abono', id_registro: 1, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_pedido: 1, monto: 9125, fecha: '2026-08-30', metodo_pago: 'Transferencia', url_comprobante: 'https://comprobantes.parceros.ni/ab-0231.pdf' }, id_usuario: 3, fecha_cambio: '2026-08-30T16:48:05' },
-    { id: 3, tabla: 'insumo', id_registro: 3, accion: 'UPDATE', valor_anterior: { nombre: 'Tela Piqué', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 35, precio_unitario: 165 }, valor_nuevo: { nombre: 'Tela Piqué', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 0, precio_unitario: 165 }, id_usuario: 5, fecha_cambio: '2026-08-30T11:02:41' },
+    { id: 3, tabla: 'insumo', id_registro: 3, accion: 'UPDATE', valor_anterior: { nombre: 'Tela Mesh deportiva', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 35, precio_unitario: 165 }, valor_nuevo: { nombre: 'Tela Mesh deportiva', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 0, precio_unitario: 165 }, id_usuario: 5, fecha_cambio: '2026-08-30T11:02:41' },
     { id: 4, tabla: 'usuario', id_registro: 6, accion: 'UPDATE', valor_anterior: { nombre_empleado: 'Karla Jirón Soza', cargo: 'Auxiliar de almacén', id_rol: 4, estado: 'Activo' }, valor_nuevo: { nombre_empleado: 'Karla Jirón Soza', cargo: 'Auxiliar de almacén', id_rol: 4, estado: 'Inactivo' }, id_usuario: 1, fecha_cambio: '2026-08-29T15:33:18' },
     { id: 5, tabla: 'compra', id_registro: 7, accion: 'UPDATE', valor_anterior: { id_proveedor: 3, fecha: '2026-08-04', estado: 'En tránsito' }, valor_nuevo: { id_proveedor: 3, fecha: '2026-08-04', estado: 'Anulada' }, id_usuario: 5, fecha_cambio: '2026-08-29T10:20:57' },
     { id: 6, tabla: 'producto', id_registro: 10, accion: 'UPDATE', valor_anterior: { id_categoria: 5, nombre: 'Bolso deportivo', precio: 590, estado: 'Activo' }, valor_nuevo: { id_categoria: 5, nombre: 'Bolso deportivo', precio: 640, estado: 'Inactivo' }, id_usuario: 2, fecha_cambio: '2026-08-28T17:05:09' },
-    { id: 7, tabla: 'cliente', id_registro: 9, accion: 'INSERT', valor_anterior: null, valor_nuevo: { nombre: 'Cooperativa Agro Norte', tipodocumento: 'RUC', documento: 'J0310001566', telefono: '2713 4402', correo: 'agronorte@coop.ni', direccion: 'Estelí, Km 3 Carretera Panamericana' }, id_usuario: 4, fecha_cambio: '2026-08-28T08:41:30' },
+    { id: 7, tabla: 'cliente', id_registro: 9, accion: 'INSERT', valor_anterior: null, valor_nuevo: { nombre: 'Liga de Softbol Femenino Estelí', tipodocumento: 'RUC', documento: 'J0310001566', telefono: '2713 4402', correo: 'softbolfem@ligaesteli.ni', direccion: 'Estelí, Km 3 Carretera Panamericana' }, id_usuario: 4, fecha_cambio: '2026-08-28T08:41:30' },
     { id: 8, tabla: 'proveedor', id_registro: 2, accion: 'UPDATE', valor_anterior: { nombre: 'Distribuidora El Cosido', nombrepersonacontacto: 'Marta Aguilar', telefono: '2255 1100', correo: 'contacto@elcosido.ni' }, valor_nuevo: { nombre: 'Distribuidora El Cosido', nombrepersonacontacto: 'Marta Aguilar', telefono: '2255 9032', correo: 'contacto@elcosido.ni' }, id_usuario: 5, fecha_cambio: '2026-08-27T14:12:44' },
     { id: 9, tabla: 'rol', id_registro: 3, accion: 'UPDATE', valor_anterior: { nombre: 'Vendedor', permisos: [5, 8, 9] }, valor_nuevo: { nombre: 'Vendedor', permisos: [5, 8, 9, 10] }, id_usuario: 1, fecha_cambio: '2026-08-26T09:57:12' },
-    { id: 10, tabla: 'categoria', id_registro: 6, accion: 'INSERT', valor_anterior: null, valor_nuevo: { nombre: 'Línea promocional' }, id_usuario: 2, fecha_cambio: '2026-08-25T11:30:02' },
+    { id: 10, tabla: 'categoria', id_registro: 6, accion: 'INSERT', valor_anterior: null, valor_nuevo: { nombre: 'Entrenamiento y calentamiento' }, id_usuario: 2, fecha_cambio: '2026-08-25T11:30:02' },
     { id: 11, tabla: 'varianteproducto', id_registro: 34, accion: 'UPDATE', valor_anterior: { id_producto: 11, id_talla: 5, stock: 4 }, valor_nuevo: { id_producto: 11, id_talla: 5, stock: 9 }, id_usuario: 6, fecha_cambio: '2026-08-24T16:19:38' },
     { id: 12, tabla: 'pedido', id_registro: 3, accion: 'UPDATE', valor_anterior: { id_cliente: 5, estado: 'Completado - falta pago', fecha_inicio: '2026-08-24' }, valor_nuevo: { id_cliente: 5, estado: 'Pedido completado', fecha_inicio: '2026-08-24' }, id_usuario: 4, fecha_cambio: '2026-08-24T13:44:51' },
     { id: 13, tabla: 'insumo', id_registro: 12, accion: 'DELETE', valor_anterior: { nombre: 'Cinta reflectiva', id_tipo_insumo: 4, id_unidad_medida: 1, stock: 0, precio_unitario: 75 }, valor_nuevo: null, id_usuario: 5, fecha_cambio: '2026-08-22T10:08:27' },
     { id: 14, tabla: 'usuario', id_registro: 7, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_rol: 3, nombre_usuario: 'jherrera', correo_empresarial: 'jherrera@parceros.ni', nombre_empleado: 'Julio Herrera Lacayo', documento: '0011712890077G', telefono: '8377 9010', cargo: 'Asesor de ventas', fecha_ingreso: '2025-02-17', estado: 'Activo' }, id_usuario: 1, fecha_cambio: '2026-08-21T08:25:14' },
     { id: 15, tabla: 'compra', id_registro: 4, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_proveedor: 4, fecha: '2026-08-18', estado: 'En tránsito' }, id_usuario: 5, fecha_cambio: '2026-08-18T09:36:40' },
-    { id: 16, tabla: 'cliente', id_registro: 3, accion: 'UPDATE', valor_anterior: { nombre: 'Ferretería La Estrella', telefono: '2255 3321', correo: 'compras@laestrella.ni', direccion: 'Masaya, Barrio San Jerónimo' }, valor_nuevo: { nombre: 'Ferretería La Estrella', telefono: '2255 3321', correo: 'compras@laestrella.ni', direccion: 'Masaya, Centro' }, id_usuario: 7, fecha_cambio: '2026-08-17T15:51:06' },
+    { id: 16, tabla: 'cliente', id_registro: 3, accion: 'UPDATE', valor_anterior: { nombre: 'Liga Municipal de Baloncesto Masaya', telefono: '2255 3321', correo: 'liga@basketmasaya.ni', direccion: 'Masaya, Barrio San Jerónimo' }, valor_nuevo: { nombre: 'Liga Municipal de Baloncesto Masaya', telefono: '2255 3321', correo: 'liga@basketmasaya.ni', direccion: 'Masaya, Centro' }, id_usuario: 7, fecha_cambio: '2026-08-17T15:51:06' },
     { id: 17, tabla: 'abono', id_registro: 12, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_pedido: 12, monto: 2400, fecha: '2026-07-15', metodo_pago: 'Efectivo', url_comprobante: '' }, id_usuario: 4, fecha_cambio: '2026-07-15T12:03:55' },
-    { id: 18, tabla: 'producto', id_registro: 11, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_categoria: 2, nombre: 'Camibuso institucional', descripcion: 'Camibuso de manga corta con logotipo bordado.', precio: 520, estado: 'Activo' }, id_usuario: 2, fecha_cambio: '2026-07-10T10:47:33' },
+    { id: 18, tabla: 'producto', id_registro: 11, accion: 'INSERT', valor_anterior: null, valor_nuevo: { id_categoria: 3, nombre: 'Camisola de softbol femenina', descripcion: 'Corte entallado en tela Dry-Fit, con nombre y número sublimados.', precio: 520, estado: 'Activo' }, id_usuario: 2, fecha_cambio: '2026-07-10T10:47:33' },
   ],
 };
 

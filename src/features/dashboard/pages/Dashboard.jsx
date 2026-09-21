@@ -91,12 +91,21 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ---------- 4 KPI: la variación se calcula contra el período anterior ---------- */}
+      {/* ---------- KPI: la variación se calcula contra el período anterior ---------- */}
       <div className="kpi-grid stagger">
         <KpiCard label={`Ventas ${et.periodo}`} value={stats.ventasMes} prefix="C$ " icon="coin" tono="success" trend={t.ventas} trendLabel={et.comparado} />
         <KpiCard label={`Compras ${et.periodo}`} value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={t.compras} trendLabel={et.comparado} />
         <KpiCard label="Abonos por cobrar" value={stats.porCobrar} prefix="C$ " icon="dollar" tono="warning" trend={t.recaudado} trendLabel={`recaudo ${et.comparado}`} />
         <KpiCard label="Pedidos activos" value={stats.pedidosActivos} icon="clipboard" tono="info" trend={t.pedidos} trendLabel={et.comparado} />
+        <KpiCard
+          label={`Producto más vendido ${et.periodo}`}
+          texto={stats.topProducto ? stats.topProducto.l : 'Sin ventas'}
+          nota={stats.topProducto
+            ? `${stats.topProducto.unidades} unidad(es) · ${money(stats.topProducto.v)}`
+            : 'No se registraron ventas en el período.'}
+          icon="shirt"
+          tono="primary"
+        />
       </div>
 
       {/* ---------- Gráficos 1 y 2 ---------- */}

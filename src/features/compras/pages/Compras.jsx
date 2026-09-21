@@ -4,7 +4,7 @@ import Badge from '@shared/components/ui/Badge.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import { ItemsView } from '@shared/components/ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { money, fecha, hoyISO, ESTADOS_COMPRA } from '@shared/data/mock.js';
+import { money, fecha, hoyISO, ESTADOS_COMPRA, COMPRA_ANULADA } from '@shared/data/mock.js';
 
 /** Tabla `compra` (id_proveedor, fecha, estado) con sus dos detalles:
  *  detalle_compra_insumo y detalle_compra_producto. */
@@ -59,6 +59,10 @@ export default function Compras() {
       ]}
       defaults={{ detalle_insumos: [], detalle_productos: [], estado: 'En tránsito', fecha: hoyISO() }}
       etiquetaRegistro={codigo}
+      anulacion={{
+        valor: COMPRA_ANULADA,
+        mensaje: (r) => `La compra ${codigo(r)} de ${r.calc_proveedor} quedará marcada como anulada: se conserva en el listado y en el historial, pero deja de sumar en los totales de compras.`,
+      }}
       resumen={[
         <KpiCard key="a" label="Compras del mes" value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={8} />,
         <KpiCard key="b" label="Compras registradas" value={db.compras.length} icon="clipboard" tono="info" />,

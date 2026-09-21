@@ -1,7 +1,7 @@
 import Modal from './Modal.jsx';
 import Icon from '@shared/components/Icon.jsx';
 
-export default function ConfirmDialog({ open, onClose, onConfirm, titulo, mensaje, confirmLabel = 'Eliminar', tono = 'error' }) {
+export default function ConfirmDialog({ open, onClose, onConfirm, titulo, mensaje, confirmLabel = 'Aceptar', tono = 'error', icono }) {
   return (
     <Modal
       open={open}
@@ -12,7 +12,7 @@ export default function ConfirmDialog({ open, onClose, onConfirm, titulo, mensaj
         <>
           <button className="btn" onClick={onClose}>Cancelar</button>
           <button className={tono === 'error' ? 'btn btn-danger' : 'btn btn-primary'} onClick={onConfirm}>
-            <Icon name={tono === 'error' ? 'trash' : 'check'} size={16} /> {confirmLabel}
+            <Icon name={icono || (tono === 'error' ? 'alert' : 'check')} size={16} /> {confirmLabel}
           </button>
         </>
       }

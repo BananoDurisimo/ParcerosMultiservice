@@ -1,11 +1,12 @@
 import CrudPage from '@shared/components/CrudPage.jsx';
-import EstadoCell from '@shared/components/ui/EstadoCell.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { money, ESTADOS_REGISTRO } from '@shared/data/mock.js';
+import { money } from '@shared/data/mock.js';
 
 /** Tabla `producto`: id_categoria, nombre, descripcion, precio, estado.
  *  Las tallas y las existencias pertenecen a `varianteproducto`, por eso
- *  aparecen como información derivada y no como campos del formulario. */
+ *  aparecen como información derivada y no como campos del formulario.
+ *  La columna `estado` se conserva en la base de datos, pero no se administra
+ *  desde este módulo: el catálogo se consulta completo. */
 export default function Productos() {
   const { db, opciones } = useData();
   const categorias = opciones('categorias');
@@ -13,7 +14,7 @@ export default function Productos() {
   return (
     <CrudPage
       titulo="Productos"
-      subtitulo="Catálogo digital con precios base para cotizaciones y pedidos."
+      subtitulo="Catálogo de uniformes y accesorios deportivos con precios base para cotizaciones y pedidos."
       icono="shirt"
       coleccion="productos"
       entidad="productos"
@@ -21,9 +22,8 @@ export default function Productos() {
       searchKeys={['nombre', 'descripcion', 'calc_categoria']}
       filtros={[
         { key: 'id_categoria', label: 'Categoría', options: categorias },
-        { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
       ]}
-      defaults={{ estado: 'Activo' }}
+      beforeSave={(data, modo, actual) => ({ ...data, estado: actual?.estado || 'Activo' })}
       columnas={[
         {
           key: 'nombre', label: 'Producto', mobile: 'title',
@@ -43,13 +43,11 @@ export default function Productos() {
         { key: 'calc_tallas', label: 'Tallas', sortable: false, mobile: 'meta', render: (r) => <span className="caption">{r.calc_tallas.join(' · ') || '—'}</span> },
         { key: 'calc_stock', label: 'Existencias', align: 'center', mobile: 'meta', render: (r) => <strong>{r.calc_stock}</strong> },
         { key: 'precio', label: 'Precio', align: 'right', mobile: 'value', render: (r) => <span className="money">{money(r.precio)}</span> },
-        { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="productos" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[
         { name: 'nombre', label: 'Nombre del producto', type: 'text', required: true },
         { name: 'id_categoria', label: 'Categoría', type: 'select', options: categorias, required: true },
         { name: 'precio', label: 'Precio (C$)', type: 'money', required: true, min: 0 },
-        { name: 'estado', label: 'Estado', type: 'switch' },
         { name: 'descripcion', label: 'Descripción', type: 'textarea', full: true, placeholder: 'Materiales, acabados y detalles de confección…' },
       ]}
       renderDetalle={(r) => (
@@ -58,7 +56,6 @@ export default function Productos() {
             <div className="detail-item"><div className="dl">Producto</div><div className="dv">{r.nombre}</div></div>
             <div className="detail-item"><div className="dl">Categoría</div><div className="dv">{r.calc_categoria}</div></div>
             <div className="detail-item"><div className="dl">Precio</div><div className="dv money">{money(r.precio)}</div></div>
-            <div className="detail-item"><div className="dl">Estado</div><div className="dv">{r.estado}</div></div>
             <div className="detail-item full"><div className="dl">Descripción</div><div className="dv">{r.descripcion || '—'}</div></div>
           </div>
 

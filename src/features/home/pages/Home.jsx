@@ -9,58 +9,18 @@ import Footer from '@shared/components/layout/Footer.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
 import { IG_POSTS, IG_PERFIL, IG_USUARIO } from '@features/home/data/instagram.js';
+import { SLIDES_INICIO } from '@features/home/data/carrusel.js';
 
-/* Fotografias de referencia (Pexels, licencia libre). Ver src/assets/home/CREDITOS.md */
-import heroDeportivo from '@features/home/assets/hero-deportivo.jpg';
-import heroEmpresarial from '@features/home/assets/hero-empresarial.jpg';
-import heroEscolar from '@features/home/assets/hero-escolar.jpg';
-import prodDeportivo from '@features/home/assets/prod-deportivo.jpg';
-import prodEmpresarial from '@features/home/assets/prod-empresarial.jpg';
-import prodEscolar from '@features/home/assets/prod-escolar.jpg';
+/* Fotografia de referencia (Pexels, licencia libre). Ver src/assets/home/CREDITOS.md */
 import imgTaller from '@features/home/assets/taller.jpg';
-
-const SLIDES = [
-  {
-    id: 1,
-    eyebrow: 'Línea deportiva',
-    titulo: 'Uniformes sublimados para su equipo',
-    texto: 'Camisetas, shorts y medias con el diseño, los colores y el número de cada jugador.',
-    grad: 'linear-gradient(120deg, #1E3A8A, #2563EB 55%, #7C3AED)',
-    img: heroDeportivo,
-    alt: 'Equipo de fútbol con camisetas numeradas confeccionadas a medida',
-  },
-  {
-    id: 2,
-    eyebrow: 'Línea empresarial',
-    titulo: 'La imagen de su empresa, bien vestida',
-    texto: 'Camisas, polos y camibusos bordados con el logotipo institucional.',
-    grad: 'linear-gradient(120deg, #0F766E, #0EA5E9 60%, #2563EB)',
-    img: heroEmpresarial,
-    alt: 'Personal de una empresa con polos y gorras del uniforme institucional',
-  },
-  {
-    id: 3,
-    eyebrow: 'Línea escolar',
-    titulo: 'Uniformes escolares en todas las tallas',
-    texto: 'Prendas completas para colegios e institutos, con entrega puntual antes del ciclo.',
-    grad: 'linear-gradient(120deg, #7C2D12, #DB2777 55%, #7C3AED)',
-    img: heroEscolar,
-    alt: 'Estudiantes con el uniforme escolar completo en el patio del colegio',
-  },
-];
-
-const PRODUCTOS = [
-  { icon: 'shirt', t: 'Uniformes deportivos', d: 'Camisetas, shorts y medias sublimadas para equipos y academias.', desde: 'Desde C$ 620', img: prodDeportivo, alt: 'Jugador con uniforme deportivo sublimado en verde y naranja' },
-  { icon: 'badge', t: 'Uniformes empresariales', d: 'Camisas, polos y camibusos bordados con su identidad corporativa.', desde: 'Desde C$ 540', img: prodEmpresarial, alt: 'Dos colaboradores con camisas corporativas a juego' },
-  { icon: 'users', t: 'Uniformes escolares', d: 'Prendas completas para colegios e institutos, en todas las tallas.', desde: 'Desde C$ 480', img: prodEscolar, alt: 'Niña con el polo del uniforme de su colegio' },
-];
-
 
 const FAQ = [
   { q: '¿Cuál es el tiempo de entrega?', a: 'Entre 7 y 12 días hábiles después de aprobado el diseño y registrado el abono inicial. En temporada alta le confirmamos la fecha exacta en la cotización.' },
-  { q: '¿Cuál es la cantidad mínima de pedido?', a: 'Diez prendas por diseño en la línea deportiva y escolar. En la línea empresarial trabajamos desde cinco prendas.' },
+  { q: '¿Qué deportes trabajan?', a: 'Fútbol, baloncesto, béisbol, softbol, voleibol, ciclismo y running, además de ropa de entrenamiento y calentamiento para clubes, ligas y academias.' },
+  { q: '¿Cuál es la cantidad mínima de pedido?', a: 'Diez uniformes por diseño. Para reponer prendas de un equipo que ya fabricamos aceptamos pedidos desde una unidad.' },
+  { q: '¿Incluyen el nombre y el número de cada jugador?', a: 'Sí. Cada prenda sale con el nombre, el número y el escudo que indique en la lista del equipo, sin costo adicional.' },
   { q: '¿Cómo se realiza el pago?', a: 'Con un abono del 50% se confirma el pedido y se reservan los insumos; el saldo se cancela contra entrega. Aceptamos efectivo, transferencia y tarjeta.' },
-  { q: '¿Puedo enviar mi propio diseño?', a: 'Sí. Recibimos su arte en formato vectorial o de alta resolución y le enviamos una prueba digital antes de producir.' },
+  { q: '¿Puedo enviar mi propio diseño?', a: 'Sí. Recibimos el diseño o el escudo del equipo en formato vectorial o de alta resolución y le enviamos una prueba digital antes de producir.' },
   { q: '¿Hacen envíos fuera de Managua?', a: 'Sí, despachamos a todo el país por encomienda. El costo del envío se agrega a la cotización según el destino.' },
   { q: '¿Puedo seguir el estado de mi pedido?', a: 'Sí. Cada pedido queda registrado en el sistema y le informamos su avance: cotización aprobada, en proceso, completado y entregado.' },
 ];
@@ -81,7 +41,7 @@ export default function Home() {
       {/* Franja de eslogan */}
       <div className="lp-strip">
         <Icon name="sparkle" size={13} />
-        Uniformes 100% personalizados, hechos en Nicaragua para su equipo o empresa
+        Uniformes deportivos 100% personalizados, hechos en Nicaragua para su equipo
       </div>
 
       {/* Barra de navegación */}
@@ -92,9 +52,10 @@ export default function Home() {
         </Link>
         <div className="grow" />
         <nav className="pub-links hide-xs">
-          <a href="#galeria">Galería</a>
           <a href="#nosotros">Nosotros</a>
           <a href="#redes">Redes Sociales</a>
+          <a href="#faq">Preguntas Frecuentes</a>
+          <a href="#contacto">Contacto</a>
         </nav>
         <ThemeToggle />
         <Link className="btn btn-primary btn-sm" to={isAuth ? '/app' : '/login'}>
@@ -113,14 +74,16 @@ export default function Home() {
           <Carousel
             className="hero-carousel anim-page"
             ariaLabel="Nuestros trabajos"
-            items={SLIDES}
+            items={SLIDES_INICIO}
+            auto={6000}
             render={(s) => (
-              <article className="slide has-img" style={{ background: s.grad }}>
+              <article className="slide has-img">
                 <img className="slide-img" src={s.img} alt={s.alt} loading="lazy" />
                 <div className="slide-body">
-                  <span className="slide-eyebrow">{s.eyebrow}</span>
-                  <h2>{s.titulo}</h2>
-                  <p>{s.texto}</p>
+                  <a className="slide-eyebrow" href={s.enlace} target="_blank" rel="noreferrer">
+                    <Icon name="instagram" size={13} /> @{IG_USUARIO}
+                  </a>
+                  {s.titulo && <h2>{s.titulo}</h2>}
                   <button
                     className="btn btn-sm slide-btn"
                     onClick={() => toast.success('Un asesor comercial se pondrá en contacto con usted.', 'Solicitud enviada')}
@@ -134,53 +97,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Nuestros productos */}
-      <section className="section" id="galeria">
-        <div className="lp-wrap">
-          <div className="section-title">
-            <h2>Nuestros productos</h2>
-            <p>Fabricamos la prenda que su equipo o empresa necesita, con la calidad que nos caracteriza.</p>
-          </div>
-          <div className="prod-grid stagger">
-            {PRODUCTOS.map((p) => (
-              <article className="card card-hover prod" key={p.t}>
-                <div className="prod-media">
-                  <img src={p.img} alt={p.alt} loading="lazy" />
-                  <span className="prod-ico"><Icon name={p.icon} size={18} /></span>
-                </div>
-                <div className="prod-body">
-                  <h3>{p.t}</h3>
-                  <p>{p.d}</p>
-                  <div className="between" style={{ marginTop: 14 }}>
-                    <span className="badge badge-primary">{p.desde}</span>
-                    <Link className="btn btn-sm" to={isAuth ? '/app/productos' : '/login'}>
-                      Ver catálogo <Icon name="chevR" size={14} />
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Sobre la empresa */}
       <section className="section lp-about" id="nosotros">
         <div className="lp-wrap">
           <div className="about-grid">
             <div className="about-text">
-              <h2>Fabricamos uniformes <span className="grad">100% personalizados</span></h2>
+              <h2>Uniformes deportivos <span className="grad">100% personalizados</span></h2>
               <p>
-                Parceros Multiservice es un taller nicaragüense con más de ocho años confeccionando
-                uniformes deportivos, empresariales y escolares. Trabajamos con tela nacional e importada,
-                sublimación y bordado propio, de modo que cada prenda sale con el diseño exacto que el
-                cliente aprobó.
+                Parceros Multiservice es un taller nicaragüense con más de ocho años dedicado solo a
+                uniformes deportivos: vestimos a clubes, ligas, academias y equipos de barrio. Trabajamos
+                con telas deportivas como Dry-Fit, licra y mesh, con sublimación full color y bordado
+                propio, de modo que cada uniforme sale con el diseño exacto que el equipo aprobó.
               </p>
               <ul className="about-list">
                 {[
-                  ['Diseño propio', 'Nuestro equipo elabora la propuesta gráfica sin costo adicional.'],
-                  ['Entrega puntual', 'Cada pedido se registra y se le informa el avance por etapa.'],
-                  ['Todas las tallas', 'De XS a XXL, con moldes para dama, caballero y niño.'],
+                  ['Diseño del uniforme', 'Elaboramos la propuesta con los colores y el escudo del equipo, sin costo adicional.'],
+                  ['Nombre y número', 'Cada prenda se personaliza con el nombre y el número de cada jugador.'],
+                  ['Todas las categorías', 'De XS a XXL, con cortes infantiles, juveniles, femeninos y masculinos.'],
                 ].map(([t, d]) => (
                   <li key={t}>
                     <Icon name="checkC" size={18} />
@@ -200,7 +133,7 @@ export default function Home() {
                 <figcaption>Taller Parceros Multiservice</figcaption>
               </figure>
               <div className="about-stats">
-                {[['+120', 'Clientes'], ['+8', 'Años'], ['+15K', 'Prendas']].map(([n, l]) => (
+                {[['+120', 'Equipos'], ['+8', 'Años'], ['+15K', 'Uniformes']].map(([n, l]) => (
                   <div key={l}><strong>{n}</strong><span>{l}</span></div>
                 ))}
               </div>
@@ -223,7 +156,7 @@ export default function Home() {
             <Logo size={52} radius={99} />
             <div className="ig-perfil-txt">
               <strong>@{IG_USUARIO}</strong>
-              <span>Uniformes deportivos, empresariales y escolares · Managua, Nicaragua</span>
+              <span>Uniformes deportivos personalizados · Managua, Nicaragua</span>
             </div>
             <span className="btn btn-primary btn-sm">
               <Icon name="instagram" size={15} /> Seguir

@@ -52,7 +52,11 @@ export default function Abonos() {
         { name: 'fecha', label: 'Fecha del pago', type: 'date', required: true },
         { name: 'monto', label: 'Monto abonado (C$)', type: 'money', required: true, min: 0 },
         { name: 'metodo_pago', label: 'Método de pago', type: 'select', options: METODOS_PAGO, required: true },
-        { name: 'url_comprobante', label: 'URL del comprobante', type: 'url', full: true, placeholder: 'https://…', hint: 'Opcional: enlace al soporte del pago.' },
+        {
+          name: 'url_comprobante', label: 'Comprobante del pago', type: 'file', full: true,
+          placeholder: 'Pegue un enlace o suba el archivo…',
+          hint: 'Opcional: suba la imagen o el PDF del soporte desde su computador, o pegue un enlace.',
+        },
       ]}
       renderDetalle={(r) => (
         <div>
@@ -69,7 +73,11 @@ export default function Abonos() {
               <div className="dl">Comprobante</div>
               <div className="dv">
                 {r.url_comprobante
-                  ? <a href={r.url_comprobante} target="_blank" rel="noreferrer">{r.url_comprobante}</a>
+                  ? (
+                    <a className="row" style={{ gap: 5 }} href={r.url_comprobante} target="_blank" rel="noreferrer">
+                      <Icon name="download" size={14} /> Ver el comprobante adjunto
+                    </a>
+                  )
                   : 'Sin comprobante adjunto'}
               </div>
             </div>

@@ -12,7 +12,7 @@ export default function Clientes() {
   return (
     <CrudPage
       titulo="Clientes"
-      subtitulo="Información comercial de los clientes para el seguimiento de cotizaciones, pedidos y ventas."
+      subtitulo="Clubes, ligas, academias y equipos: datos de contacto para el seguimiento de cotizaciones, pedidos y ventas."
       icono="users"
       coleccion="clientes"
       entidad="clientes"

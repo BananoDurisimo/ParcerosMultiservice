@@ -63,7 +63,7 @@ En la pantalla de login puede hacer clic en el rol para autocompletar las creden
 
 | Ruta | Vista |
 |---|---|
-| `/` | Home (landing público: eslogan, carrusel, productos, empresa, Instagram, FAQ, contacto y footer) |
+| `/` | Home (landing público: eslogan, carrusel, empresa, Instagram, FAQ, contacto y footer) |
 | `/login` | Inicio de sesión |
 | `/recuperar` | Recuperación de contraseña |
 | `/app` | Dashboard con KPIs y gráficos |

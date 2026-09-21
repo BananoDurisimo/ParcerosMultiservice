@@ -5,6 +5,8 @@ import {
   COLOR_METODO_PAGO,
   UMBRAL_STOCK_BAJO,
   MODULOS_AUDITADOS,
+  PEDIDO_ANULADO,
+  COMPRA_ANULADA,
   ETIQUETA_ACCION,
   camposCambiados,
   etiquetaFila,
@@ -138,12 +140,19 @@ export function DataProvider({ children }) {
       abonadoPorPedido.set(a.id_pedido, (abonadoPorPedido.get(a.id_pedido) || 0) + Number(a.monto || 0));
     });
 
+    /* El total del pedido suma los productos base (detalle_pedido) y los
+       insumos que se gastan en la personalizacion (detalle_pedido_insumo). */
+    const lineaSubtotal = (l) => l.subtotal ?? l.cantidad * l.precio_unitario;
     const pedidos = raw.pedidos.map((p) => {
-      const total = suma(p.detalles || [], (l) => l.subtotal ?? l.cantidad * l.precio_unitario);
+      const totalProductos = suma(p.detalles || [], lineaSubtotal);
+      const totalInsumos = suma(p.insumos || [], lineaSubtotal);
+      const total = totalProductos + totalInsumos;
       const abonado = abonadoPorPedido.get(p.id) || 0;
       return {
         ...p,
         calc_cliente: clientesM.get(p.id_cliente)?.nombre || '—',
+        calc_total_productos: totalProductos,
+        calc_total_insumos: totalInsumos,
         calc_total: total,
         calc_abonado: abonado,
         calc_saldo: Math.max(0, total - abonado),
@@ -273,15 +282,18 @@ export function DataProvider({ children }) {
     return fechas.length ? fechas.reduce((a, b) => (a > b ? a : b)) : new Date().toISOString().slice(0, 10);
   }, [db]);
 
-  /* ---- Indicadores globales (no dependen del período) ---- */
+  /* ---- Indicadores globales (no dependen del período) ----
+     Los pedidos anulados se conservan en el listado, pero no se toman en
+     cuenta en ningun indicador (igual que las compras anuladas). */
   const stats = useMemo(() => {
     const bajoStock = db.insumos.filter((i) => i.stock <= UMBRAL_STOCK_BAJO);
+    const vigentes = db.pedidos.filter((p) => p.estado !== PEDIDO_ANULADO);
     return {
-      porCobrar: suma(db.pedidos, (p) => p.calc_saldo),
+      porCobrar: suma(vigentes, (p) => p.calc_saldo),
       recaudado: suma(db.abonos, (a) => a.monto),
       bajoStock,
-      pedidosActivos: db.pedidos.filter((p) => p.estado !== 'Entregado / vendido').length,
-      totalPedidos: db.pedidos.length,
+      pedidosActivos: vigentes.filter((p) => p.estado !== 'Entregado / vendido').length,
+      totalPedidos: vigentes.length,
       valorInventario: suma(db.insumos, (i) => i.calc_valor),
     };
   }, [db]);
@@ -292,8 +304,8 @@ export function DataProvider({ children }) {
     const previo = rangoPeriodo(periodo, refFecha, 1);
 
     const enRango = (f, r) => f >= r.desde && f <= r.hasta;
-    const pedidosDe = (r) => db.pedidos.filter((p) => enRango(p.fecha_inicio, r));
-    const comprasDe = (r) => db.compras.filter((c) => enRango(c.fecha, r) && c.estado !== 'Anulada');
+    const pedidosDe = (r) => db.pedidos.filter((p) => enRango(p.fecha_inicio, r) && p.estado !== PEDIDO_ANULADO);
+    const comprasDe = (r) => db.compras.filter((c) => enRango(c.fecha, r) && c.estado !== COMPRA_ANULADA);
     const abonosDe = (r) => db.abonos.filter((a) => enRango(a.fecha, r));
 
     const pedidosPeriodo = pedidosDe({ desde, hasta });
@@ -340,9 +352,12 @@ export function DataProvider({ children }) {
       });
     });
     const topProductos = [...porProducto]
-      .map(([l, a]) => ({ l, v: a.monto, nota: `${a.unidades} u.` }))
+      .map(([l, a]) => ({ l, v: a.monto, unidades: a.unidades, nota: `${a.unidades} u.` }))
       .sort((a, b) => b.v - a.v)
       .slice(0, 5);
+
+    /* El primero de esa lista alimenta el KPI "Producto más vendido". */
+    const topProducto = topProductos[0] || null;
 
     /* 4. Recaudo por método de pago (dona) */
     const porMetodo = {};
@@ -374,6 +389,7 @@ export function DataProvider({ children }) {
       porEstado,
       comprasPorCategoria,
       topProductos,
+      topProducto,
       recaudoPorMetodo,
       existencias,
       // variación real de cada KPI contra el período anterior

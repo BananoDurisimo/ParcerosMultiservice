@@ -1,9 +1,19 @@
 name: Deploy a GitHub Pages
 
-# Compila el frontend y publica dist/ en GitHub Pages en cada push a main.
+# Compila el frontend y publica dist/ en GitHub Pages.
+#
+# OJO: este workflow NO corre solo. La cuenta tiene Actions bloqueado por un
+# problema de facturacion ("billing issue"), asi que cada push a main dejaba un
+# run fallido y su correspondiente correo de error, sin publicar nada. El sitio
+# se publica con `npm run deploy` (scripts/deploy-pages.mjs), que sube dist/ a
+# la rama gh-pages sin pasar por Actions.
+#
+# Cuando Actions vuelva a estar disponible: devolver el disparador `push` de
+# abajo y cambiar Settings > Pages a "GitHub Actions" como origen, porque hoy
+# Pages sirve la rama gh-pages.
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 permissions:

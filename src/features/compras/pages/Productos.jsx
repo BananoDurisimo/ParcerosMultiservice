@@ -1,12 +1,12 @@
 import CrudPage from '@shared/components/CrudPage.jsx';
+import EstadoCell from '@shared/components/ui/EstadoCell.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { money } from '@shared/data/mock.js';
+import { money, ESTADOS_REGISTRO } from '@shared/data/mock.js';
 
-/** Tabla `producto`: id_categoria, nombre, descripcion, precio.
- *  Las tallas y las existencias pertenecen a `varianteproducto`, por eso
- *  aparecen como información derivada y no como campos del formulario.
- *  La columna `estado` se conserva en la base de datos, pero no se administra
- *  desde este módulo: el catálogo se consulta completo. */
+/** Tabla `producto`: id_categoria, nombre, precio, estado.
+ *  Las tallas y las existencias no viven aquí: pertenecen a
+ *  `varianteproducto` y se administran en el módulo Variante producto, así que
+ *  en este catálogo solo aparecen como información derivada. */
 export default function Productos() {
   const { db, opciones } = useData();
   const categorias = opciones('categorias');
@@ -19,10 +19,12 @@ export default function Productos() {
       coleccion="productos"
       entidad="productos"
       singular="producto"
-      searchKeys={['nombre', 'descripcion', 'calc_categoria']}
+      searchKeys={['nombre', 'calc_categoria']}
       filtros={[
         { key: 'id_categoria', label: 'Categoría', options: categorias },
+        { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
       ]}
+      defaults={{ estado: 'Activo' }}
       columnas={[
         {
           key: 'nombre', label: 'Producto', mobile: 'title',
@@ -38,16 +40,16 @@ export default function Productos() {
             </div>
           ),
         },
-        { key: 'descripcion', label: 'Descripción', render: (r) => <span className="muted">{r.descripcion || '—'}</span> },
         { key: 'calc_tallas', label: 'Tallas', sortable: false, mobile: 'meta', render: (r) => <span className="caption">{r.calc_tallas.join(' · ') || '—'}</span> },
         { key: 'calc_stock', label: 'Existencias', align: 'center', mobile: 'meta', render: (r) => <strong>{r.calc_stock}</strong> },
         { key: 'precio', label: 'Precio', align: 'right', mobile: 'value', render: (r) => <span className="money">{money(r.precio)}</span> },
+        { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="productos" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[
         { name: 'nombre', label: 'Nombre del producto', type: 'text', required: true },
         { name: 'id_categoria', label: 'Categoría', type: 'select', options: categorias, required: true },
         { name: 'precio', label: 'Precio (C$)', type: 'money', required: true, min: 0 },
-        { name: 'descripcion', label: 'Descripción', type: 'textarea', full: true, placeholder: 'Materiales, acabados y detalles de confección…' },
+        { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Un producto inactivo sigue en el catálogo, pero ya no se ofrece.' },
       ]}
       renderDetalle={(r) => (
         <div>
@@ -55,10 +57,13 @@ export default function Productos() {
             <div className="detail-item"><div className="dl">Producto</div><div className="dv">{r.nombre}</div></div>
             <div className="detail-item"><div className="dl">Categoría</div><div className="dv">{r.calc_categoria}</div></div>
             <div className="detail-item"><div className="dl">Precio</div><div className="dv money">{money(r.precio)}</div></div>
-            <div className="detail-item full"><div className="dl">Descripción</div><div className="dv">{r.descripcion || '—'}</div></div>
+            <div className="detail-item"><div className="dl">Estado</div><div className="dv">{r.estado}</div></div>
           </div>
 
           <h3 style={{ margin: '18px 0 10px' }}>Variantes por talla</h3>
+          <p className="caption" style={{ marginTop: -4, marginBottom: 10 }}>
+            Se administran en el módulo Variante producto.
+          </p>
           <div className="items-box">
             <div className="items-row head"><span>Talla</span><span>Existencias</span><span>Imagen</span><span style={{ width: 34 }} /></div>
             {db.variantes.filter((v) => v.id_producto === r.id).map((v) => (

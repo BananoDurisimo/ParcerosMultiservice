@@ -16,6 +16,7 @@ export const NAV = [
       { to: '/app/insumos', icon: 'package', label: 'Insumos', permiso: 'Insumos' },
       { to: '/app/categorias', icon: 'category', label: 'Categorías', permiso: 'Categorías' },
       { to: '/app/productos', icon: 'shirt', label: 'Productos', permiso: 'Productos' },
+      { to: '/app/variantes', icon: 'box', label: 'Variante producto', permiso: 'Variante producto' },
       { to: '/app/proveedores', icon: 'truck', label: 'Proveedores', permiso: 'Proveedores' },
       { to: '/app/compras', icon: 'cart', label: 'Compras', permiso: 'Compras' },
     ],

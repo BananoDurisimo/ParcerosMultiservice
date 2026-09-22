@@ -8,7 +8,7 @@ import { money, fecha, hoyISO, ESTADOS_PEDIDO, ESTADOS_PEDIDO_TODOS, PEDIDO_ANUL
 
 /** Tabla `pedido` (id_cliente, estado, fecha_inicio, descripcion) con dos detalles:
  *  - detalle_pedido (id_varianteproducto, cantidad, precio_unitario, subtotal):
- *    los productos base, por talla.
+ *    apunta a la variante -producto + talla-, nunca al producto completo.
  *  - detalle_pedido_insumo (id_insumo, cantidad, precio_unitario, subtotal):
  *    los materiales que se gastan en la personalizacion descrita.
  *  El total y lo abonado no son columnas: se derivan de ambos detalles y de abono. */
@@ -32,6 +32,8 @@ export default function Pedidos() {
   const stats = getStats('Mes');
   const clientes = opciones('clientes');
   const variantes = opciones('variantes', (v) => v.calc_etiqueta);
+  /* Al armar el pedido conviene ver cuantas unidades hay de esa talla. */
+  const variantesEditor = opciones('variantes', (v) => `${v.calc_etiqueta} · ${v.stock} disponibles`);
 
   /* En el detalle basta el nombre y la unidad; al elegir en el formulario
      conviene ver ademas cuanto hay disponible en inventario. */
@@ -41,10 +43,7 @@ export default function Pedidos() {
 
   /* Precio sugerido al elegir cada linea: el precio base del producto y el
      costo unitario del insumo. En ambos casos se puede ajustar a mano. */
-  const precioVariante = (id) => {
-    const v = db.variantes.find((x) => x.id === id);
-    return db.productos.find((p) => p.id === v?.id_producto)?.precio;
-  };
+  const precioVariante = (id) => db.variantes.find((x) => x.id === id)?.calc_precio;
   const precioInsumo = (id) => db.insumos.find((i) => i.id === id)?.precio_unitario;
 
   const codigo = (r) => `PED-${String(r.id).padStart(4, '0')}`;
@@ -62,8 +61,8 @@ export default function Pedidos() {
           <div className="detail-item"><div className="dl">Estado</div><div className="dv">{r.estado}</div></div>
         </div>
 
-        <h3 style={{ margin: '18px 0 10px' }}>Productos base</h3>
-        <ItemsView lineas={r.detalles || []} opciones={variantes} itemKey="id_varianteproducto" itemLabel="Producto y talla" />
+        <h3 style={{ margin: '18px 0 10px' }}>Variantes del producto</h3>
+        <ItemsView lineas={r.detalles || []} opciones={variantes} itemKey="id_varianteproducto" itemLabel="Variante (producto y talla)" />
 
         <h3 style={{ margin: '18px 0 10px' }}>Personalización</h3>
         <div className="pedido-desc">
@@ -180,10 +179,10 @@ export default function Pedidos() {
         { name: 'fecha_inicio', label: 'Fecha de inicio', type: 'date', required: true },
         { name: 'estado', label: 'Estado del pedido', type: 'select', options: ESTADOS_PEDIDO_TODOS, required: true },
         {
-          name: 'detalles', label: '1. Productos base', type: 'items', required: true,
-          itemKey: 'id_varianteproducto', itemLabel: 'Producto y talla', options: variantes,
+          name: 'detalles', label: '1. Variantes del producto', type: 'items', required: true,
+          itemKey: 'id_varianteproducto', itemLabel: 'Variante (producto y talla)', options: variantesEditor,
           precioSugerido: precioVariante, totalLabel: 'Subtotal de productos',
-          hint: 'Al elegir el producto se sugiere su precio base por unidad; puede ajustarlo.',
+          hint: 'Cada línea es una variante -el producto en una talla concreta-, no el producto completo. Al elegirla se sugiere el precio base del producto; puede ajustarlo.',
         },
         {
           name: 'descripcion', label: '2. Descripción de la personalización', type: 'textarea', full: true, required: true, maxLength: 600,

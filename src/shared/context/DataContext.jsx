@@ -165,6 +165,9 @@ export function DataProvider({ children }) {
     const clientesM = porId(raw.clientes);
     const usuariosM = porId(raw.usuarios);
 
+    /* Una variante es un producto dividido por talla: hereda del producto su
+       categoria y su precio (no son columnas de varianteproducto) y aporta las
+       existencias, que solo viven aqui. */
     const variantes = raw.variantes.map((v) => {
       const p = productosM.get(v.id_producto);
       const t = tallas.get(v.id_talla);
@@ -173,6 +176,10 @@ export function DataProvider({ children }) {
         calc_producto: p?.nombre || '—',
         calc_talla: t?.nombre || '—',
         calc_etiqueta: `${p?.nombre || '—'} · ${t?.nombre || '—'}`,
+        calc_categoria: categoriasM.get(p?.id_categoria)?.nombre || '—',
+        calc_precio: Number(p?.precio || 0),
+        calc_valor: Number(v.stock || 0) * Number(p?.precio || 0),
+        calc_estado_producto: p?.estado || '—',
       };
     });
     const variantesM = porId(variantes);

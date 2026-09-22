@@ -50,6 +50,11 @@ export default function CrudPage({
   const [errors, setErrors] = useState({});
   const [anular, setAnular] = useState(null);
 
+  /* Campos marcados `soloEditar`: no se piden al crear. El registro nace con el
+     valor de `defaults` -por ejemplo el estado "Activo"- y se cambia despues
+     desde la tabla o editando. */
+  const camposFormulario = campos.filter((f) => !(f.soloEditar && modo === 'crear'));
+
   const abrirCrear = () => { setValues({ ...defaults }); setErrors({}); setActual(null); setModo('crear'); };
   const abrirEditar = (r) => { setValues({ ...r }); setErrors({}); setActual(r); setModo('editar'); };
   const abrirVer = (r) => { setActual(r); setModo('ver'); };
@@ -74,7 +79,7 @@ export default function CrudPage({
   };
 
   const guardar = () => {
-    const errs = { ...repetidos(), ...validar(campos, values), ...(validarExtra ? validarExtra(values, modo, actual) : null) };
+    const errs = { ...repetidos(), ...validar(camposFormulario, values), ...(validarExtra ? validarExtra(values, modo, actual) : null) };
     Object.keys(errs).forEach((k) => errs[k] === undefined && delete errs[k]);
     if (Object.keys(errs).length) {
       setErrors(errs);
@@ -194,7 +199,7 @@ export default function CrudPage({
         )}
 
         <div className="form-grid">
-          {campos.map((f) =>
+          {camposFormulario.map((f) =>
             f.type === 'custom' ? (
               /* Bloque de solo lectura calculado con los valores del formulario
                  (por ejemplo, el total en vivo de un pedido). */

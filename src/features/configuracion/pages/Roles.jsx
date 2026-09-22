@@ -36,7 +36,7 @@ export default function Roles() {
           full: true, required: true, buscable: true, buscarPlaceholder: 'Buscar permiso…',
           hint: 'Cada permiso marcado crea una fila en rolxpermiso.',
         },
-        { name: 'estado', label: 'Estado', type: 'switch', full: true, hint: 'Un rol inactivo no habilita el ingreso de sus usuarios.' },
+        { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Un rol inactivo no habilita el ingreso de sus usuarios.' },
       ]}
       renderDetalle={(r) => (
         <div>

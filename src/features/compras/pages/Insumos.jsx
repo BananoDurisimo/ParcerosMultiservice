@@ -1,8 +1,9 @@
 import CrudPage from '@shared/components/CrudPage.jsx';
 import Badge from '@shared/components/ui/Badge.jsx';
+import EstadoCell from '@shared/components/ui/EstadoCell.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { money, UMBRAL_STOCK_BAJO } from '@shared/data/mock.js';
+import { money, UMBRAL_STOCK_BAJO, ESTADOS_REGISTRO } from '@shared/data/mock.js';
 
 /** Tabla `insumo`: nombre, id_tipo_insumo, id_unidad_medida, stock, precio_unitario. */
 export default function Insumos() {
@@ -28,8 +29,9 @@ export default function Insumos() {
       filtros={[
         { key: 'id_tipo_insumo', label: 'Tipo de insumo', options: tipos },
         { key: 'id_unidad_medida', label: 'Unidad de medida', options: unidades },
+        { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
       ]}
-      defaults={{ stock: 0 }}
+      defaults={{ stock: 0, estado: 'Activo' }}
       resumen={[
         <KpiCard key="a" label="Insumos registrados" value={db.insumos.length} icon="package" tono="primary" />,
         <KpiCard key="b" label={`Con ${UMBRAL_STOCK_BAJO} o menos`} value={stats.bajoStock.length} icon="alert" tono="warning" />,
@@ -65,6 +67,7 @@ export default function Insumos() {
         { key: 'precio_unitario', label: 'Precio unit.', align: 'right', mobile: 'value', render: (r) => <span className="money">{money(r.precio_unitario)}</span> },
         { key: 'calc_valor', label: 'Valor en stock', align: 'right', render: (r) => <span className="money">{money(r.calc_valor)}</span> },
         { key: 'disponibilidad', label: 'Disponibilidad', sortable: false, render: (r) => <Badge tono={nivel(r).badge}>{nivel(r).label}</Badge> },
+        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="insumos" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[
         { name: 'nombre', label: 'Nombre del insumo', type: 'text', required: true, full: true },
@@ -72,6 +75,7 @@ export default function Insumos() {
         { name: 'id_unidad_medida', label: 'Unidad de medida', type: 'select', options: unidades, required: true },
         { name: 'stock', label: 'Existencias', type: 'number', required: true, min: 0 },
         { name: 'precio_unitario', label: 'Precio unitario (C$)', type: 'money', required: true, min: 0 },
+        { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Un insumo inactivo sigue en el catálogo, pero ya no se ofrece para compra.' },
       ]}
     />
   );

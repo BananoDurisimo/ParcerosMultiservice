@@ -285,21 +285,21 @@ export const seed = {
   ],
 
   /* ---------- Compras ---------- */
-  // Tabla: insumo (id_insumo, nombre, id_tipo_insumo, id_unidad_medida, stock, precio_unitario)
+  // Tabla: insumo (id_insumo, nombre, id_tipo_insumo, id_unidad_medida, stock, precio_unitario, estado)
   insumos: [
-    { id: 1, nombre: 'Tela Dry-Fit', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 278, precio_unitario: 145 },
-    { id: 2, nombre: 'Tela Lycra', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 130, precio_unitario: 180 },
-    { id: 3, nombre: 'Tela Mesh deportiva', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 0, precio_unitario: 165 },
-    { id: 4, nombre: 'Tela Micro-perforada', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 64, precio_unitario: 190 },
-    { id: 5, nombre: 'Hilo poliéster', id_tipo_insumo: 2, id_unidad_medida: 4, stock: 92, precio_unitario: 65 },
-    { id: 6, nombre: 'Vinil textil', id_tipo_insumo: 3, id_unidad_medida: 1, stock: 14, precio_unitario: 210 },
-    { id: 7, nombre: 'Tinta sublimación', id_tipo_insumo: 3, id_unidad_medida: 3, stock: 46, precio_unitario: 320 },
-    { id: 8, nombre: 'Botones metálicos', id_tipo_insumo: 4, id_unidad_medida: 6, stock: 310, precio_unitario: 40 },
-    { id: 9, nombre: 'Cierre nylon 20cm', id_tipo_insumo: 4, id_unidad_medida: 3, stock: 8, precio_unitario: 22 },
-    { id: 10, nombre: 'Elástico 3cm', id_tipo_insumo: 4, id_unidad_medida: 1, stock: 175, precio_unitario: 18 },
-    { id: 11, nombre: 'Escudos bordados', id_tipo_insumo: 4, id_unidad_medida: 6, stock: 88, precio_unitario: 55 },
-    { id: 13, nombre: 'Tinta textil negra', id_tipo_insumo: 3, id_unidad_medida: 7, stock: 24, precio_unitario: 380 },
-    { id: 14, nombre: 'Tinta textil roja', id_tipo_insumo: 3, id_unidad_medida: 7, stock: 18, precio_unitario: 395 },
+    { id: 1, nombre: 'Tela Dry-Fit', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 278, precio_unitario: 145, estado: 'Activo' },
+    { id: 2, nombre: 'Tela Lycra', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 130, precio_unitario: 180, estado: 'Activo' },
+    { id: 3, nombre: 'Tela Mesh deportiva', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 0, precio_unitario: 165, estado: 'Activo' },
+    { id: 4, nombre: 'Tela Micro-perforada', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 64, precio_unitario: 190, estado: 'Activo' },
+    { id: 5, nombre: 'Hilo poliéster', id_tipo_insumo: 2, id_unidad_medida: 4, stock: 92, precio_unitario: 65, estado: 'Activo' },
+    { id: 6, nombre: 'Vinil textil', id_tipo_insumo: 3, id_unidad_medida: 1, stock: 14, precio_unitario: 210, estado: 'Activo' },
+    { id: 7, nombre: 'Tinta sublimación', id_tipo_insumo: 3, id_unidad_medida: 3, stock: 46, precio_unitario: 320, estado: 'Activo' },
+    { id: 8, nombre: 'Botones metálicos', id_tipo_insumo: 4, id_unidad_medida: 6, stock: 310, precio_unitario: 40, estado: 'Activo' },
+    { id: 9, nombre: 'Cierre nylon 20cm', id_tipo_insumo: 4, id_unidad_medida: 3, stock: 8, precio_unitario: 22, estado: 'Activo' },
+    { id: 10, nombre: 'Elástico 3cm', id_tipo_insumo: 4, id_unidad_medida: 1, stock: 175, precio_unitario: 18, estado: 'Activo' },
+    { id: 11, nombre: 'Escudos bordados', id_tipo_insumo: 4, id_unidad_medida: 6, stock: 88, precio_unitario: 55, estado: 'Activo' },
+    { id: 13, nombre: 'Tinta textil negra', id_tipo_insumo: 3, id_unidad_medida: 7, stock: 24, precio_unitario: 380, estado: 'Activo' },
+    { id: 14, nombre: 'Tinta textil roja', id_tipo_insumo: 3, id_unidad_medida: 7, stock: 18, precio_unitario: 395, estado: 'Inactivo' },
   ],
 
   // Tabla: categoria (id_categoria, nombre)

@@ -21,7 +21,6 @@ export default function DataTable({
   createLabel = 'Agregar',
   onView,
   onEdit,
-  onExport,
   emptyText = 'No hay registros que coincidan con la búsqueda.',
 }) {
   const [q, setQ] = useState('');
@@ -88,11 +87,6 @@ export default function DataTable({
 
         <div className="grow" />
 
-        {onExport && (
-          <button className="btn btn-sm" onClick={onExport} title="Exportar listado">
-            <Icon name="download" size={15} /> Exportar
-          </button>
-        )}
         {onCreate && (
           <button className="btn btn-primary btn-sm" onClick={onCreate}>
             <Icon name="plus" size={16} /> {createLabel}

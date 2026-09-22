@@ -269,6 +269,9 @@ export function DataProvider({ children }) {
         ...r,
         calc_usuarios: usuariosPorRol.get(r.id) || 0,
         calc_permisos: (r.permisos || []).map((id) => permisos.get(id)?.nombre).filter(Boolean),
+        /* Texto fijo para poder filtrar por asignacion: el filtro de la tabla
+           compara valores exactos, no cuenta registros. */
+        calc_uso: (usuariosPorRol.get(r.id) || 0) > 0 ? 'Con usuarios' : 'Sin usuarios',
       })),
 
       usuarios: raw.usuarios.map((u) => ({

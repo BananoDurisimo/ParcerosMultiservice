@@ -6,7 +6,6 @@ import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import MovimientoDetalle from '@features/configuracion/components/MovimientoDetalle.jsx';
 import { iniciales } from '@shared/context/AuthContext.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { useToast } from '@shared/context/ToastContext.jsx';
 import {
   fecha,
   hora,
@@ -25,11 +24,10 @@ import {
  *
  * Las filas las insertan los triggers AFTER INSERT/UPDATE/DELETE de la base de
  * datos, por eso la pantalla es de solo consulta: se puede buscar, filtrar,
- * ordenar, ver el detalle y exportar, pero no crear, editar ni eliminar.
+ * ordenar y ver el detalle, pero no crear, editar ni eliminar.
  */
 export default function Movimientos() {
   const { db } = useData();
-  const toast = useToast();
   const [actual, setActual] = useState(null);
 
   const rows = db.movimientos;
@@ -67,12 +65,6 @@ export default function Movimientos() {
     rows.forEach((r) => m.set(r.id_usuario, r.calc_usuario));
     return [...m].map(([value, label]) => ({ value, label }));
   }, [rows]);
-
-  const exportar = () =>
-    toast.info(
-      'El historial se exportará en formato PDF o Excel desde el módulo de reportes.',
-      'Exportación'
-    );
 
   return (
     <div className="anim-page">
@@ -184,7 +176,6 @@ export default function Movimientos() {
           { key: 'calc_fecha', label: 'Fecha', options: [...new Set(rows.map((r) => r.calc_fecha))].map((f) => ({ value: f, label: fecha(f) })) },
         ]}
         onView={setActual}
-        onExport={exportar}
         emptyText="No hay movimientos que coincidan con la búsqueda o los filtros aplicados."
       />
 

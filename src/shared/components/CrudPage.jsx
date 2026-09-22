@@ -127,8 +127,6 @@ export default function CrudPage({
     return Array.isArray(v) ? v.join(', ') : String(v);
   };
 
-  const exportar = () => toast.info('El listado se exportará en formato PDF o Excel desde el módulo de reportes.', 'Exportación');
-
   const etiqueta = (r) => (r ? (etiquetaRegistro ? etiquetaRegistro(r) : etiquetaFila(r)) : '—');
 
   return (
@@ -162,7 +160,6 @@ export default function CrudPage({
         createLabel={`Agregar ${singular}`}
         onView={conDetalle ? abrirVer : undefined}
         onEdit={abrirEditar}
-        onExport={exportar}
       />
 
       {/* Formulario crear / editar */}

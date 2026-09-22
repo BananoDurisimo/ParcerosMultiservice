@@ -166,6 +166,7 @@ export function Field({ f, value, error, onChange, readOnly }) {
           <span className="track"><span className="thumb" /></span>
           <span style={{ fontSize: 13 }}>{value === 'Activo' ? 'Activo' : 'Inactivo'}</span>
         </label>
+        {f.hint && <span className="caption">{f.hint}</span>}
       </div>
     );
   }

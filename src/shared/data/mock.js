@@ -264,11 +264,11 @@ export const seed = {
   /* ---------- Configuracion ---------- */
   // Tabla: rol (id_rol, nombre) + rolxpermiso (id_rol, id_permiso)
   roles: [
-    { id: 1, nombre: 'Administrador', permisos: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
-    { id: 2, nombre: 'Gerente', permisos: [7, 8, 9, 10, 11, 12] },
-    { id: 3, nombre: 'Vendedor', permisos: [5, 8, 9, 10] },
-    { id: 4, nombre: 'Almacenista', permisos: [3, 4, 6, 7] },
-    { id: 5, nombre: 'Operario de producción', permisos: [9] },
+    { id: 1, nombre: 'Administrador', permisos: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], estado: 'Activo' },
+    { id: 2, nombre: 'Gerente', permisos: [7, 8, 9, 10, 11, 12], estado: 'Activo' },
+    { id: 3, nombre: 'Vendedor', permisos: [5, 8, 9, 10], estado: 'Activo' },
+    { id: 4, nombre: 'Almacenista', permisos: [3, 4, 6, 7], estado: 'Activo' },
+    { id: 5, nombre: 'Operario de producción', permisos: [9], estado: 'Inactivo' },
   ],
 
   // Tabla: usuario

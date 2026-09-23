@@ -50,10 +50,26 @@ export default function CrudPage({
   const [errors, setErrors] = useState({});
   const [anular, setAnular] = useState(null);
 
+  /* Anular no borra la fila: solo cambia su estado, de modo que el documento
+     siga apareciendo en los listados y en el historial de movimientos. Como es
+     una baja y no una etapa mas, el valor de anulacion no figura entre las
+     opciones del campo: se llega a el por el boton, con confirmacion. */
+  const campoAnulacion = anulacion?.campo || 'estado';
+  const estaAnulado = (r) => !!anulacion && r?.[campoAnulacion] === anulacion.valor;
+
   /* Campos marcados `soloEditar`: no se piden al crear. El registro nace con el
      valor de `defaults` -por ejemplo el estado "Activo"- y se cambia despues
      desde la tabla o editando. */
-  const camposFormulario = campos.filter((f) => !(f.soloEditar && modo === 'crear'));
+  const camposFormulario = campos
+    .filter((f) => !(f.soloEditar && modo === 'crear'))
+    /* Un registro ya anulado conserva su estado en el desplegable aunque la
+       lista de opciones no lo ofrezca: asi el formulario muestra el estado
+       real y basta elegir otro para reactivarlo. */
+    .map((f) =>
+      estaAnulado(actual) && f.name === campoAnulacion && f.options && !f.options.includes(anulacion.valor)
+        ? { ...f, options: [...f.options, anulacion.valor] }
+        : f
+    );
 
   const abrirCrear = () => { setValues({ ...defaults }); setErrors({}); setActual(null); setModo('crear'); };
   const abrirEditar = (r) => { setValues({ ...r }); setErrors({}); setActual(r); setModo('editar'); };
@@ -107,10 +123,6 @@ export default function CrudPage({
     cerrar();
   };
 
-  /* Anular no borra la fila: solo cambia su estado, de modo que el documento
-     siga apareciendo en los listados y en el historial de movimientos. */
-  const campoAnulacion = anulacion?.campo || 'estado';
-  const estaAnulado = (r) => !!anulacion && r?.[campoAnulacion] === anulacion.valor;
   const puedeAnular = !!anulacion && modo === 'editar' && !estaAnulado(actual);
 
   const confirmarAnulacion = () => {

@@ -9,7 +9,7 @@ import DonutChart from '@shared/components/charts/DonutChart.jsx';
 import HBarChart from '@shared/components/charts/HBarChart.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
-import { money, fecha, ESTADOS_PEDIDO, UMBRAL_STOCK_BAJO } from '@shared/data/mock.js';
+import { money, fecha, ESTADOS_PEDIDO } from '@shared/data/mock.js';
 
 const PERIODOS = ['Hoy', 'Semana', 'Mes', 'Año'];
 
@@ -82,7 +82,7 @@ export default function Dashboard() {
           <Icon name="alert" size={20} />
           <div className="grow">
             <strong>Alerta de inventario.</strong>{' '}
-            {stats.bajoStock.length} insumo(s) tienen {UMBRAL_STOCK_BAJO} unidades o menos en existencia:{' '}
+            {stats.bajoStock.length} insumo(s) están en o por debajo de sus existencias mínimas:{' '}
             {stats.bajoStock.slice(0, 3).map((i) => i.nombre).join(', ')}
             {stats.bajoStock.length > 3 ? '…' : '.'}
           </div>
@@ -193,8 +193,6 @@ export default function Dashboard() {
           <HBarChart
             data={stats.existencias}
             formato={(v) => v.toLocaleString('es-NI')}
-            umbral={UMBRAL_STOCK_BAJO}
-            etiquetaUmbral="Existencias mínimas"
           />
         </div>
       </div>

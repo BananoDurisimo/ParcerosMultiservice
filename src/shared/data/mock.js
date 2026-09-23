@@ -74,8 +74,13 @@ export const ESTADOS_PEDIDO = [
 export const PEDIDO_ANULADO = 'Anulado';
 export const ESTADOS_PEDIDO_TODOS = [...ESTADOS_PEDIDO, PEDIDO_ANULADO];
 
-export const ESTADOS_COMPRA = ['Recibida', 'En tránsito', 'Anulada'];
+/** Una compra anulada sale del flujo: igual que el pedido anulado, no es un
+ *  estado mas del recorrido normal, asi que el desplegable del listado ofrece
+ *  solo ESTADOS_COMPRA_ACTIVOS y la baja se hace desde el formulario, con
+ *  confirmacion. ESTADOS_COMPRA (con la anulacion) se usa para filtrar. */
+export const ESTADOS_COMPRA_ACTIVOS = ['Recibida', 'En tránsito'];
 export const COMPRA_ANULADA = 'Anulada';
+export const ESTADOS_COMPRA = [...ESTADOS_COMPRA_ACTIVOS, COMPRA_ANULADA];
 export const ESTADOS_REGISTRO = ['Activo', 'Inactivo'];
 export const TIPOS_DOCUMENTO = ['Cédula', 'RUC', 'Pasaporte', 'Cédula de residencia'];
 export const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque'];
@@ -122,6 +127,7 @@ export const ETIQUETA_CAMPO = {
   precio_unitario: 'Precio unitario',
   estado: 'Estado',
   stock: 'Existencias',
+  stock_minimo: 'Existencias mínimas',
   cantidad: 'Cantidad',
   monto: 'Monto',
   fecha: 'Fecha',
@@ -140,7 +146,6 @@ export const ETIQUETA_CAMPO = {
   nombrepersonacontacto: 'Persona de contacto',
   metodo_pago: 'Método de pago',
   url_comprobante: 'Comprobante',
-  url_imagen: 'Imagen',
   id_rol: 'Rol',
   id_categoria: 'Categoría',
   id_cliente: 'Cliente',
@@ -210,8 +215,10 @@ export const COLOR_TIPO_INSUMO = {
   Hilo: 'var(--primary)',
 };
 
-/** Umbral de presentacion: la tabla `insumo` no guarda stock minimo, asi que
- *  las alertas de inventario se calculan contra este valor fijo. */
+/** Valor por defecto de `insumo.stock_minimo`: cada insumo guarda su propio
+ *  minimo y las alertas de inventario se comparan contra el. Este numero solo
+ *  se usa para proponerlo al registrar un insumo nuevo y como respaldo si la
+ *  fila todavia no lo tiene. */
 export const UMBRAL_STOCK_BAJO = 20;
 
 export const seed = {
@@ -285,31 +292,31 @@ export const seed = {
   ],
 
   /* ---------- Compras ---------- */
-  // Tabla: insumo (id_insumo, nombre, id_tipo_insumo, id_unidad_medida, stock, precio_unitario, estado)
+  // Tabla: insumo (id_insumo, nombre, id_tipo_insumo, id_unidad_medida, stock, stock_minimo, precio_unitario, estado)
   insumos: [
-    { id: 1, nombre: 'Tela Dry-Fit', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 278, precio_unitario: 145, estado: 'Activo' },
-    { id: 2, nombre: 'Tela Lycra', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 130, precio_unitario: 180, estado: 'Activo' },
-    { id: 3, nombre: 'Tela Mesh deportiva', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 0, precio_unitario: 165, estado: 'Activo' },
-    { id: 4, nombre: 'Tela Micro-perforada', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 64, precio_unitario: 190, estado: 'Activo' },
-    { id: 5, nombre: 'Hilo poliéster', id_tipo_insumo: 2, id_unidad_medida: 4, stock: 92, precio_unitario: 65, estado: 'Activo' },
-    { id: 6, nombre: 'Vinil textil', id_tipo_insumo: 3, id_unidad_medida: 1, stock: 14, precio_unitario: 210, estado: 'Activo' },
-    { id: 7, nombre: 'Tinta sublimación', id_tipo_insumo: 3, id_unidad_medida: 3, stock: 46, precio_unitario: 320, estado: 'Activo' },
-    { id: 8, nombre: 'Botones metálicos', id_tipo_insumo: 4, id_unidad_medida: 6, stock: 310, precio_unitario: 40, estado: 'Activo' },
-    { id: 9, nombre: 'Cierre nylon 20cm', id_tipo_insumo: 4, id_unidad_medida: 3, stock: 8, precio_unitario: 22, estado: 'Activo' },
-    { id: 10, nombre: 'Elástico 3cm', id_tipo_insumo: 4, id_unidad_medida: 1, stock: 175, precio_unitario: 18, estado: 'Activo' },
-    { id: 11, nombre: 'Escudos bordados', id_tipo_insumo: 4, id_unidad_medida: 6, stock: 88, precio_unitario: 55, estado: 'Activo' },
-    { id: 13, nombre: 'Tinta textil negra', id_tipo_insumo: 3, id_unidad_medida: 7, stock: 24, precio_unitario: 380, estado: 'Activo' },
-    { id: 14, nombre: 'Tinta textil roja', id_tipo_insumo: 3, id_unidad_medida: 7, stock: 18, precio_unitario: 395, estado: 'Inactivo' },
+    { id: 1, nombre: 'Tela Dry-Fit', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 278, stock_minimo: 60, precio_unitario: 145, estado: 'Activo' },
+    { id: 2, nombre: 'Tela Lycra', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 130, stock_minimo: 40, precio_unitario: 180, estado: 'Activo' },
+    { id: 3, nombre: 'Tela Mesh deportiva', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 0, stock_minimo: 30, precio_unitario: 165, estado: 'Activo' },
+    { id: 4, nombre: 'Tela Micro-perforada', id_tipo_insumo: 1, id_unidad_medida: 2, stock: 64, stock_minimo: 30, precio_unitario: 190, estado: 'Activo' },
+    { id: 5, nombre: 'Hilo poliéster', id_tipo_insumo: 2, id_unidad_medida: 4, stock: 92, stock_minimo: 25, precio_unitario: 65, estado: 'Activo' },
+    { id: 6, nombre: 'Vinil textil', id_tipo_insumo: 3, id_unidad_medida: 1, stock: 14, stock_minimo: 20, precio_unitario: 210, estado: 'Activo' },
+    { id: 7, nombre: 'Tinta sublimación', id_tipo_insumo: 3, id_unidad_medida: 3, stock: 46, stock_minimo: 15, precio_unitario: 320, estado: 'Activo' },
+    { id: 8, nombre: 'Botones metálicos', id_tipo_insumo: 4, id_unidad_medida: 6, stock: 310, stock_minimo: 60, precio_unitario: 40, estado: 'Activo' },
+    { id: 9, nombre: 'Cierre nylon 20cm', id_tipo_insumo: 4, id_unidad_medida: 3, stock: 8, stock_minimo: 25, precio_unitario: 22, estado: 'Activo' },
+    { id: 10, nombre: 'Elástico 3cm', id_tipo_insumo: 4, id_unidad_medida: 1, stock: 175, stock_minimo: 40, precio_unitario: 18, estado: 'Activo' },
+    { id: 11, nombre: 'Escudos bordados', id_tipo_insumo: 4, id_unidad_medida: 6, stock: 88, stock_minimo: 30, precio_unitario: 55, estado: 'Activo' },
+    { id: 13, nombre: 'Tinta textil negra', id_tipo_insumo: 3, id_unidad_medida: 7, stock: 24, stock_minimo: 10, precio_unitario: 380, estado: 'Activo' },
+    { id: 14, nombre: 'Tinta textil roja', id_tipo_insumo: 3, id_unidad_medida: 7, stock: 18, stock_minimo: 20, precio_unitario: 395, estado: 'Inactivo' },
   ],
 
-  // Tabla: categoria (id_categoria, nombre)
+  // Tabla: categoria (id_categoria, nombre, estado)
   categorias: [
-    { id: 1, nombre: 'Uniformes deportivos' },
-    { id: 2, nombre: 'Uniformes de ciclismo' },
-    { id: 3, nombre: 'Uniformes de baloncesto' },
-    { id: 4, nombre: 'Chaquetas deportivas' },
-    { id: 5, nombre: 'Accesorios' },
-    { id: 6, nombre: 'Jerseys con patrocinador' },
+    { id: 1, nombre: 'Uniformes deportivos', estado: 'Activo' },
+    { id: 2, nombre: 'Uniformes de ciclismo', estado: 'Activo' },
+    { id: 3, nombre: 'Uniformes de baloncesto', estado: 'Activo' },
+    { id: 4, nombre: 'Chaquetas deportivas', estado: 'Activo' },
+    { id: 5, nombre: 'Accesorios', estado: 'Activo' },
+    { id: 6, nombre: 'Jerseys con patrocinador', estado: 'Inactivo' },
   ],
 
   // Tabla: producto (id_producto, id_categoria, nombre, precio, estado)
@@ -327,52 +334,52 @@ export const seed = {
     { id: 11, id_categoria: 2, nombre: 'Enterizo de ciclismo', precio: 520, estado: 'Activo' },
   ],
 
-  // Tabla: varianteproducto (id_varianteproducto, id_producto, id_talla, url_imagen, stock)
+  // Tabla: varianteproducto (id_varianteproducto, id_producto, id_talla, stock, estado)
   variantes: [
-    { id: 1, id_producto: 1, id_talla: 2, url_imagen: '', stock: 12 },
-    { id: 2, id_producto: 1, id_talla: 3, url_imagen: '', stock: 15 },
-    { id: 3, id_producto: 1, id_talla: 4, url_imagen: '', stock: 10 },
-    { id: 4, id_producto: 1, id_talla: 5, url_imagen: '', stock: 8 },
-    { id: 5, id_producto: 2, id_talla: 2, url_imagen: '', stock: 20 },
-    { id: 6, id_producto: 2, id_talla: 3, url_imagen: '', stock: 22 },
-    { id: 7, id_producto: 2, id_talla: 4, url_imagen: '', stock: 18 },
-    { id: 8, id_producto: 3, id_talla: 3, url_imagen: '', stock: 7 },
-    { id: 9, id_producto: 3, id_talla: 4, url_imagen: '', stock: 9 },
-    { id: 10, id_producto: 3, id_talla: 5, url_imagen: '', stock: 8 },
-    { id: 11, id_producto: 3, id_talla: 6, url_imagen: '', stock: 4 },
-    { id: 12, id_producto: 4, id_talla: 2, url_imagen: '', stock: 14 },
-    { id: 13, id_producto: 4, id_talla: 3, url_imagen: '', stock: 16 },
-    { id: 14, id_producto: 4, id_talla: 4, url_imagen: '', stock: 12 },
-    { id: 15, id_producto: 4, id_talla: 5, url_imagen: '', stock: 10 },
-    { id: 16, id_producto: 5, id_talla: 3, url_imagen: '', stock: 4 },
-    { id: 17, id_producto: 5, id_talla: 4, url_imagen: '', stock: 5 },
-    { id: 18, id_producto: 5, id_talla: 5, url_imagen: '', stock: 3 },
-    { id: 19, id_producto: 6, id_talla: 1, url_imagen: '', stock: 8 },
-    { id: 20, id_producto: 6, id_talla: 2, url_imagen: '', stock: 10 },
-    { id: 21, id_producto: 6, id_talla: 3, url_imagen: '', stock: 9 },
-    { id: 22, id_producto: 6, id_talla: 4, url_imagen: '', stock: 7 },
-    { id: 23, id_producto: 7, id_talla: 3, url_imagen: '', stock: 90 },
-    { id: 24, id_producto: 8, id_talla: 2, url_imagen: '', stock: 46 },
-    { id: 25, id_producto: 8, id_talla: 3, url_imagen: '', stock: 50 },
-    { id: 26, id_producto: 8, id_talla: 4, url_imagen: '', stock: 44 },
-    { id: 27, id_producto: 9, id_talla: 3, url_imagen: '', stock: 6 },
-    { id: 28, id_producto: 9, id_talla: 4, url_imagen: '', stock: 7 },
-    { id: 29, id_producto: 9, id_talla: 5, url_imagen: '', stock: 5 },
-    { id: 30, id_producto: 10, id_talla: 3, url_imagen: '', stock: 7 },
-    { id: 31, id_producto: 11, id_talla: 2, url_imagen: '', stock: 9 },
-    { id: 32, id_producto: 11, id_talla: 3, url_imagen: '', stock: 12 },
-    { id: 33, id_producto: 11, id_talla: 4, url_imagen: '', stock: 11 },
-    { id: 34, id_producto: 11, id_talla: 5, url_imagen: '', stock: 9 },
+    { id: 1, id_producto: 1, id_talla: 2, stock: 12, estado: 'Activo' },
+    { id: 2, id_producto: 1, id_talla: 3, stock: 15, estado: 'Activo' },
+    { id: 3, id_producto: 1, id_talla: 4, stock: 10, estado: 'Activo' },
+    { id: 4, id_producto: 1, id_talla: 5, stock: 8, estado: 'Activo' },
+    { id: 5, id_producto: 2, id_talla: 2, stock: 20, estado: 'Activo' },
+    { id: 6, id_producto: 2, id_talla: 3, stock: 22, estado: 'Activo' },
+    { id: 7, id_producto: 2, id_talla: 4, stock: 18, estado: 'Activo' },
+    { id: 8, id_producto: 3, id_talla: 3, stock: 7, estado: 'Activo' },
+    { id: 9, id_producto: 3, id_talla: 4, stock: 9, estado: 'Activo' },
+    { id: 10, id_producto: 3, id_talla: 5, stock: 8, estado: 'Activo' },
+    { id: 11, id_producto: 3, id_talla: 6, stock: 4, estado: 'Inactivo' },
+    { id: 12, id_producto: 4, id_talla: 2, stock: 14, estado: 'Activo' },
+    { id: 13, id_producto: 4, id_talla: 3, stock: 16, estado: 'Activo' },
+    { id: 14, id_producto: 4, id_talla: 4, stock: 12, estado: 'Activo' },
+    { id: 15, id_producto: 4, id_talla: 5, stock: 10, estado: 'Activo' },
+    { id: 16, id_producto: 5, id_talla: 3, stock: 4, estado: 'Activo' },
+    { id: 17, id_producto: 5, id_talla: 4, stock: 5, estado: 'Activo' },
+    { id: 18, id_producto: 5, id_talla: 5, stock: 3, estado: 'Activo' },
+    { id: 19, id_producto: 6, id_talla: 1, stock: 8, estado: 'Activo' },
+    { id: 20, id_producto: 6, id_talla: 2, stock: 10, estado: 'Activo' },
+    { id: 21, id_producto: 6, id_talla: 3, stock: 9, estado: 'Activo' },
+    { id: 22, id_producto: 6, id_talla: 4, stock: 7, estado: 'Activo' },
+    { id: 23, id_producto: 7, id_talla: 3, stock: 90, estado: 'Activo' },
+    { id: 24, id_producto: 8, id_talla: 2, stock: 46, estado: 'Activo' },
+    { id: 25, id_producto: 8, id_talla: 3, stock: 50, estado: 'Activo' },
+    { id: 26, id_producto: 8, id_talla: 4, stock: 44, estado: 'Activo' },
+    { id: 27, id_producto: 9, id_talla: 3, stock: 6, estado: 'Activo' },
+    { id: 28, id_producto: 9, id_talla: 4, stock: 7, estado: 'Activo' },
+    { id: 29, id_producto: 9, id_talla: 5, stock: 5, estado: 'Activo' },
+    { id: 30, id_producto: 10, id_talla: 3, stock: 7, estado: 'Inactivo' },
+    { id: 31, id_producto: 11, id_talla: 2, stock: 9, estado: 'Activo' },
+    { id: 32, id_producto: 11, id_talla: 3, stock: 12, estado: 'Activo' },
+    { id: 33, id_producto: 11, id_talla: 4, stock: 11, estado: 'Activo' },
+    { id: 34, id_producto: 11, id_talla: 5, stock: 9, estado: 'Activo' },
   ],
 
   // Tabla: proveedor
   proveedores: [
-    { id: 1, nombre: 'Textiles Nicaragua S.A', nombrepersonacontacto: 'Roberto Solís', id_tipo_insumo: 1, telefono: '2278 4410', correo: 'ventas@textilesni.com', direccion: 'Km 8 Carretera Norte, Managua', nit: 'J0310000451' },
-    { id: 2, nombre: 'Distribuidora El Cosido', nombrepersonacontacto: 'Marta Aguilar', id_tipo_insumo: 2, telefono: '2255 9032', correo: 'contacto@elcosido.ni', direccion: 'Mercado Oriental, Módulo 22', nit: 'J0310000672' },
-    { id: 3, nombre: 'Impresiones Managua', nombrepersonacontacto: 'Jorge Núñez', id_tipo_insumo: 3, telefono: '2299 1187', correo: 'info@impresionesmga.com', direccion: 'Bolonia, de la Rotonda 2c al sur', nit: 'J0310000893' },
-    { id: 4, nombre: 'Accesorios del Norte', nombrepersonacontacto: 'Elena Vílchez', id_tipo_insumo: 4, telefono: '2712 3345', correo: 'ventas@accnorte.ni', direccion: 'Estelí, Barrio El Calvario', nit: 'J0310001014' },
-    { id: 5, nombre: 'Bordados Estelí', nombrepersonacontacto: 'Luis Zamora', id_tipo_insumo: 4, telefono: '2713 8890', correo: 'bordados.esteli@gmail.com', direccion: 'Estelí, Av. Central', nit: 'J0310001235' },
-    { id: 6, nombre: 'Confecciones del Sur', nombrepersonacontacto: 'Ada Miranda', id_tipo_insumo: 1, telefono: '2552 4471', correo: 'confeccionessur@ni.com', direccion: 'Rivas, Barrio San Francisco', nit: 'J0310001456' },
+    { id: 1, nombre: 'Textiles Nicaragua S.A', nombrepersonacontacto: 'Roberto Solís', id_tipo_insumo: 1, telefono: '2278 4410', correo: 'ventas@textilesni.com', direccion: 'Km 8 Carretera Norte, Managua', nit: 'J0310000451', estado: 'Activo' },
+    { id: 2, nombre: 'Distribuidora El Cosido', nombrepersonacontacto: 'Marta Aguilar', id_tipo_insumo: 2, telefono: '2255 9032', correo: 'contacto@elcosido.ni', direccion: 'Mercado Oriental, Módulo 22', nit: 'J0310000672', estado: 'Activo' },
+    { id: 3, nombre: 'Impresiones Managua', nombrepersonacontacto: 'Jorge Núñez', id_tipo_insumo: 3, telefono: '2299 1187', correo: 'info@impresionesmga.com', direccion: 'Bolonia, de la Rotonda 2c al sur', nit: 'J0310000893', estado: 'Activo' },
+    { id: 4, nombre: 'Accesorios del Norte', nombrepersonacontacto: 'Elena Vílchez', id_tipo_insumo: 4, telefono: '2712 3345', correo: 'ventas@accnorte.ni', direccion: 'Estelí, Barrio El Calvario', nit: 'J0310001014', estado: 'Activo' },
+    { id: 5, nombre: 'Bordados Estelí', nombrepersonacontacto: 'Luis Zamora', id_tipo_insumo: 4, telefono: '2713 8890', correo: 'bordados.esteli@gmail.com', direccion: 'Estelí, Av. Central', nit: 'J0310001235', estado: 'Inactivo' },
+    { id: 6, nombre: 'Confecciones del Sur', nombrepersonacontacto: 'Ada Miranda', id_tipo_insumo: 1, telefono: '2552 4471', correo: 'confeccionessur@ni.com', direccion: 'Rivas, Barrio San Francisco', nit: 'J0310001456', estado: 'Activo' },
   ],
 
   /* Tabla: compra (id_compra, id_proveedor, fecha, estado)
@@ -393,15 +400,15 @@ export const seed = {
   /* ---------- Ventas ---------- */
   // Tabla: cliente
   clientes: [
-    { id: 1, nombre: 'Club Deportivo Los Andes', tipodocumento: 'RUC', documento: 'J0310000123', telefono: '8712 3344', correo: 'losandes@club.ni', direccion: 'Managua, Villa Fontana' },
-    { id: 2, nombre: 'Club de Ciclismo Pedal Nica', tipodocumento: 'RUC', documento: 'J0310000455', telefono: '2277 9911', correo: 'directiva@pedalnica.ni', direccion: 'Managua, Altamira' },
-    { id: 3, nombre: 'Liga Municipal de Baloncesto Masaya', tipodocumento: 'RUC', documento: 'J0310000788', telefono: '2255 3321', correo: 'liga@basketmasaya.ni', direccion: 'Masaya, Centro' },
-    { id: 4, nombre: 'Marcia Ortega Bermúdez', tipodocumento: 'Cédula', documento: '0012509880012B', telefono: '8877 1290', correo: 'marcia.ortega@gmail.com', direccion: 'Granada, Calle La Calzada' },
-    { id: 5, nombre: 'Tigres de Rivas Béisbol Club', tipodocumento: 'RUC', documento: 'J0310000992', telefono: '2552 7788', correo: 'tigres@beisbolrivas.ni', direccion: 'Rivas, Barrio Central' },
-    { id: 6, nombre: 'Academia FC Juvenil', tipodocumento: 'RUC', documento: 'J0310001177', telefono: '8990 4412', correo: 'fcjuvenil@correo.ni', direccion: 'León, Sutiaba' },
-    { id: 7, nombre: 'Liga de Béisbol Carretera Sur', tipodocumento: 'RUC', documento: 'J0310001344', telefono: '2266 5510', correo: 'directiva@beisbolcsur.ni', direccion: 'Managua, Carretera Sur' },
-    { id: 8, nombre: 'Danilo Espinoza Cruz', tipodocumento: 'Cédula', documento: '0011806770018C', telefono: '8433 2277', correo: 'danilo.espinoza@gmail.com', direccion: 'Estelí, Barrio Milenio' },
-    { id: 9, nombre: 'Liga de Softbol Femenino Estelí', tipodocumento: 'RUC', documento: 'J0310001566', telefono: '2713 4402', correo: 'softbolfem@ligaesteli.ni', direccion: 'Estelí, Km 3 Carretera Panamericana' },
+    { id: 1, nombre: 'Club Deportivo Los Andes', tipodocumento: 'RUC', documento: 'J0310000123', telefono: '8712 3344', correo: 'losandes@club.ni', direccion: 'Managua, Villa Fontana', estado: 'Activo' },
+    { id: 2, nombre: 'Club de Ciclismo Pedal Nica', tipodocumento: 'RUC', documento: 'J0310000455', telefono: '2277 9911', correo: 'directiva@pedalnica.ni', direccion: 'Managua, Altamira', estado: 'Activo' },
+    { id: 3, nombre: 'Liga Municipal de Baloncesto Masaya', tipodocumento: 'RUC', documento: 'J0310000788', telefono: '2255 3321', correo: 'liga@basketmasaya.ni', direccion: 'Masaya, Centro', estado: 'Activo' },
+    { id: 4, nombre: 'Marcia Ortega Bermúdez', tipodocumento: 'Cédula', documento: '0012509880012B', telefono: '8877 1290', correo: 'marcia.ortega@gmail.com', direccion: 'Granada, Calle La Calzada', estado: 'Activo' },
+    { id: 5, nombre: 'Tigres de Rivas Béisbol Club', tipodocumento: 'RUC', documento: 'J0310000992', telefono: '2552 7788', correo: 'tigres@beisbolrivas.ni', direccion: 'Rivas, Barrio Central', estado: 'Activo' },
+    { id: 6, nombre: 'Academia FC Juvenil', tipodocumento: 'RUC', documento: 'J0310001177', telefono: '8990 4412', correo: 'fcjuvenil@correo.ni', direccion: 'León, Sutiaba', estado: 'Activo' },
+    { id: 7, nombre: 'Liga de Béisbol Carretera Sur', tipodocumento: 'RUC', documento: 'J0310001344', telefono: '2266 5510', correo: 'directiva@beisbolcsur.ni', direccion: 'Managua, Carretera Sur', estado: 'Inactivo' },
+    { id: 8, nombre: 'Danilo Espinoza Cruz', tipodocumento: 'Cédula', documento: '0011806770018C', telefono: '8433 2277', correo: 'danilo.espinoza@gmail.com', direccion: 'Estelí, Barrio Milenio', estado: 'Activo' },
+    { id: 9, nombre: 'Liga de Softbol Femenino Estelí', tipodocumento: 'RUC', documento: 'J0310001566', telefono: '2713 4402', correo: 'softbolfem@ligaesteli.ni', direccion: 'Estelí, Km 3 Carretera Panamericana', estado: 'Activo' },
   ],
 
   /* Tabla: pedido (id_pedido, id_cliente, estado, fecha_inicio, descripcion)

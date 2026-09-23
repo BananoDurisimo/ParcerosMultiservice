@@ -11,7 +11,14 @@ export default function EstadoCell({
   options,
   field = 'estado',
   etiqueta = 'estado',
+  /* Como se llama la fila en el aviso de confirmacion. Por defecto se toma su
+     nombre, pero las tablas que no tienen esa columna -variante, compra,
+     pedido- pasan aqui su etiqueta ("PED-0004", "Camiseta · M"). */
+  nombre: nombreFila,
   patch,
+  /* Permite rechazar un cambio: devuelve el motivo y el estado no se toca.
+     Lo usa el pedido, que no puede entrar en produccion sin existencias. */
+  validarCambio,
   disabled = false,
 }) {
   const { update } = useData();
@@ -23,7 +30,7 @@ export default function EstadoCell({
 
   const valor = row?.[field] ?? '—';
   const tono = ESTADO_TONO[valor] || 'neutral';
-  const nombre = etiquetaFila(row);
+  const nombre = nombreFila || etiquetaFila(row);
 
   // Con solo dos estados posibles el desplegable sobra: se muestra un switch.
   const esSwitch = field === 'estado' && options.length === 2;
@@ -57,6 +64,11 @@ export default function EstadoCell({
   const cambiar = (nuevo) => {
     setOpen(false);
     if (nuevo === valor) return;
+    const motivo = validarCambio?.(nuevo, row);
+    if (motivo) {
+      toast.error(motivo, `No fue posible cambiar el ${etiqueta}`);
+      return;
+    }
     update(coleccion, row.id, patch ? patch(nuevo, row) : { [field]: nuevo });
     toast.success(`${nombre}: ${etiqueta} actualizado a "${nuevo}".`, 'Cambio guardado');
   };

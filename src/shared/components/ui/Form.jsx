@@ -11,6 +11,24 @@ import { money } from '@shared/data/mock.js';
 export const normOpciones = (options = []) =>
   options.map((o) => (o && typeof o === 'object' ? o : { value: o, label: o }));
 
+/**
+ * Opción de un desplegable de llave foránea.
+ *
+ * Las filas dadas de baja -un insumo inactivo, un producto retirado, un pedido
+ * anulado- se siguen listando para que los registros que ya las usan muestren
+ * su nombre, pero no se pueden elegir: aparecen en gris y con el motivo. La
+ * única excepción es el valor que el registro ya tiene guardado, que se deja
+ * intacto para no vaciarle el campo al editar.
+ */
+function Opcion({ o, actual }) {
+  const bloqueada = !!o.baja && String(o.value) !== String(actual ?? '');
+  return (
+    <option value={o.value} disabled={bloqueada}>
+      {o.label}{o.baja ? ` · ${String(o.baja).toLowerCase()}` : ''}
+    </option>
+  );
+}
+
 /** Devuelve el valor original de la opción elegida (conserva el tipo numérico de los ids). */
 const valorDe = (opts, texto) => {
   const o = opts.find((x) => String(x.value) === String(texto));
@@ -184,7 +202,7 @@ export function Field({ f, value, error, onChange, readOnly }) {
           onChange={(e) => onChange(valorDe(opts, e.target.value))}
         >
           <option value="">Seleccione…</option>
-          {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {opts.map((o) => <Opcion key={o.value} o={o} actual={value} />)}
         </select>
         {f.hint && !error && <span className="caption">{f.hint}</span>}
         {error && <span className="field-error"><Icon name="alert" size={12} /> {error}</span>}
@@ -445,7 +463,7 @@ export function ItemsEditor({ f, value = [], onChange, error, readOnly }) {
           <div className="items-row">
             <select className="select" value={draft[f.itemKey]} onChange={(e) => elegir(e.target.value)} aria-label={f.itemLabel}>
               <option value="">Seleccione…</option>
-              {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {opts.map((o) => <Opcion key={o.value} o={o} actual={draft[f.itemKey]} />)}
             </select>
             <input className="input" type="number" min={f.decimales ? '0' : '1'} step={f.decimales ? 'any' : '1'} placeholder="Cant." aria-label="Cantidad" value={draft.cantidad} onChange={(e) => setDraft({ ...draft, cantidad: e.target.value })} />
             <input className="input" type="number" min="0" step="0.01" placeholder="Precio" aria-label="Precio unitario" value={draft.precio_unitario} onChange={(e) => setDraft({ ...draft, precio_unitario: e.target.value })} />

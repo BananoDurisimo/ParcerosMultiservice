@@ -4,10 +4,14 @@ import Badge from '@shared/components/ui/Badge.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import { ItemsView } from '@shared/components/ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { money, fecha, hoyISO, ESTADOS_COMPRA, COMPRA_ANULADA } from '@shared/data/mock.js';
+import { money, fecha, hoyISO, ESTADOS_COMPRA, ESTADOS_COMPRA_ACTIVOS, COMPRA_ANULADA } from '@shared/data/mock.js';
 
 /** Tabla `compra` (id_proveedor, fecha, estado) con sus dos detalles:
- *  detalle_compra_insumo y detalle_compra_producto. */
+ *  detalle_compra_insumo y detalle_compra_producto.
+ *
+ *  Una compra mueve el inventario: al quedar "Recibida" sus lineas ingresan a
+ *  las existencias del insumo o de la variante, y si vuelve a "En transito" o
+ *  se anula, ese ingreso se deshace. */
 export default function Compras() {
   const { db, getStats, opciones } = useData();
   const stats = getStats('Mes');
@@ -75,12 +79,29 @@ export default function Compras() {
         { key: 'fecha', label: 'Fecha', mobile: 'meta', render: (r) => <span className="caption">{fecha(r.fecha)}</span> },
         { key: 'calc_lineas', label: 'Líneas', align: 'center', render: (r) => <span className="badge badge-neutral">{r.calc_lineas}</span> },
         { key: 'calc_total', label: 'Total', align: 'right', mobile: 'value', render: (r) => <span className="money">{money(r.calc_total)}</span> },
-        { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="compras" options={ESTADOS_COMPRA} /> },
+        {
+          /* Anular tiene su propia confirmacion en el formulario, asi que el
+             desplegable del listado solo alterna entre los estados normales y
+             se bloquea cuando la compra ya esta anulada. */
+          key: 'estado', label: 'Estado', mobile: 'meta',
+          render: (r) => (
+            <EstadoCell
+              row={r}
+              coleccion="compras"
+              nombre={codigo(r)}
+              options={ESTADOS_COMPRA_ACTIVOS}
+              disabled={r.estado === COMPRA_ANULADA}
+            />
+          ),
+        },
       ]}
       campos={[
         { name: 'id_proveedor', label: 'Proveedor', type: 'select', options: proveedores, required: true },
         { name: 'fecha', label: 'Fecha de compra', type: 'date', required: true },
-        { name: 'estado', label: 'Estado', type: 'select', options: ESTADOS_COMPRA, required: true },
+        {
+          name: 'estado', label: 'Estado', type: 'select', options: ESTADOS_COMPRA_ACTIVOS, required: true,
+          hint: 'Al marcarla como recibida, sus líneas ingresan a las existencias.',
+        },
         { name: 'detalle_insumos', label: 'Insumos adquiridos', type: 'items', itemKey: 'id_insumo', itemLabel: 'Insumo', options: insumos },
         { name: 'detalle_productos', label: 'Productos adquiridos', type: 'items', itemKey: 'id_varianteproducto', itemLabel: 'Variante de producto', options: variantes, hint: 'Opcional: solo para compras de prendas ya confeccionadas.' },
       ]}

@@ -6,6 +6,7 @@ import {
   UMBRAL_STOCK_BAJO,
   MODULOS_AUDITADOS,
   PEDIDO_ANULADO,
+  ESTADOS_PEDIDO,
   COMPRA_ANULADA,
   ETIQUETA_ACCION,
   camposCambiados,
@@ -108,25 +109,129 @@ const variacion = (actual, previo) => {
   return Math.round(((actual - previo) / previo) * 100);
 };
 
+/* Estados que dan de baja una fila: deja de ofrecerse para registros nuevos,
+   pero no desaparece de ningun lado. Los documentos que ya la usan tienen que
+   seguir mostrando su nombre, asi que la opcion se sigue listando -marcada con
+   el motivo- y es el desplegable el que no deja elegirla. */
+const ESTADOS_DE_BAJA = ['Inactivo', 'Anulado', 'Anulada'];
+
+/** Motivo por el que una fila ya no se puede elegir, o `undefined` si esta vigente. */
+const motivoBaja = (r) =>
+  (ESTADOS_DE_BAJA.includes(r.estado) && r.estado) ||
+  /* Una variante depende ademas del estado de su producto. */
+  (r.calc_disponible === 'No disponible' && 'No disponible') ||
+  undefined;
+
 const suma = (arr, fn) => arr.reduce((s, x) => s + Number(fn(x) || 0), 0);
 const porId = (arr) => new Map(arr.map((r) => [r.id, r]));
+
+/* --------------------------------------------------------------
+   Movimiento de existencias
+
+   Las existencias no son un dato suelto que solo se teclee en Insumos y en
+   Variante producto: las mueven los documentos. Una compra recibida ingresa
+   lo que trae; un pedido vigente compromete lo que va a confeccionar.
+
+   `efectoEnStock` traduce un documento a las unidades que suma (+) o resta (-)
+   en cada tabla. Un documento en transito o anulado no mueve nada, de modo que
+   cambiarle el estado -desde el listado o al anular- ingresa o devuelve las
+   existencias por si solo.
+
+   Los datos semilla ya vienen con las existencias al dia: no se reprocesa el
+   historial, solo se aplican los movimientos que ocurren en la sesion.
+   -------------------------------------------------------------- */
+const SIN_EFECTO = { insumos: [], variantes: [] };
+
+const lineas = (arr, llave, signo) =>
+  (arr || []).map((l) => ({ id: l[llave], n: signo * Number(l.cantidad || 0) }));
+
+function efectoEnStock(col, row) {
+  if (!row) return SIN_EFECTO;
+  if (col === 'compras') {
+    return row.estado === 'Recibida'
+      ? {
+          insumos: lineas(row.detalle_insumos, 'id_insumo', 1),
+          variantes: lineas(row.detalle_productos, 'id_varianteproducto', 1),
+        }
+      : SIN_EFECTO;
+  }
+  if (col === 'pedidos') {
+    /* El pedido compromete material desde que entra en produccion: mientras es
+       una cotizacion aprobada -la primera etapa- todavia no descuenta nada, y
+       uno anulado nunca llego a hacerlo. De "Pedido en proceso" en adelante el
+       material ya salio del almacen, asi que el descuento se mantiene aunque
+       el pedido siga avanzando hasta la entrega. */
+    return ESTADOS_PEDIDO.indexOf(row.estado) >= 1
+      ? {
+          insumos: lineas(row.insumos, 'id_insumo', -1),
+          variantes: lineas(row.detalles, 'id_varianteproducto', -1),
+        }
+      : SIN_EFECTO;
+  }
+  return SIN_EFECTO;
+}
+
+/** Las cantidades de insumo admiten decimales (1.5 L), asi que se redondea a
+ *  centesimas para que la resta no deje arrastre de coma flotante. */
+const redondear = (n) => Math.round(n * 100) / 100;
+
+/**
+ * Devuelve `d` con las existencias ya ajustadas al reemplazar el documento
+ * `anterior` por `nuevo`: se deshace el efecto que tenia y se aplica el nuevo.
+ */
+function conStock(d, col, anterior, nuevo) {
+  if (col !== 'compras' && col !== 'pedidos') return d;
+
+  const delta = { insumos: new Map(), variantes: new Map() };
+  const acumular = (efecto, signo) => {
+    for (const tabla of ['insumos', 'variantes']) {
+      for (const { id, n } of efecto[tabla]) {
+        delta[tabla].set(id, (delta[tabla].get(id) || 0) + signo * n);
+      }
+    }
+  };
+  acumular(efectoEnStock(col, anterior), -1);
+  acumular(efectoEnStock(col, nuevo), 1);
+
+  const out = { ...d };
+  for (const tabla of ['insumos', 'variantes']) {
+    if (!delta[tabla].size) continue;
+    out[tabla] = d[tabla].map((r) =>
+      delta[tabla].has(r.id)
+        /* Nunca se muestran existencias negativas: los pedidos ya se validan
+           contra lo disponible, y el unico camino al numero rojo -bajar o
+           anular una compra cuyo material ya se consumio- se corta en cero. */
+        ? { ...r, stock: Math.max(0, redondear(Number(r.stock || 0) + delta[tabla].get(r.id))) }
+        : r
+    );
+  }
+  return out;
+}
 
 export function DataProvider({ children }) {
   const [raw, setRaw] = useState(() => JSON.parse(JSON.stringify(seed)));
 
   const nextId = (arr) => (arr.length ? Math.max(...arr.map((r) => r.id)) + 1 : 1);
 
+  /* Guardar y actualizar pasan por `conStock`, de modo que el movimiento de
+     existencias ocurre venga de donde venga el cambio: del formulario, del
+     desplegable de estado del listado o del dialogo de anulacion. */
   const create = useCallback((col, row) => {
     let creado;
     setRaw((d) => {
       creado = { ...row, id: nextId(d[col]) };
-      return { ...d, [col]: [creado, ...d[col]] };
+      return conStock({ ...d, [col]: [creado, ...d[col]] }, col, null, creado);
     });
     return creado;
   }, []);
 
   const update = useCallback((col, id, patch) => {
-    setRaw((d) => ({ ...d, [col]: d[col].map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
+    setRaw((d) => {
+      const anterior = d[col].find((r) => r.id === id);
+      if (!anterior) return d;
+      const nuevo = { ...anterior, ...patch };
+      return conStock({ ...d, [col]: d[col].map((r) => (r.id === id ? nuevo : r)) }, col, anterior, nuevo);
+    });
   }, []);
 
   const remove = useCallback((col, id) => {
@@ -180,6 +285,8 @@ export function DataProvider({ children }) {
         calc_precio: Number(p?.precio || 0),
         calc_valor: Number(v.stock || 0) * Number(p?.precio || 0),
         calc_estado_producto: p?.estado || '—',
+        /* Una variante se ofrece solo si ella y su producto estan activos. */
+        calc_disponible: v.estado === 'Activo' && p?.estado === 'Activo' ? 'Disponible' : 'No disponible',
       };
     });
     const variantesM = porId(variantes);
@@ -190,6 +297,9 @@ export function DataProvider({ children }) {
       calc_unidad: unidades.get(i.id_unidad_medida)?.nombre || '—',
       calc_abreviatura: unidades.get(i.id_unidad_medida)?.abreviatura || '',
       calc_valor: Number(i.stock) * Number(i.precio_unitario),
+      /* Cada insumo guarda su propio minimo; UMBRAL_STOCK_BAJO solo respalda
+         las filas que todavia no traen la columna. */
+      calc_minimo: Number(i.stock_minimo ?? UMBRAL_STOCK_BAJO),
     }));
 
     const totalCompra = (c) =>
@@ -250,14 +360,13 @@ export function DataProvider({ children }) {
     const comprasPorProveedor = cuenta(raw.compras, 'id_proveedor');
     const pedidosPorCliente = cuenta(raw.pedidos, 'id_cliente');
 
+    /* El producto no guarda existencias: su total es la suma de las de todas
+       sus variantes. Las tallas en si se consultan en Variante producto. */
     const stockPorProducto = new Map();
-    const tallasPorProducto = new Map();
     raw.variantes.forEach((v) => {
       stockPorProducto.set(v.id_producto, (stockPorProducto.get(v.id_producto) || 0) + Number(v.stock || 0));
-      const lista = tallasPorProducto.get(v.id_producto) || [];
-      lista.push(tallas.get(v.id_talla)?.nombre || '—');
-      tallasPorProducto.set(v.id_producto, lista);
     });
+    const variantesPorProducto = cuenta(raw.variantes, 'id_producto');
 
     return {
       // catálogos
@@ -289,14 +398,16 @@ export function DataProvider({ children }) {
       categorias: raw.categorias.map((c) => ({
         ...c,
         calc_productos: productosPorCategoria.get(c.id) || 0,
+        /* Texto fijo para poder filtrar por uso: el filtro de la tabla compara
+           valores exactos, no cuenta registros. */
+        calc_uso: (productosPorCategoria.get(c.id) || 0) > 0 ? 'Con productos' : 'Sin productos',
       })),
 
       productos: raw.productos.map((p) => ({
         ...p,
         calc_categoria: categoriasM.get(p.id_categoria)?.nombre || '—',
         calc_stock: stockPorProducto.get(p.id) || 0,
-        calc_variantes: (tallasPorProducto.get(p.id) || []).length,
-        calc_tallas: tallasPorProducto.get(p.id) || [],
+        calc_variantes: variantesPorProducto.get(p.id) || 0,
       })),
 
       insumos,
@@ -340,9 +451,13 @@ export function DataProvider({ children }) {
     };
   }, [raw]);
 
-  /** Opciones `{value, label}` para los select de llave foránea. */
+  /** Opciones `{value, label, baja}` para los select de llave foránea: `baja`
+   *  lleva el motivo cuando la fila ya no se puede elegir (ver `motivoBaja`).
+   *  La lista siempre viene completa, de modo que los registros que ya
+   *  apuntan a una fila dada de baja sigan mostrando su nombre. */
   const opciones = useCallback(
-    (coleccion, etiqueta = (r) => r.nombre) => db[coleccion].map((r) => ({ value: r.id, label: etiqueta(r) })),
+    (coleccion, etiqueta = (r) => r.nombre) =>
+      db[coleccion].map((r) => ({ value: r.id, label: etiqueta(r), baja: motivoBaja(r) })),
     [db]
   );
 
@@ -354,7 +469,7 @@ export function DataProvider({ children }) {
      Los pedidos anulados se conservan en el listado, pero no se toman en
      cuenta en ningun indicador (igual que las compras anuladas). */
   const stats = useMemo(() => {
-    const bajoStock = db.insumos.filter((i) => i.stock <= UMBRAL_STOCK_BAJO);
+    const bajoStock = db.insumos.filter((i) => i.stock <= i.calc_minimo);
     const vigentes = db.pedidos.filter((p) => p.estado !== PEDIDO_ANULADO);
     return {
       porCobrar: suma(vigentes, (p) => p.calc_saldo),
@@ -450,7 +565,7 @@ export function DataProvider({ children }) {
         l: i.nombre,
         v: Number(i.stock),
         nota: i.calc_abreviatura || '',
-        color: i.stock === 0 ? 'var(--error)' : i.stock <= UMBRAL_STOCK_BAJO ? 'var(--warning)' : 'var(--success)',
+        color: i.stock === 0 ? 'var(--error)' : i.stock <= i.calc_minimo ? 'var(--warning)' : 'var(--success)',
       }));
 
     return {

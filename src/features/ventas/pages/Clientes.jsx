@@ -1,11 +1,13 @@
 import CrudPage from '@shared/components/CrudPage.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import Icon from '@shared/components/Icon.jsx';
+import EstadoCell from '@shared/components/ui/EstadoCell.jsx';
 import { iniciales } from '@shared/context/AuthContext.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { TIPOS_DOCUMENTO } from '@shared/data/mock.js';
+import { TIPOS_DOCUMENTO, ESTADOS_REGISTRO } from '@shared/data/mock.js';
 
-/** Tabla `cliente`: nombre, tipodocumento, documento, telefono, correo, direccion. */
+/** Tabla `cliente`: nombre, tipodocumento, documento, telefono, correo,
+ *  direccion, estado. */
 export default function Clientes() {
   const { db, stats } = useData();
 
@@ -18,8 +20,11 @@ export default function Clientes() {
       entidad="clientes"
       singular="cliente"
       searchKeys={['nombre', 'documento', 'correo', 'telefono']}
-      filtros={[{ key: 'tipodocumento', label: 'Tipo de documento', options: TIPOS_DOCUMENTO }]}
-      defaults={{ tipodocumento: 'RUC' }}
+      filtros={[
+        { key: 'tipodocumento', label: 'Tipo de documento', options: TIPOS_DOCUMENTO },
+        { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
+      ]}
+      defaults={{ tipodocumento: 'RUC', estado: 'Activo' }}
       resumen={[
         <KpiCard key="a" label="Clientes registrados" value={db.clientes.length} icon="users" tono="primary" />,
         <KpiCard key="b" label="Pedidos acumulados" value={stats.totalPedidos} icon="clipboard" tono="info" />,
@@ -43,6 +48,7 @@ export default function Clientes() {
         { key: 'correo', label: 'Correo', render: (r) => <span className="muted">{r.correo}</span> },
         { key: 'direccion', label: 'Dirección', render: (r) => <span className="caption">{r.direccion || '—'}</span> },
         { key: 'calc_pedidos', label: 'Pedidos', align: 'center', mobile: 'value', render: (r) => <span className="badge badge-info">{r.calc_pedidos}</span> },
+        { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="clientes" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[
         { name: 'nombre', label: 'Nombre o razón social', type: 'text', required: true },
@@ -51,6 +57,7 @@ export default function Clientes() {
         { name: 'correo', label: 'Correo electrónico', type: 'email', required: true, unique: true, hint: 'No puede repetirse: la columna es única.' },
         { name: 'telefono', label: 'Teléfono', type: 'tel' },
         { name: 'direccion', label: 'Dirección', type: 'text', full: true },
+        { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Un cliente inactivo conserva sus pedidos y abonos, pero ya no se propone para pedidos nuevos.' },
       ]}
     />
   );

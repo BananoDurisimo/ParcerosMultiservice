@@ -11,7 +11,11 @@ import { money, fecha, hoyISO, ESTADOS_PEDIDO, ESTADOS_PEDIDO_TODOS, PEDIDO_ANUL
  *    apunta a la variante -producto + talla-, nunca al producto completo.
  *  - detalle_pedido_insumo (id_insumo, cantidad, precio_unitario, subtotal):
  *    los materiales que se gastan en la personalizacion descrita.
- *  El total y lo abonado no son columnas: se derivan de ambos detalles y de abono. */
+ *  El total y lo abonado no son columnas: se derivan de ambos detalles y de abono.
+ *
+ *  Un pedido vigente compromete inventario: al guardarlo, sus lineas se
+ *  descuentan de las existencias de la variante y del insumo, y al anularlo se
+ *  devuelven. Por eso no se puede pedir mas de lo que hay. */
 
 const subtotalLineas = (lineas = []) =>
   lineas.reduce((s, l) => s + Number(l.cantidad || 0) * Number(l.precio_unitario || 0), 0);
@@ -130,6 +134,64 @@ export default function Pedidos() {
     );
   };
 
+  /* El pedido compromete inventario desde que entra en produccion: mientras es
+     una cotizacion aprobada no descuenta nada. Por eso las existencias se
+     revisan justo cuando el pedido pasa -o nace- en un estado que consume. */
+  const consumeInventario = (estado) => ESTADOS_PEDIDO.indexOf(estado) >= 1;
+
+  /**
+   * Lineas que no alcanzan: [{ nombre, pide, hay }].
+   * `anterior` es el pedido tal como esta guardado; si ya venia descontando,
+   * lo suyo vuelve a contar como disponible para el mismo pedido.
+   */
+  const faltantes = (pedido, anterior) => {
+    const yaDescontado = anterior && consumeInventario(anterior.estado) ? anterior : null;
+    const out = [];
+
+    const revisar = (campo, llave, coleccion, nombre) => {
+      const pide = new Map();
+      (pedido[campo] || []).forEach((l) => {
+        pide.set(l[llave], (pide.get(l[llave]) || 0) + Number(l.cantidad || 0));
+      });
+      for (const [id, cantidad] of pide) {
+        const fila = db[coleccion].find((x) => String(x.id) === String(id));
+        if (!fila) continue;
+        const propio = (yaDescontado?.[campo] || [])
+          .filter((l) => String(l[llave]) === String(id))
+          .reduce((s, l) => s + Number(l.cantidad || 0), 0);
+        const hay = Number(fila.stock || 0) + propio;
+        if (cantidad > hay) out.push({ campo, nombre: nombre(fila), pide: cantidad, hay });
+      }
+    };
+
+    revisar('detalles', 'id_varianteproducto', 'variantes', (x) => x.calc_etiqueta);
+    revisar('insumos', 'id_insumo', 'insumos', (x) => x.nombre);
+    return out;
+  };
+
+  const listaFaltantes = (faltan) =>
+    faltan.map((f) => `${f.nombre} (se piden ${f.pide} y hay ${f.hay})`).join('; ');
+
+  /* Al guardar: solo se exige inventario si el pedido queda en un estado que
+     consume. Una cotizacion aprobada se puede registrar sin existencias. */
+  const validarExtra = (v, modo, actual) => {
+    if (!consumeInventario(v.estado)) return null;
+    const faltan = faltantes(v, actual);
+    if (!faltan.length) return null;
+    return {
+      [faltan[0].campo]: `No hay existencias suficientes para poner el pedido en producción: ${listaFaltantes(faltan)}.`,
+    };
+  };
+
+  /* Al cambiar el estado desde el listado: el pedido no entra en produccion si
+     falta material (HU_080). Si ya venia consumiendo, avanzar de etapa no pide
+     existencias nuevas. */
+  const validarCambioEstado = (nuevo, row) => {
+    if (!consumeInventario(nuevo) || consumeInventario(row.estado)) return null;
+    const faltan = faltantes(row, row);
+    return faltan.length ? `No hay existencias suficientes: ${listaFaltantes(faltan)}.` : null;
+  };
+
   return (
     <CrudPage
       titulo="Pedidos"
@@ -145,6 +207,7 @@ export default function Pedidos() {
       ]}
       defaults={{ detalles: [], insumos: [], descripcion: '', estado: 'Cotización aprobada', fecha_inicio: hoyISO() }}
       etiquetaRegistro={codigo}
+      validarExtra={validarExtra}
       anulacion={{
         valor: PEDIDO_ANULADO,
         mensaje: (r) => `El pedido ${codigo(r)} de ${r.calc_cliente} quedará marcado como anulado: se conserva en el listado y en el historial, pero deja de sumar en las ventas y en el saldo por cobrar.`,
@@ -172,12 +235,28 @@ export default function Pedidos() {
             );
           },
         },
-        { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="pedidos" etiqueta="estado del pedido" options={ESTADOS_PEDIDO_TODOS} /> },
+        {
+          /* Anular tiene su propia confirmacion en el formulario: el
+             desplegable del listado solo recorre las etapas normales y se
+             bloquea cuando el pedido ya esta anulado. */
+          key: 'estado', label: 'Estado', mobile: 'meta',
+          render: (r) => (
+            <EstadoCell
+              row={r}
+              coleccion="pedidos"
+              nombre={codigo(r)}
+              etiqueta="estado del pedido"
+              options={ESTADOS_PEDIDO}
+              validarCambio={validarCambioEstado}
+              disabled={r.estado === PEDIDO_ANULADO}
+            />
+          ),
+        },
       ]}
       campos={[
         { name: 'id_cliente', label: 'Cliente', type: 'select', options: clientes, required: true },
         { name: 'fecha_inicio', label: 'Fecha de inicio', type: 'date', required: true },
-        { name: 'estado', label: 'Estado del pedido', type: 'select', options: ESTADOS_PEDIDO_TODOS, required: true },
+        { name: 'estado', label: 'Estado del pedido', type: 'select', options: ESTADOS_PEDIDO, required: true },
         {
           name: 'detalles', label: '1. Variantes del producto', type: 'items', required: true,
           itemKey: 'id_varianteproducto', itemLabel: 'Variante (producto y talla)', options: variantesEditor,

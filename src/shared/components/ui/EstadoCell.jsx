@@ -19,6 +19,10 @@ export default function EstadoCell({
   /* Permite rechazar un cambio: devuelve el motivo y el estado no se toca.
      Lo usa el pedido, que no puede entrar en produccion sin existencias. */
   validarCambio,
+  /* Fuerza la lista desplegable aunque queden dos opciones. Lo usa la compra:
+     sus estados son etapas por las que avanza -y tiene una tercera, la
+     anulacion, que se aplica desde el formulario-, no dos valores opuestos. */
+  comoLista = false,
   disabled = false,
 }) {
   const { update } = useData();
@@ -32,8 +36,8 @@ export default function EstadoCell({
   const tono = ESTADO_TONO[valor] || 'neutral';
   const nombre = nombreFila || etiquetaFila(row);
 
-  // Con solo dos estados posibles el desplegable sobra: se muestra un switch.
-  const esSwitch = field === 'estado' && options.length === 2;
+  // Con solo dos estados opuestos el desplegable sobra: se muestra un switch.
+  const esSwitch = field === 'estado' && options.length === 2 && !comoLista;
 
   const abrir = () => {
     const r = btnRef.current.getBoundingClientRect();

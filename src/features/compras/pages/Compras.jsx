@@ -45,8 +45,8 @@ export default function Compras() {
       <h3 style={{ margin: '18px 0 10px' }}>Insumos adquiridos</h3>
       <ItemsView lineas={r.detalle_insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" />
 
-      <h3 style={{ margin: '18px 0 10px' }}>Productos adquiridos</h3>
-      <ItemsView lineas={r.detalle_productos || []} opciones={variantes} itemKey="id_varianteproducto" itemLabel="Variante" />
+      <h3 style={{ margin: '18px 0 10px' }}>Variantes de producto adquiridas</h3>
+      <ItemsView lineas={r.detalle_productos || []} opciones={variantes} itemKey="id_varianteproducto" itemLabel="Variante (producto y talla)" />
 
       <div className="between" style={{ marginTop: 16 }}>
         <span className="caption">{r.calc_lineas} línea(s) en total</span>
@@ -94,9 +94,9 @@ export default function Compras() {
         { key: 'calc_lineas', label: 'Líneas', align: 'center', render: (r) => <span className="badge badge-neutral">{r.calc_lineas}</span> },
         { key: 'calc_total', label: 'Total', align: 'right', mobile: 'value', render: (r) => <span className="money">{money(r.calc_total)}</span> },
         {
-          /* Anular tiene su propia confirmacion en el formulario, asi que el
-             desplegable del listado solo alterna entre los estados normales y
-             se bloquea cuando la compra ya esta anulada. */
+          /* Anular tiene su propia confirmacion en el formulario, asi que la
+             lista del listado solo ofrece los estados normales y se bloquea
+             cuando la compra ya esta anulada. */
           key: 'estado', label: 'Estado', mobile: 'meta',
           render: (r) => (
             <EstadoCell
@@ -104,6 +104,7 @@ export default function Compras() {
               coleccion="compras"
               nombre={codigo(r)}
               options={ESTADOS_COMPRA_ACTIVOS}
+              comoLista
               disabled={r.estado === COMPRA_ANULADA}
             />
           ),
@@ -117,7 +118,7 @@ export default function Compras() {
           hint: 'Al marcarla como recibida, sus líneas ingresan a las existencias.',
         },
         { name: 'detalle_insumos', label: 'Insumos adquiridos', type: 'items', itemKey: 'id_insumo', itemLabel: 'Insumo', options: insumos },
-        { name: 'detalle_productos', label: 'Productos adquiridos', type: 'items', itemKey: 'id_varianteproducto', itemLabel: 'Variante de producto', options: variantes, hint: 'Opcional: solo para compras de prendas ya confeccionadas.' },
+        { name: 'detalle_productos', label: 'Variantes de producto adquiridas', type: 'items', itemKey: 'id_varianteproducto', itemLabel: 'Variante (producto y talla)', options: variantes, hint: 'Opcional: solo para compras de prendas ya confeccionadas.' },
       ]}
       validarExtra={(v) =>
         (v.detalle_insumos || []).length + (v.detalle_productos || []).length === 0

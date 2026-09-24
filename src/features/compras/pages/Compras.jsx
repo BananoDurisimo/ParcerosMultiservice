@@ -4,7 +4,7 @@ import Badge from '@shared/components/ui/Badge.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import { ItemsView } from '@shared/components/ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { money, fecha, hoyISO, ESTADOS_COMPRA, ESTADOS_COMPRA_ACTIVOS, COMPRA_ANULADA } from '@shared/data/mock.js';
+import { money, fecha, mes, hoyISO, ESTADOS_COMPRA, ESTADOS_COMPRA_ACTIVOS, COMPRA_ANULADA } from '@shared/data/mock.js';
 
 /** Tabla `compra` (id_proveedor, fecha, estado) con sus dos detalles:
  *  detalle_compra_insumo y detalle_compra_producto.
@@ -18,6 +18,18 @@ export default function Compras() {
   const proveedores = opciones('proveedores');
   const insumos = opciones('insumos');
   const variantes = opciones('variantes', (v) => v.calc_etiqueta);
+
+  /* Meses con compras registradas, del mas reciente al mas antiguo: el filtro
+     por fecha agrupa por mes para no ofrecer una opcion por cada dia suelto. */
+  const meses = [...new Set(db.compras.map((c) => c.calc_periodo))]
+    .filter(Boolean)
+    .sort((a, b) => b.localeCompare(a))
+    .map((p) => ({ value: p, label: mes(p) }));
+
+  /* Solo los insumos que ya figuran en alguna compra: ofrecer el catalogo
+     completo llenaria el desplegable de opciones sin resultados. */
+  const compradosIds = new Set(db.compras.flatMap((c) => c.calc_insumos));
+  const insumosComprados = insumos.filter((o) => compradosIds.has(o.value));
 
   const codigo = (r) => `CMP-${String(r.id).padStart(4, '0')}`;
 
@@ -59,6 +71,8 @@ export default function Compras() {
       searchKeys={['calc_proveedor', 'estado', 'fecha']}
       filtros={[
         { key: 'id_proveedor', label: 'Proveedor', options: proveedores },
+        { key: 'calc_insumos', label: 'Insumo adquirido', options: insumosComprados },
+        { key: 'calc_periodo', label: 'Mes de compra', options: meses },
         { key: 'estado', label: 'Estado', options: ESTADOS_COMPRA },
       ]}
       defaults={{ detalle_insumos: [], detalle_productos: [], estado: 'En tránsito', fecha: hoyISO() }}

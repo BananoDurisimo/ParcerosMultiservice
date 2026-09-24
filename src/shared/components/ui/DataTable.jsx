@@ -37,8 +37,14 @@ export default function DataTable({
         (searchKeys.length ? searchKeys : Object.keys(r)).some((k) => String(r[k] ?? '').toLowerCase().includes(t))
       );
     }
+    /* Un filtro compara contra el valor de la columna, salvo cuando la fila
+       guarda una lista -los insumos de una compra, por ejemplo-: ahi basta con
+       que uno de sus elementos coincida. */
     Object.entries(fv).forEach(([k, v]) => {
-      if (v) out = out.filter((r) => String(r[k]) === v);
+      if (!v) return;
+      out = out.filter((r) =>
+        Array.isArray(r[k]) ? r[k].some((x) => String(x) === v) : String(r[k]) === v
+      );
     });
     if (sort.key) {
       out = [...out].sort((a, b) => {

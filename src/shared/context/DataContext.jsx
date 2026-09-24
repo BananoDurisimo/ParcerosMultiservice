@@ -311,6 +311,13 @@ export function DataProvider({ children }) {
       calc_proveedor: proveedoresM.get(c.id_proveedor)?.nombre || '—',
       calc_total: totalCompra(c),
       calc_lineas: (c.detalle_insumos || []).length + (c.detalle_productos || []).length,
+      /* Mes de la compra ("2026-08"): la columna `fecha` guarda el dia exacto,
+         pero el listado se filtra por mes, que es como se consulta el historial. */
+      calc_periodo: (c.fecha || '').slice(0, 7),
+      /* Insumos que trae la compra en sus lineas de detalle_compra_insumo: el
+         listado filtra por esta lista para responder "que compras traen este
+         insumo" sin abrir el detalle de cada una. */
+      calc_insumos: (c.detalle_insumos || []).map((l) => l.id_insumo),
     }));
 
     const abonadoPorPedido = new Map();

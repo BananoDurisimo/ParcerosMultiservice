@@ -29,6 +29,15 @@ export const fecha = (iso) => {
   return `${d}/${m}/${y}`;
 };
 
+const MESES_LARGOS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+/** "2026-08" -> "Agosto 2026". Etiqueta de los filtros por mes de los listados. */
+export const mes = (periodo) => {
+  if (!periodo) return '—';
+  const [y, m] = periodo.split('-');
+  return `${MESES_LARGOS[Number(m) - 1] || '—'} ${y}`;
+};
+
 /** Fecha local en formato ISO (yyyy-mm-dd), sin el corrimiento a UTC de toISOString(). */
 export const toISO = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

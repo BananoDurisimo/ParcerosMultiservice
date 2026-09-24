@@ -33,16 +33,26 @@ y el router usa ese mismo valor como `basename`. Como Pages no reescribe rutas,
 el despliegue copia `index.html` a `404.html`: así recargar `/app/pedidos`
 carga la aplicación en lugar de dar error.
 
-Hay dos caminos, ambos ya configurados:
+Hay tres caminos, todos ya configurados:
 
 | | Cuándo se usa | Qué hace |
 |---|---|---|
-| `.github/workflows/deploy.yml` | Automático, en cada push a `main` | Compila y publica con GitHub Actions |
+| `scripts/hooks/pre-push` | Automático, en cada push a `main` | Publica desde tu equipo, enganchado al mismo push |
 | `npm run deploy` | Manual, desde tu equipo | Compila y empuja `dist/` a la rama `gh-pages` |
+| `.github/workflows/deploy.yml` | Manual, desde la pestaña Actions | Compila y publica con GitHub Actions |
 
-> **Nota:** el workflow automático solo funcionará cuando GitHub Actions esté
-> disponible en la cuenta. Mientras tanto, `npm run deploy` publica igual,
-> porque la rama `gh-pages` no depende de Actions.
+El despliegue automático es un hook de Git, no un workflow: `npm install` apunta
+`core.hooksPath` a `scripts/hooks/` (script `prepare`), y desde ahí cada push a
+`main` compila y publica el sitio. Si la publicación falla, el push de `main`
+sigue su curso y basta con ejecutar `npm run deploy` después. Para saltarse el
+hook en un push puntual: `git push --no-verify`.
+
+> **Nota:** el workflow de Actions quedó en disparo manual porque la cuenta tiene
+> Actions bloqueado por facturación: cada push dejaba un run fallido y su correo
+> de error, sin publicar nada. Por eso el despliegue automático se hace con el
+> hook. Cuando Actions vuelva a estar disponible, se puede devolver el disparador
+> `push` del workflow, quitar el hook y cambiar Settings > Pages a "GitHub
+> Actions" como origen, porque hoy Pages sirve la rama `gh-pages`.
 
 ## Usuarios de prueba
 

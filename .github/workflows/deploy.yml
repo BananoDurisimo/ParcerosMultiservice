@@ -8,9 +8,13 @@ name: Deploy a GitHub Pages
 # se publica con `npm run deploy` (scripts/deploy-pages.mjs), que sube dist/ a
 # la rama gh-pages sin pasar por Actions.
 #
+# El despliegue automatico se hace mientras tanto desde el equipo: el hook
+# scripts/hooks/pre-push ejecuta esa misma publicacion en cada push a main.
+#
 # Cuando Actions vuelva a estar disponible: devolver el disparador `push` de
-# abajo y cambiar Settings > Pages a "GitHub Actions" como origen, porque hoy
-# Pages sirve la rama gh-pages.
+# abajo, quitar el hook (y su linea `prepare` del package.json) y cambiar
+# Settings > Pages a "GitHub Actions" como origen, porque hoy Pages sirve la
+# rama gh-pages.
 on:
   # push:
   #   branches: [main]

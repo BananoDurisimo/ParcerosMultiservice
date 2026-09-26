@@ -5,7 +5,7 @@ import { ESTADOS_REGISTRO } from '@shared/data/mock.js';
 
 /** Tabla `rol` (id_rol, nombre, estado) + tabla puente `rolxpermiso` (id_rol, id_permiso). */
 export default function Roles() {
-  const { db, opciones } = useData();
+  const { opciones } = useData();
   const permisos = opciones('permisos');
 
   return (
@@ -17,6 +17,7 @@ export default function Roles() {
       entidad="roles"
       singular="rol"
       searchKeys={['nombre']}
+      conDetalle={false}
       filtros={[
         { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
         { key: 'calc_uso', label: 'Asignación', options: ['Con usuarios', 'Sin usuarios'] },
@@ -38,25 +39,6 @@ export default function Roles() {
         },
         { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Un rol inactivo no habilita el ingreso de sus usuarios.' },
       ]}
-      renderDetalle={(r) => (
-        <div>
-          <div className="detail-grid">
-            <div className="detail-item"><div className="dl">Rol</div><div className="dv">{r.nombre}</div></div>
-            <div className="detail-item"><div className="dl">Estado</div><div className="dv">{r.estado}</div></div>
-            <div className="detail-item"><div className="dl">Usuarios asignados</div><div className="dv">{r.calc_usuarios}</div></div>
-          </div>
-          <h3 style={{ margin: '18px 0 10px' }}>Permisos asociados</h3>
-          <div className="row" style={{ flexWrap: 'wrap', gap: 7 }}>
-            {r.calc_permisos.length === 0 && <span className="caption">Este rol no tiene permisos asignados.</span>}
-            {r.calc_permisos.map((p) => <span className="badge badge-primary" key={p}>{p}</span>)}
-          </div>
-          {r.calc_usuarios > 0 && (
-            <div className="alert alert-info" style={{ marginTop: 16 }}>
-              {r.calc_usuarios} usuario(s) usan este rol: {db.usuarios.filter((u) => u.id_rol === r.id).map((u) => u.nombre_empleado).join(', ')}.
-            </div>
-          )}
-        </div>
-      )}
     />
   );
 }

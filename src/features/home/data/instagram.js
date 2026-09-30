@@ -19,7 +19,6 @@ export const IG_POSTS = [
   { id: 'DYNWT66q3_Z', tipo: 'reel' },
   { id: 'DVZBMTQisgP', tipo: 'p' },
   { id: 'DUbJPC8ipvG', tipo: 'p' },
-  { id: 'DSI4yHZFI86', tipo: 'p' },
   { id: 'DQKD5_RDgRd', tipo: 'p' },
   { id: 'DOv94FLjjVc', tipo: 'p' },
   { id: 'DJUKiQNtS6l', tipo: 'p' },

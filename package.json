@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "node scripts/deploy-pages.mjs"
+    "deploy": "node scripts/deploy-pages.mjs",
+    "prepare": "git config core.hooksPath scripts/hooks || exit 0"
   },
   "dependencies": {
     "react": "^18.3.1",

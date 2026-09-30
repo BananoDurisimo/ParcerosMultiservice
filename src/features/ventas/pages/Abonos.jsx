@@ -3,7 +3,7 @@ import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import Icon from '@shared/components/Icon.jsx';
 import { abrirComprobante, esImagenAdjunta } from '@shared/components/ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { money, fecha, hoyISO, METODOS_PAGO } from '@shared/data/mock.js';
+import { money, fecha, hoyISO, METODOS_PAGO, PEDIDO_ANULADO } from '@shared/data/mock.js';
 
 /** Tabla `abono`: id_pedido, monto, fecha, metodo_pago, url_comprobante.
  *  El cliente y el saldo se obtienen del pedido asociado. */
@@ -86,9 +86,21 @@ export default function Abonos() {
           </div>
         </div>
       )}
+      /* Un abono solo tiene sentido si es dinero real sobre un pedido vigente:
+         no puede ser de cero, no puede exceder el saldo, no se cobra un pedido
+         anulado y no puede cobrarse antes de que el pedido exista. */
       validarExtra={(v, modo, actual) => {
         const p = db.pedidos.find((x) => x.id === Number(v.id_pedido));
+        if (Number(v.monto) <= 0) return { monto: 'El monto abonado debe ser mayor que cero.' };
         if (!p) return null;
+
+        if (p.estado === PEDIDO_ANULADO) {
+          return { id_pedido: `El pedido PED-${String(p.id).padStart(4, '0')} está anulado: no admite abonos.` };
+        }
+        if (v.fecha && v.fecha < p.fecha_inicio) {
+          return { fecha: `El pedido inició el ${fecha(p.fecha_inicio)}: el abono no puede ser anterior.` };
+        }
+
         const otros = db.abonos
           .filter((a) => a.id_pedido === p.id && a.id !== actual?.id)
           .reduce((s, a) => s + a.monto, 0);

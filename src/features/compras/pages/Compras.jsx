@@ -4,16 +4,32 @@ import Badge from '@shared/components/ui/Badge.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import { ItemsView } from '@shared/components/ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { money, fecha, hoyISO, ESTADOS_COMPRA } from '@shared/data/mock.js';
+import { money, fecha, mes, hoyISO, ESTADOS_COMPRA, ESTADOS_COMPRA_ACTIVOS, COMPRA_ANULADA } from '@shared/data/mock.js';
 
 /** Tabla `compra` (id_proveedor, fecha, estado) con sus dos detalles:
- *  detalle_compra_insumo y detalle_compra_producto. */
+ *  detalle_compra_insumo y detalle_compra_producto.
+ *
+ *  Una compra mueve el inventario: al quedar "Recibida" sus lineas ingresan a
+ *  las existencias del insumo o de la variante, y si vuelve a "En transito" o
+ *  se anula, ese ingreso se deshace. */
 export default function Compras() {
   const { db, getStats, opciones } = useData();
   const stats = getStats('Mes');
   const proveedores = opciones('proveedores');
   const insumos = opciones('insumos');
   const variantes = opciones('variantes', (v) => v.calc_etiqueta);
+
+  /* Meses con compras registradas, del mas reciente al mas antiguo: el filtro
+     por fecha agrupa por mes para no ofrecer una opcion por cada dia suelto. */
+  const meses = [...new Set(db.compras.map((c) => c.calc_periodo))]
+    .filter(Boolean)
+    .sort((a, b) => b.localeCompare(a))
+    .map((p) => ({ value: p, label: mes(p) }));
+
+  /* Solo los insumos que ya figuran en alguna compra: ofrecer el catalogo
+     completo llenaria el desplegable de opciones sin resultados. */
+  const compradosIds = new Set(db.compras.flatMap((c) => c.calc_insumos));
+  const insumosComprados = insumos.filter((o) => compradosIds.has(o.value));
 
   const codigo = (r) => `CMP-${String(r.id).padStart(4, '0')}`;
 
@@ -29,8 +45,8 @@ export default function Compras() {
       <h3 style={{ margin: '18px 0 10px' }}>Insumos adquiridos</h3>
       <ItemsView lineas={r.detalle_insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" />
 
-      <h3 style={{ margin: '18px 0 10px' }}>Productos adquiridos</h3>
-      <ItemsView lineas={r.detalle_productos || []} opciones={variantes} itemKey="id_varianteproducto" itemLabel="Variante" />
+      <h3 style={{ margin: '18px 0 10px' }}>Variantes de producto adquiridas</h3>
+      <ItemsView lineas={r.detalle_productos || []} opciones={variantes} itemKey="id_varianteproducto" itemLabel="Variante (producto y talla)" />
 
       <div className="between" style={{ marginTop: 16 }}>
         <span className="caption">{r.calc_lineas} línea(s) en total</span>
@@ -55,10 +71,16 @@ export default function Compras() {
       searchKeys={['calc_proveedor', 'estado', 'fecha']}
       filtros={[
         { key: 'id_proveedor', label: 'Proveedor', options: proveedores },
+        { key: 'calc_insumos', label: 'Insumo adquirido', options: insumosComprados },
+        { key: 'calc_periodo', label: 'Mes de compra', options: meses },
         { key: 'estado', label: 'Estado', options: ESTADOS_COMPRA },
       ]}
       defaults={{ detalle_insumos: [], detalle_productos: [], estado: 'En tránsito', fecha: hoyISO() }}
       etiquetaRegistro={codigo}
+      anulacion={{
+        valor: COMPRA_ANULADA,
+        mensaje: (r) => `La compra ${codigo(r)} de ${r.calc_proveedor} quedará marcada como anulada: se conserva en el listado y en el historial, pero deja de sumar en los totales de compras.`,
+      }}
       resumen={[
         <KpiCard key="a" label="Compras del mes" value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={stats.tendencias.compras} />,
         <KpiCard key="b" label="Compras registradas" value={db.compras.length} icon="clipboard" tono="info" />,
@@ -71,14 +93,32 @@ export default function Compras() {
         { key: 'fecha', label: 'Fecha', mobile: 'meta', render: (r) => <span className="caption">{fecha(r.fecha)}</span> },
         { key: 'calc_lineas', label: 'Líneas', align: 'center', render: (r) => <span className="badge badge-neutral">{r.calc_lineas}</span> },
         { key: 'calc_total', label: 'Total', align: 'right', mobile: 'value', render: (r) => <span className="money">{money(r.calc_total)}</span> },
-        { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="compras" options={ESTADOS_COMPRA} /> },
+        {
+          /* Anular tiene su propia confirmacion en el formulario, asi que la
+             lista del listado solo ofrece los estados normales y se bloquea
+             cuando la compra ya esta anulada. */
+          key: 'estado', label: 'Estado', mobile: 'meta',
+          render: (r) => (
+            <EstadoCell
+              row={r}
+              coleccion="compras"
+              nombre={codigo(r)}
+              options={ESTADOS_COMPRA_ACTIVOS}
+              comoLista
+              disabled={r.estado === COMPRA_ANULADA}
+            />
+          ),
+        },
       ]}
       campos={[
         { name: 'id_proveedor', label: 'Proveedor', type: 'select', options: proveedores, required: true },
         { name: 'fecha', label: 'Fecha de compra', type: 'date', required: true },
-        { name: 'estado', label: 'Estado', type: 'select', options: ESTADOS_COMPRA, required: true },
+        {
+          name: 'estado', label: 'Estado', type: 'select', options: ESTADOS_COMPRA_ACTIVOS, required: true,
+          hint: 'Al marcarla como recibida, sus líneas ingresan a las existencias.',
+        },
         { name: 'detalle_insumos', label: 'Insumos adquiridos', type: 'items', itemKey: 'id_insumo', itemLabel: 'Insumo', options: insumos },
-        { name: 'detalle_productos', label: 'Productos adquiridos', type: 'items', itemKey: 'id_varianteproducto', itemLabel: 'Variante de producto', options: variantes, hint: 'Opcional: solo para compras de prendas ya confeccionadas.' },
+        { name: 'detalle_productos', label: 'Variantes de producto adquiridas', type: 'items', itemKey: 'id_varianteproducto', itemLabel: 'Variante (producto y talla)', options: variantes, hint: 'Opcional: solo para compras de prendas ya confeccionadas.' },
       ]}
       validarExtra={(v) =>
         (v.detalle_insumos || []).length + (v.detalle_productos || []).length === 0

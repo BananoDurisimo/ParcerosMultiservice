@@ -5,3 +5,4 @@ dist
 
 # Configuracion local de Claude Code
 .claude/settings.local.json
+documentacion

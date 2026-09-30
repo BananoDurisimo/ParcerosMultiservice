@@ -1,0 +1,46 @@
+#!/bin/sh
+#
+# Publica el sitio en `gh-pages` cada vez que se empuja `main`.
+#
+# Existe porque el workflow de Actions no corre en esta cuenta (ver el
+# encabezado de .github/workflows/deploy.yml): el despliegue automatico se hace
+# desde el equipo, enganchado al mismo push que actualiza el repositorio.
+#
+# Se instala con `npm install` (script `prepare` del package.json), que apunta
+# core.hooksPath a esta carpeta. Para saltarselo en un push puntual:
+#
+#   git push --no-verify
+#
+set -u
+
+# `npm run deploy` termina haciendo `git push origin gh-pages`, que volveria a
+# disparar este mismo hook: la guarda corta la recursion.
+if [ "${PARCEROS_DEPLOY:-}" = "1" ]; then
+  exit 0
+fi
+
+# Git entrega por la entrada estandar una linea por referencia empujada:
+#   <ref local> <sha local> <ref remota> <sha remoto>
+empuja_main=0
+while read -r _ref_local sha_local ref_remota _sha_remoto; do
+  if [ "$ref_remota" = "refs/heads/main" ]; then
+    # Un sha de puros ceros significa que la rama se esta borrando.
+    case "$sha_local" in
+      *[!0]*) empuja_main=1 ;;
+    esac
+  fi
+done
+
+[ "$empuja_main" = "1" ] || exit 0
+
+echo ""
+echo "→ Publicando el sitio en gh-pages…"
+if PARCEROS_DEPLOY=1 npm run deploy; then
+  echo "→ Sitio publicado."
+else
+  echo "⚠ El sitio NO se publico, pero el push de main sigue su curso." >&2
+  echo "  Corrige el problema y vuelve a ejecutar: npm run deploy" >&2
+fi
+
+# El push nunca se bloquea por un fallo de publicacion.
+exit 0

@@ -240,9 +240,9 @@ export default function Home() {
               </p>
               <ul className="about-list">
                 {[
-                  ['Diseño propio', 'Nuestro equipo elabora la propuesta gráfica sin costo adicional.'],
-                  ['Entrega puntual', 'Cada pedido se registra y se le informa el avance por etapa.'],
-                  ['Todas las tallas', 'De XS a XXL, con moldes para dama, caballero y niño.'],
+                  ['Diseño del uniforme', 'Elaboramos la propuesta con los colores y el escudo del equipo, sin costo adicional.'],
+                  ['Nombre y número', 'Cada prenda se personaliza con el nombre y el número de cada jugador.'],
+                  ['Todas las categorías', 'De XS a XXL, con cortes infantiles, juveniles, femeninos y masculinos.'],
                 ].map(([t, d]) => (
                   <li key={t}>
                     <Icon name="checkC" size={18} />

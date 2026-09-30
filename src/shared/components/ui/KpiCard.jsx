@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
 import Icon from '@shared/components/Icon.jsx';
 
-/** Tarjeta de KPI (punto 12) con contador animado. */
-export default function KpiCard({ label, value, prefix = '', suffix = '', trend, trendLabel, icon, tono = 'primary', decimals = 0 }) {
+/**
+ * Tarjeta de KPI (punto 12) con contador animado.
+ *
+ * Cuando el indicador no es una cifra sino un nombre (por ejemplo el producto
+ * mas vendido) se pasa `texto` en lugar de `value`, y `nota` para la linea de
+ * apoyo que va debajo.
+ */
+export default function KpiCard({ label, value, texto, nota, prefix = '', suffix = '', trend, trendLabel, icon, tono = 'primary', decimals = 0 }) {
   const [n, setN] = useState(0);
 
   useEffect(() => {
@@ -29,9 +35,14 @@ export default function KpiCard({ label, value, prefix = '', suffix = '', trend,
   return (
     <div className="card card-hover kpi">
       <div className="k-label">{label}</div>
-      <div className="k-value">
-        {prefix}{n.toLocaleString('es-NI', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
-      </div>
+      {texto !== undefined ? (
+        <div className="k-value is-text" title={texto}>{texto}</div>
+      ) : (
+        <div className="k-value">
+          {prefix}{n.toLocaleString('es-NI', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
+        </div>
+      )}
+      {nota && <div className="k-nota">{nota}</div>}
       {trend !== undefined && (
         <div className={`k-trend ${trend >= 0 ? 'up' : 'down'}`}>
           <Icon name={trend >= 0 ? 'arrowUp' : 'arrowDn'} size={13} />

@@ -9,7 +9,7 @@ import DonutChart from '@shared/components/charts/DonutChart.jsx';
 import HBarChart from '@shared/components/charts/HBarChart.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
-import { money, fecha, ESTADOS_PEDIDO, UMBRAL_STOCK_BAJO } from '@shared/data/mock.js';
+import { money, fecha, ESTADOS_PEDIDO } from '@shared/data/mock.js';
 
 const PERIODOS = ['Hoy', 'Semana', 'Mes', 'Año'];
 
@@ -82,7 +82,7 @@ export default function Dashboard() {
           <Icon name="alert" size={20} />
           <div className="grow">
             <strong>Alerta de inventario.</strong>{' '}
-            {stats.bajoStock.length} insumo(s) tienen {UMBRAL_STOCK_BAJO} unidades o menos en existencia:{' '}
+            {stats.bajoStock.length} insumo(s) están en o por debajo de sus existencias mínimas:{' '}
             {stats.bajoStock.slice(0, 3).map((i) => i.nombre).join(', ')}
             {stats.bajoStock.length > 3 ? '…' : '.'}
           </div>
@@ -90,12 +90,21 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ---------- 4 KPI: la variación se calcula contra el período anterior ---------- */}
+      {/* ---------- KPI: la variación se calcula contra el período anterior ---------- */}
       <div className="kpi-grid stagger">
         <KpiCard label={`Ventas ${et.periodo}`} value={stats.ventasMes} prefix="C$ " icon="coin" tono="success" trend={t.ventas} trendLabel={et.comparado} />
         <KpiCard label={`Compras ${et.periodo}`} value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={t.compras} trendLabel={et.comparado} />
         <KpiCard label="Abonos por cobrar" value={stats.porCobrar} prefix="C$ " icon="dollar" tono="warning" trend={t.recaudado} trendLabel={`recaudo ${et.comparado}`} />
         <KpiCard label="Pedidos activos" value={stats.pedidosActivos} icon="clipboard" tono="info" trend={t.pedidos} trendLabel={et.comparado} />
+        <KpiCard
+          label={`Producto más vendido ${et.periodo}`}
+          texto={stats.topProducto ? stats.topProducto.l : 'Sin ventas'}
+          nota={stats.topProducto
+            ? `${stats.topProducto.unidades} unidad(es) · ${money(stats.topProducto.v)}`
+            : 'No se registraron ventas en el período.'}
+          icon="shirt"
+          tono="primary"
+        />
       </div>
 
       {/* ---------- Gráficos 1 y 2 ---------- */}
@@ -184,8 +193,6 @@ export default function Dashboard() {
           <HBarChart
             data={stats.existencias}
             formato={(v) => v.toLocaleString('es-NI')}
-            umbral={UMBRAL_STOCK_BAJO}
-            etiquetaUmbral="Existencias mínimas"
           />
         </div>
       </div>

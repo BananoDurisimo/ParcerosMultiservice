@@ -20,6 +20,7 @@ export default function Usuarios() {
       entidad="usuarios"
       singular="usuario"
       searchKeys={['nombre_empleado', 'nombre_usuario', 'correo_empresarial', 'documento', 'cargo', 'calc_rol']}
+      tablaCompacta
       filtros={[
         { key: 'id_rol', label: 'Rol', options: roles },
         { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },

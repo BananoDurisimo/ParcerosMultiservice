@@ -49,7 +49,7 @@ export default function IgPost({ post }) {
         {visible && (
           <iframe
             src={post.embed}
-            title={`Publicación de Instagram: ${post.t}`}
+            title="Publicación de Instagram de Parceros Multiservice"
             loading="lazy"
             scrolling="no"
             allowTransparency="true"
@@ -68,21 +68,10 @@ export default function IgPost({ post }) {
           >
             <Icon name="instagram" size={26} />
             <div className="ig-cap">
-              <strong>{post.t}</strong>
               <span>{falla ? 'Ver la publicación en Instagram' : 'Cargando publicación…'}</span>
             </div>
           </a>
         )}
-      </div>
-
-      <div className="ig-meta">
-        <div>
-          <strong>{post.t}</strong>
-          <span>{post.d}</span>
-        </div>
-        <a href={post.url} target="_blank" rel="noreferrer" aria-label={`Abrir "${post.t}" en Instagram`}>
-          {post.fecha} <Icon name="chevR" size={13} />
-        </a>
       </div>
     </article>
   );

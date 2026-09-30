@@ -18,6 +18,7 @@ import useReveal from '@features/home/hooks/useReveal.js';
 import imgTaller from '@features/home/assets/taller.jpg';
 /* Fotografias propias del taller (publicaciones de la cuenta oficial) */
 import lineaFutbol from '@features/home/assets/linea-futbol.jpg';
+import lineaCiclismo from '@features/home/assets/linea-ciclismo.jpg';
 import prodFutbol from '@features/home/assets/prod-futbol.jpg';
 import prodPublicitario from '@features/home/assets/prod-publicitario.jpg';
 import prodCiclismo from '@features/home/assets/prod-ciclismo.jpg';
@@ -32,9 +33,9 @@ const SECCIONES = [
 ];
 
 const PRODUCTOS = [
-  { t: 'Uniformes deportivos', d: 'Camisetas, shorts y medias sublimadas para equipos y academias.', desde: 'Desde C$ 620', img: prodFutbol, alt: 'Equipo FC Halcones con el uniforme de fútbol celeste confeccionado por Parceros Sports' },
-  { t: 'Jerseys publicitarios', d: 'Con el logotipo de su marca o patrocinador, en línea PRO, intermedia y básica.', desde: 'Desde C$ 540', img: prodPublicitario, alt: 'Jerseys de ciclismo publicitarios con los logotipos de Cool Wave y Banpro' },
-  { t: 'Ropa de ciclismo', d: 'Enterizos y jerseys de ciclismo a la medida, con el diseño que usted elija.', desde: 'Desde C$ 480', img: prodCiclismo, alt: 'Pareja de ciclistas con enterizo negro y jersey azul de Parceros Sports' },
+  { t: 'Uniformes deportivos', d: 'Camisetas, shorts y medias sublimadas para equipos y academias.', img: prodFutbol, alt: 'Equipo FC Halcones con el uniforme de fútbol celeste confeccionado por Parceros Sports' },
+  { t: 'Jerseys publicitarios', d: 'Con el logotipo de su marca o patrocinador, en línea PRO, intermedia y básica.', img: prodPublicitario, alt: 'Jerseys de ciclismo publicitarios con los logotipos de Cool Wave y Banpro' },
+  { t: 'Ropa de ciclismo', d: 'Enterizos y jerseys de ciclismo a la medida, con el diseño que usted elija.', img: prodCiclismo, alt: 'Pareja de ciclistas con enterizo negro y jersey azul de Parceros Sports' },
 ];
 
 const LINEAS = [
@@ -44,8 +45,8 @@ const LINEAS = [
     puntos: ['Camisetas, shorts y medias sublimadas', 'El diseño, los colores y el número de cada jugador', 'Sin cantidad mínima de pedido'],
   },
   {
-    n: '02', tag: 'Línea ciclismo', t: 'Ropa de ciclismo', img: prodCiclismo,
-    alt: 'Pareja de ciclistas con enterizo negro y jersey azul de Parceros Sports',
+    n: '02', tag: 'Línea ciclismo', t: 'Ropa de ciclismo', img: lineaCiclismo,
+    alt: 'Ciclista con jersey blanco y gris de Parceros junto a su bicicleta de ruta',
     puntos: ['Enterizos, jerseys y licras a la medida', 'Línea PRO, intermedia y básica', 'Sublimación full color con el diseño que usted elija'],
   },
   {
@@ -173,7 +174,6 @@ export default function Home() {
               <article className="lp-cat reveal" key={p.t} style={{ '--d': `${i * 90}ms` }}>
                 <img src={p.img} alt={p.alt} loading="lazy" />
                 <div className="lp-cat-body">
-                  <span className="lp-cat-price">{p.desde}</span>
                   <h3>{p.t}</h3>
                   <p>{p.d}</p>
                   <a href={waLink(`Hola, quiero cotizar ${p.t.toLowerCase()}.`)} target="_blank" rel="noreferrer">
@@ -376,7 +376,7 @@ export default function Home() {
               <div className="card contact-map">
                 <iframe
                   title="Ubicación de Parceros Multiservice"
-                  src="https://www.google.com/maps?q=Monse%C3%B1or%20Lezcano%2C%20Managua%2C%20Nicaragua&output=embed"
+                  src="https://www.google.com/maps?q=Escuela%20M%C3%A1ximo%20Jerez%2C%20Managua%2C%20Nicaragua&output=embed"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                 />

@@ -12,8 +12,9 @@ código, porque `src/pages/Home.jsx` importa cada archivo por su ruta.
 |---|---|---|---|
 | `linea-futbol.jpg` | Líneas · 01 Fútbol | Parceros Multiservice | Material propio (Instagram) |
 | `prod-futbol.jpg` | Tarjeta · Uniformes deportivos | Parceros Multiservice | Material propio (Instagram) |
+| `linea-ciclismo.jpg` | Líneas · 02 Ciclismo | Parceros Multiservice | Material propio |
 | `prod-publicitario.jpg` | Tarjeta y Líneas · 03 Patrocinio | Parceros Multiservice | Material propio (Instagram) |
-| `prod-ciclismo.jpg` | Tarjeta y Líneas · 02 Ciclismo | Parceros Multiservice | Material propio (Instagram) |
+| `prod-ciclismo.jpg` | Tarjeta · Ropa de ciclismo | Parceros Multiservice | Material propio (Instagram) |
 | `taller-video.mp4` | Portada · video del taller (360×640, H.264, ~700 KB) | Parceros Multiservice | Material propio (Instagram) |
 | `taller.jpg` | Sobre la empresa · foto del taller | Pavel Danilyuk | [Pexels 6461121](https://www.pexels.com/photo/6461121/) |
 

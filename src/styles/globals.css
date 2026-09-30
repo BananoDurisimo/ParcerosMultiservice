@@ -844,12 +844,6 @@ table.tbl tbody tr:last-child td { border-bottom: 0; }
 .ig-cap strong { display: block; font-size: 13.5px; }
 .ig-cap span { font-size: 11.5px; opacity: .9; }
 
-.ig-meta { display: flex; align-items: center; gap: 12px; margin-top: auto; padding: 12px 14px; border-top: 1px solid var(--border-soft); }
-[data-theme='dark'] .ig-meta { border-top-color: var(--border); }
-.ig-meta > div { flex: 1; min-width: 0; }
-.ig-meta strong { display: block; font-size: 13.5px; font-weight: 600; }
-.ig-meta span { font-size: 12px; color: var(--text-sec); }
-.ig-meta a { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; white-space: nowrap; }
 
 /* --- Preguntas frecuentes --- */
 .lp-faq { background: var(--surface-2); }
@@ -983,8 +977,7 @@ table.tbl tbody tr:last-child td { border-bottom: 0; }
 .lp-cat::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, rgb(5 8 15 / .92)); }
 .lp-cat:hover img { transform: scale(1.05); }
 .lp-cat-body { position: absolute; inset: auto 0 0; z-index: 1; padding: 20px; }
-.lp-cat-price { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 600; background: var(--primary); }
-.lp-cat h3 { font-family: var(--font-display); text-transform: uppercase; font-size: 26px; font-weight: 800; letter-spacing: .5px; margin-top: 10px; }
+.lp-cat h3 { font-family: var(--font-display); text-transform: uppercase; font-size: 26px; font-weight: 800; letter-spacing: .5px; }
 .lp-cat p { font-size: 13px; color: rgb(255 255 255 / .82); margin-top: 4px; }
 .lp-cat a { display: inline-flex; align-items: center; gap: 4px; margin-top: 12px; font-size: 13px; font-weight: 600; color: #fff; }
 .lp-cat a:hover { color: #93C5FD; text-decoration: none; }
@@ -995,7 +988,7 @@ table.tbl tbody tr:last-child td { border-bottom: 0; }
 .lp-line { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
 .lp-line:nth-child(even) .lp-line-img { order: 2; }
 .lp-line-img { position: relative; margin: 0; aspect-ratio: 1 / 1; border-radius: var(--radius-lg); overflow: hidden; background: var(--surface-3); }
-.lp-line-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lp-line-img img { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; display: block; }
 .lp-line-n {
   position: absolute; left: 16px; bottom: 6px; font-family: var(--font-display); font-weight: 800; font-size: 76px; line-height: 1;
   color: rgb(255 255 255 / .9); text-shadow: 0 6px 24px rgb(0 0 0 / .45);

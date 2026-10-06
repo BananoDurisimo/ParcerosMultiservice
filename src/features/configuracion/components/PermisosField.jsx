@@ -4,11 +4,24 @@ import { useData } from '@shared/context/DataContext.jsx';
 
 export const SIN_ACCIONES = 'Seleccione al menos una acción para este módulo.';
 
+/** Procesos del menu lateral: los permisos se agrupan igual que los modulos. */
+const GRUPOS = [
+  { titulo: 'Configuración', modulos: ['Roles', 'Usuarios', 'Movimientos'] },
+  { titulo: 'Compras', modulos: ['Insumos', 'Proveedores', 'Compras'] },
+  { titulo: 'Ventas', modulos: ['Clientes', 'Cotizaciones', 'Pedidos', 'Ventas', 'Abonos'] },
+];
+
+const ICONO = {
+  Roles: 'shield', Usuarios: 'user', Movimientos: 'history',
+  Insumos: 'package', Proveedores: 'truck', Compras: 'cart',
+  Clientes: 'users', Cotizaciones: 'clipboard', Pedidos: 'box', Ventas: 'coin', Abonos: 'dollar',
+};
+
 /**
  * Permisos y privilegios de un rol (tablas puente rolxpermiso y
- * rolxprivilegio). Cada permiso es un modulo del sistema; al marcarlo se
+ * rolxprivilegio). Cada permiso es un modulo del sistema; al activarlo se
  * despliegan sus privilegios -las acciones dentro del modulo- para marcarlos
- * uno por uno. Al desmarcar el modulo se desmarcan tambien sus acciones.
+ * uno por uno. Al desactivar el modulo se desmarcan tambien sus acciones.
  */
 export default function PermisosField({ values, setVal, errors }) {
   const { db } = useData();
@@ -17,8 +30,18 @@ export default function PermisosField({ values, setVal, errors }) {
   const privilegios = values.privilegios || [];
 
   const texto = q.trim().toLowerCase();
-  const visibles = texto ? db.permisos.filter((p) => p.nombre.toLowerCase().includes(texto)) : db.permisos;
+  const coincide = (p) => !texto || p.nombre.toLowerCase().includes(texto);
   const accionesDe = (idPermiso) => db.privilegios.filter((x) => x.id_permiso === idPermiso);
+  const porNombre = (n) => db.permisos.find((p) => p.nombre === n);
+
+  /* Los permisos que no esten en ningun grupo (si se agregan a futuro) no se pierden. */
+  const agrupados = new Set(GRUPOS.flatMap((g) => g.modulos));
+  const grupos = [
+    ...GRUPOS.map((g) => ({ ...g, items: g.modulos.map(porNombre).filter(Boolean) })),
+    { titulo: 'Otros', items: db.permisos.filter((p) => !agrupados.has(p.nombre)) },
+  ]
+    .map((g) => ({ ...g, items: g.items.filter(coincide) }))
+    .filter((g) => g.items.length);
 
   const alternarPermiso = (p) => {
     if (permisos.includes(p.id)) {
@@ -33,64 +56,98 @@ export default function PermisosField({ values, setVal, errors }) {
   const alternarAccion = (id) =>
     setVal('privilegios', privilegios.includes(id) ? privilegios.filter((x) => x !== id) : [...privilegios, id]);
 
+  const totalAcciones = privilegios.filter((id) =>
+    permisos.includes(db.privilegios.find((x) => x.id === id)?.id_permiso)
+  ).length;
+
   return (
-    <>
-      <label>Permisos y privilegios <span className="req">*</span></label>
-
-      <div className="search-wrap ms-search">
-        <span className="ico"><Icon name="search" size={15} /></span>
-        <input
-          className="input"
-          type="text"
-          value={q}
-          placeholder="Buscar permiso…"
-          aria-label="Buscar permiso"
-          onChange={(e) => setQ(e.target.value)}
-        />
-        {q && (
-          <button type="button" className="icon-btn ms-limpiar" onClick={() => setQ('')} aria-label="Limpiar la búsqueda">
-            <Icon name="x" size={14} />
-          </button>
-        )}
+    <div className="perm">
+      <div className="perm-top">
+        <div>
+          <div className="perm-label">Permisos y privilegios <span className="req">*</span></div>
+          <div className="caption">Active los módulos a los que entra el rol y marque las acciones que puede hacer en cada uno.</div>
+        </div>
+        <label className="perm-buscar">
+          <Icon name="search" size={15} />
+          <input
+            type="text"
+            value={q}
+            placeholder="Buscar permiso…"
+            aria-label="Buscar permiso"
+            onChange={(e) => setQ(e.target.value)}
+          />
+          {q && (
+            <button type="button" className="perm-limpiar" onClick={() => setQ('')} aria-label="Limpiar la búsqueda">
+              <Icon name="x" size={13} />
+            </button>
+          )}
+        </label>
       </div>
 
-      <div className="permiso-lista">
-        {visibles.map((p) => {
-          const on = permisos.includes(p.id);
-          const acciones = accionesDe(p.id);
-          const marcadas = acciones.filter((a) => privilegios.includes(a.id)).length;
-          const sinAcciones = on && marcadas === 0 && !!errors.privilegios;
-          return (
-            <div key={p.id} className={`permiso-item ${on ? 'is-on' : ''}`}>
-              <div className="between">
-                <button type="button" className={`chip ${on ? 'is-on' : ''}`} onClick={() => alternarPermiso(p)}>
-                  {on && <Icon name="check" size={12} />} {p.nombre}
-                </button>
-                {on && <span className="caption">{marcadas} de {acciones.length} acción(es)</span>}
-              </div>
-              {on && (
-                <div className="acciones">
-                  {acciones.map((a) => (
-                    <button
-                      type="button"
-                      key={a.id}
-                      className={`chip ${privilegios.includes(a.id) ? 'is-on' : ''}`}
-                      onClick={() => alternarAccion(a.id)}
-                    >
-                      {privilegios.includes(a.id) && <Icon name="check" size={12} />} {a.nombre}
-                    </button>
-                  ))}
+      <div className="perm-resumen">
+        <span><strong>{permisos.length}</strong> de {db.permisos.length} permiso(s) seleccionado(s)</span>
+        <span className="perm-punto" />
+        <span><strong>{totalAcciones}</strong> acción(es)</span>
+      </div>
+
+      {grupos.map((g) => (
+        <section key={g.titulo} className="perm-grupo">
+          <div className="perm-grupo-titulo">{g.titulo}</div>
+          <div className="perm-grid">
+            {g.items.map((p) => {
+              const on = permisos.includes(p.id);
+              const acciones = accionesDe(p.id);
+              const marcadas = acciones.filter((a) => privilegios.includes(a.id)).length;
+              const sinAcciones = on && marcadas === 0 && !!errors.privilegios;
+              return (
+                <div key={p.id} className={`perm-card ${on ? 'is-on' : ''} ${sinAcciones ? 'has-error' : ''}`}>
+                  <button
+                    type="button"
+                    className="perm-head"
+                    data-permiso={p.nombre}
+                    aria-pressed={on}
+                    onClick={() => alternarPermiso(p)}
+                  >
+                    <span className="perm-ico"><Icon name={ICONO[p.nombre] || 'lock'} size={17} /></span>
+                    <span className="perm-nombre">
+                      <span>{p.nombre}</span>
+                      <span className="caption">{on ? `${marcadas} de ${acciones.length} acción(es)` : `${acciones.length} acción(es) disponibles`}</span>
+                    </span>
+                    <span className="perm-switch" aria-hidden="true"><span /></span>
+                  </button>
+
+                  {on && (
+                    <div className="perm-acciones">
+                      {acciones.map((a) => {
+                        const marcada = privilegios.includes(a.id);
+                        return (
+                          <button
+                            type="button"
+                            key={a.id}
+                            className={`perm-accion ${marcada ? 'is-on' : ''}`}
+                            aria-pressed={marcada}
+                            onClick={() => alternarAccion(a.id)}
+                          >
+                            <span className="perm-check">{marcada && <Icon name="check" size={11} stroke={2.6} />}</span>
+                            {a.nombre}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {sinAcciones && (
+                    <span className="field-error perm-error"><Icon name="alert" size={12} /> {SIN_ACCIONES}</span>
+                  )}
                 </div>
-              )}
-              {sinAcciones && <span className="field-error" style={{ marginTop: 6 }}><Icon name="alert" size={12} /> {SIN_ACCIONES}</span>}
-            </div>
-          );
-        })}
-        {visibles.length === 0 && <span className="caption">No hay coincidencias para «{q.trim()}».</span>}
-      </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+
+      {grupos.length === 0 && <div className="perm-vacio caption">No hay coincidencias para «{q.trim()}».</div>}
 
       {errors.permisos && <span className="field-error"><Icon name="alert" size={12} /> {errors.permisos}</span>}
-      {!errors.permisos && <span className="caption">{permisos.length} de {db.permisos.length} permiso(s) seleccionado(s)</span>}
-    </>
+    </div>
   );
 }

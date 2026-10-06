@@ -1194,3 +1194,16 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
 .acceso:hover { text-decoration: none; border-color: var(--primary); color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .acceso-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); flex: none; }
 @media (max-width: 560px) { .acceso-grid { grid-template-columns: 1fr; } }
+
+/* Detalles: tablas de solo lectura, diseño y permisos ------- */
+.mini-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.mini-scroll table.tbl tbody tr { animation: none; }
+.det-section { margin: 18px 0 10px; font-size: 15px; font-weight: 600; }
+
+.diseno-thumb { display: block; width: 100%; max-width: 260px; aspect-ratio: 600 / 440; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); }
+.diseno-full { display: block; width: 100%; max-height: 62vh; object-fit: contain; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-2); }
+
+.permiso-lista { display: flex; flex-direction: column; gap: 8px; }
+.permiso-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; }
+.permiso-item.is-on { border-color: var(--primary); background: var(--primary-soft); }
+.permiso-item .acciones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; padding-top: 9px; border-top: 1px dashed var(--border); }

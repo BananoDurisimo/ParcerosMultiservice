@@ -1,16 +1,22 @@
-import { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback, useRef } from 'react';
 import {
   seed,
   COLOR_TIPO_INSUMO,
   COLOR_METODO_PAGO,
   UMBRAL_STOCK_BAJO,
   MODULOS_AUDITADOS,
-  PEDIDO_ANULADO,
   ESTADOS_PEDIDO,
+  COTIZACION,
+  FALTA_PAGO,
+  ENTREGADO,
   COMPRA_ANULADA,
   ETIQUETA_ACCION,
   camposCambiados,
+  CAMPOS_NO_AUDITADOS,
   etiquetaFila,
+  codigoCompra,
+  codigoPedido,
+  codigoAbono,
   toISO,
   hoyISO,
 } from '@shared/data/mock.js';
@@ -50,25 +56,6 @@ function tramosPeriodo(periodo, refISO) {
     }
   }
 }
-
-/**
- * Llaves foraneas que apuntan a cada coleccion. Eliminar un registro con
- * dependientes dejaria filas huerfanas (la base de datos lo rechazaria), asi
- * que la eliminacion se bloquea y se informa que registros lo usan.
- */
-const REFERENCIAS = {
-  roles: [{ col: 'usuarios', txt: 'usuario(s)', usa: (r, id) => r.id_rol === id }],
-  usuarios: [{ col: 'movimientos', txt: 'movimiento(s) en el historial; desactívelo en su lugar', usa: (r, id) => r.id_usuario === id }],
-  categorias: [{ col: 'productos', txt: 'producto(s)', usa: (r, id) => r.id_categoria === id }],
-  productos: [{ col: 'variantes', txt: 'variante(s) por talla', usa: (r, id) => r.id_producto === id }],
-  insumos: [
-    { col: 'compras', txt: 'compra(s)', usa: (r, id) => (r.detalle_insumos || []).some((l) => l.id_insumo === id) },
-    { col: 'fichas_tecnicas', txt: 'ficha(s) técnica(s)', usa: (r, id) => r.id_insumo === id },
-  ],
-  proveedores: [{ col: 'compras', txt: 'compra(s)', usa: (r, id) => r.id_proveedor === id }],
-  clientes: [{ col: 'pedidos', txt: 'pedido(s)', usa: (r, id) => r.id_cliente === id }],
-  pedidos: [{ col: 'abonos', txt: 'abono(s)', usa: (r, id) => r.id_pedido === id }],
-};
 
 /**
  * Rango [desde, hasta] de un período, tomando "ref" como el "hoy" virtual.
@@ -113,140 +100,195 @@ const variacion = (actual, previo) => {
    pero no desaparece de ningun lado. Los documentos que ya la usan tienen que
    seguir mostrando su nombre, asi que la opcion se sigue listando -marcada con
    el motivo- y es el desplegable el que no deja elegirla. */
-const ESTADOS_DE_BAJA = ['Inactivo', 'Anulado', 'Anulada'];
-
-/** Motivo por el que una fila ya no se puede elegir, o `undefined` si esta vigente. */
-const motivoBaja = (r) =>
-  (ESTADOS_DE_BAJA.includes(r.estado) && r.estado) ||
-  /* Una variante depende ademas del estado de su producto. */
-  (r.calc_disponible === 'No disponible' && 'No disponible') ||
-  undefined;
+const ESTADOS_DE_BAJA = ['Inactivo', 'Anulada'];
+const motivoBaja = (r) => (ESTADOS_DE_BAJA.includes(r.estado) && r.estado) || undefined;
 
 const suma = (arr, fn) => arr.reduce((s, x) => s + Number(fn(x) || 0), 0);
 const porId = (arr) => new Map(arr.map((r) => [r.id, r]));
+const redondear = (n) => Math.round(n * 100) / 100;
+
+/** Un pedido descuenta sus insumos del inventario desde que entra en
+ *  produccion ("Pedido en proceso") y el descuento se mantiene hasta la
+ *  entrega: mientras es cotizacion todavia no consume nada. */
+export const consumeInventario = (estado) => ESTADOS_PEDIDO.indexOf(estado) >= 1;
 
 /* --------------------------------------------------------------
    Movimiento de existencias
 
-   Las existencias no son un dato suelto que solo se teclee en Insumos y en
-   Variante producto: las mueven los documentos. Una compra recibida ingresa
-   lo que trae; un pedido vigente compromete lo que va a confeccionar.
-
-   `efectoEnStock` traduce un documento a las unidades que suma (+) o resta (-)
-   en cada tabla. Un documento en transito o anulado no mueve nada, de modo que
-   cambiarle el estado -desde el listado o al anular- ingresa o devuelve las
-   existencias por si solo.
+   Las existencias de los insumos las mueven los documentos: una compra
+   recibida ingresa lo que trae y un pedido en produccion descuenta lo que
+   gasta. `efectoEnStock` traduce un documento a las unidades que suma (+) o
+   resta (-) en cada insumo; cambiarle el estado o anularlo ingresa o devuelve
+   las existencias por si solo.
 
    Los datos semilla ya vienen con las existencias al dia: no se reprocesa el
    historial, solo se aplican los movimientos que ocurren en la sesion.
    -------------------------------------------------------------- */
-const SIN_EFECTO = { insumos: [], variantes: [] };
-
-const lineas = (arr, llave, signo) =>
-  (arr || []).map((l) => ({ id: l[llave], n: signo * Number(l.cantidad || 0) }));
+const lineasStock = (arr, signo) =>
+  (arr || []).map((l) => ({ id: l.id_insumo, n: signo * Number(l.cantidad || 0) }));
 
 function efectoEnStock(col, row) {
-  if (!row) return SIN_EFECTO;
-  if (col === 'compras') {
-    return row.estado === 'Recibida'
-      ? {
-          insumos: lineas(row.detalle_insumos, 'id_insumo', 1),
-          variantes: lineas(row.detalle_productos, 'id_varianteproducto', 1),
-        }
-      : SIN_EFECTO;
-  }
-  if (col === 'pedidos') {
-    /* El pedido compromete material desde que entra en produccion: mientras es
-       una cotizacion aprobada -la primera etapa- todavia no descuenta nada, y
-       uno anulado nunca llego a hacerlo. De "Pedido en proceso" en adelante el
-       material ya salio del almacen, asi que el descuento se mantiene aunque
-       el pedido siga avanzando hasta la entrega. */
-    return ESTADOS_PEDIDO.indexOf(row.estado) >= 1
-      ? {
-          insumos: lineas(row.insumos, 'id_insumo', -1),
-          variantes: lineas(row.detalles, 'id_varianteproducto', -1),
-        }
-      : SIN_EFECTO;
-  }
-  return SIN_EFECTO;
+  if (!row) return [];
+  if (col === 'compras') return row.estado === 'Recibida' ? lineasStock(row.detalle_insumos, 1) : [];
+  if (col === 'pedidos') return consumeInventario(row.estado) ? lineasStock(row.insumos, -1) : [];
+  return [];
 }
 
-/** Las cantidades de insumo admiten decimales (1.5 L), asi que se redondea a
- *  centesimas para que la resta no deje arrastre de coma flotante. */
-const redondear = (n) => Math.round(n * 100) / 100;
-
-/**
- * Devuelve `d` con las existencias ya ajustadas al reemplazar el documento
- * `anterior` por `nuevo`: se deshace el efecto que tenia y se aplica el nuevo.
- */
+/** Devuelve `d` con las existencias ya ajustadas al reemplazar el documento
+ *  `anterior` por `nuevo`: se deshace el efecto que tenia y se aplica el nuevo. */
 function conStock(d, col, anterior, nuevo) {
   if (col !== 'compras' && col !== 'pedidos') return d;
-
-  const delta = { insumos: new Map(), variantes: new Map() };
-  const acumular = (efecto, signo) => {
-    for (const tabla of ['insumos', 'variantes']) {
-      for (const { id, n } of efecto[tabla]) {
-        delta[tabla].set(id, (delta[tabla].get(id) || 0) + signo * n);
-      }
-    }
+  const delta = new Map();
+  efectoEnStock(col, anterior).forEach(({ id, n }) => delta.set(id, (delta.get(id) || 0) - n));
+  efectoEnStock(col, nuevo).forEach(({ id, n }) => delta.set(id, (delta.get(id) || 0) + n));
+  if (!delta.size) return d;
+  return {
+    ...d,
+    insumos: d.insumos.map((r) =>
+      delta.has(r.id) ? { ...r, stock: Math.max(0, redondear(Number(r.stock || 0) + delta.get(r.id))) } : r
+    ),
   };
-  acumular(efectoEnStock(col, anterior), -1);
-  acumular(efectoEnStock(col, nuevo), 1);
+}
 
-  const out = { ...d };
-  for (const tabla of ['insumos', 'variantes']) {
-    if (!delta[tabla].size) continue;
-    out[tabla] = d[tabla].map((r) =>
-      delta[tabla].has(r.id)
-        /* Nunca se muestran existencias negativas: los pedidos ya se validan
-           contra lo disponible, y el unico camino al numero rojo -bajar o
-           anular una compra cuyo material ya se consumio- se corta en cero. */
-        ? { ...r, stock: Math.max(0, redondear(Number(r.stock || 0) + delta[tabla].get(r.id))) }
-        : r
-    );
-  }
+/* --------------------------------------------------------------
+   Historial de movimientos
+
+   Cada alta y cada cambio que se hace en la sesion queda registrado en la
+   tabla `movimientos` con el usuario que lo hizo, como lo haria el trigger de
+   la base de datos.
+   -------------------------------------------------------------- */
+const TABLA = {
+  roles: 'rol',
+  usuarios: 'usuario',
+  insumos: 'insumo',
+  proveedores: 'proveedor',
+  compras: 'compra',
+  clientes: 'cliente',
+  pedidos: 'pedido',
+  abonos: 'abono',
+};
+
+const ahora = () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${hoyISO()}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+};
+
+/** Copia de la fila tal como la guardaria el trigger: sin el id ni la
+ *  contrasena, y con las lineas de detalle escritas como texto
+ *  ("Tela Dry-Fit × 30"). */
+function valorAuditado(d, row) {
+  if (!row) return null;
+  const { id, ...resto } = row;
+  const out = { ...resto };
+  CAMPOS_NO_AUDITADOS.forEach((k) => delete out[k]);
+  ['insumos', 'detalle_insumos'].forEach((k) => {
+    if (Array.isArray(out[k])) {
+      out[k] = out[k].map((l) => `${d.insumos.find((i) => i.id === l.id_insumo)?.nombre || '#' + l.id_insumo} × ${l.cantidad}`);
+    }
+  });
   return out;
+}
+
+function conMovimiento(d, mov) {
+  const id = d.movimientos.length ? Math.max(...d.movimientos.map((m) => m.id)) + 1 : 1;
+  return { ...d, movimientos: [{ id, fecha_cambio: ahora(), ...mov }, ...d.movimientos] };
 }
 
 export function DataProvider({ children }) {
   const [raw, setRaw] = useState(() => JSON.parse(JSON.stringify(seed)));
+  const rawRef = useRef(raw);
+  rawRef.current = raw;
 
-  const nextId = (arr) => (arr.length ? Math.max(...arr.map((r) => r.id)) + 1 : 1);
+  /* Usuario de la sesion: lo fija AuthContext y es el responsable que queda
+     en cada movimiento. */
+  const actorRef = useRef(null);
+  const setActor = useCallback((id) => { actorRef.current = id ?? null; }, []);
+
+  /* Ids: se reservan aqui -y no dentro de la actualizacion de estado- para que
+     quien crea un registro conozca su id de inmediato (p. ej. el pedido que
+     nace con su abono inicial). */
+  const ultimoId = useRef({});
+  const nuevoId = useCallback((col) => {
+    const max = Math.max(0, ...rawRef.current[col].map((r) => r.id), ultimoId.current[col] || 0);
+    ultimoId.current[col] = max + 1;
+    return max + 1;
+  }, []);
 
   /* Guardar y actualizar pasan por `conStock`, de modo que el movimiento de
      existencias ocurre venga de donde venga el cambio: del formulario, del
      desplegable de estado del listado o del dialogo de anulacion. */
   const create = useCallback((col, row) => {
-    let creado;
+    const creado = { ...row, id: row.id ?? nuevoId(col) };
+    const actor = actorRef.current;
     setRaw((d) => {
-      creado = { ...row, id: nextId(d[col]) };
-      return conStock({ ...d, [col]: [creado, ...d[col]] }, col, null, creado);
+      let out = conStock({ ...d, [col]: [creado, ...d[col]] }, col, null, creado);
+      if (TABLA[col]) {
+        out = conMovimiento(out, {
+          tabla: TABLA[col], id_registro: creado.id, accion: 'INSERT',
+          valor_anterior: null, valor_nuevo: valorAuditado(d, creado), id_usuario: actor,
+        });
+      }
+      return out;
     });
     return creado;
-  }, []);
+  }, [nuevoId]);
 
   const update = useCallback((col, id, patch) => {
+    const actor = actorRef.current;
     setRaw((d) => {
       const anterior = d[col].find((r) => r.id === id);
       if (!anterior) return d;
       const nuevo = { ...anterior, ...patch };
-      return conStock({ ...d, [col]: d[col].map((r) => (r.id === id ? nuevo : r)) }, col, anterior, nuevo);
+      let out = conStock({ ...d, [col]: d[col].map((r) => (r.id === id ? nuevo : r)) }, col, anterior, nuevo);
+      const antes = valorAuditado(d, anterior);
+      const despues = valorAuditado(d, nuevo);
+      if (TABLA[col] && camposCambiados(antes, despues).length) {
+        out = conMovimiento(out, {
+          tabla: TABLA[col], id_registro: id, accion: 'UPDATE',
+          valor_anterior: antes, valor_nuevo: despues, id_usuario: actor,
+        });
+      }
+      return out;
     });
   }, []);
 
-  const remove = useCallback((col, id) => {
-    setRaw((d) => ({ ...d, [col]: d[col].filter((r) => r.id !== id) }));
+  /** Trazabilidad de los accesos: ingreso, intento fallido y cierre de sesion. */
+  const registrarAcceso = useCallback((accion, { correo, resultado, id_usuario = null }) => {
+    setRaw((d) => conMovimiento(d, {
+      tabla: 'acceso', id_registro: id_usuario, accion,
+      valor_anterior: null, valor_nuevo: { correo, resultado }, id_usuario,
+    }));
   }, []);
 
-  /** Registros que impiden eliminar la fila `id` de `col`, p. ej. ["3 pedido(s)"]. */
-  const dependencias = useCallback(
-    (col, id) =>
-      (REFERENCIAS[col] || [])
-        .map(({ col: hija, txt, usa }) => ({ n: raw[hija].filter((r) => usa(r, id)).length, txt }))
-        .filter((d) => d.n > 0)
-        .map((d) => `${d.n} ${d.txt}`),
-    [raw]
-  );
+  /* --------------------------------------------------------------
+     Recuperacion de contrasena: enlace de un solo uso, valido 30 minutos.
+     -------------------------------------------------------------- */
+  const enlaces = useRef(new Map());
+
+  /** Genera el enlace si el correo es de un usuario registrado y activo;
+   *  devuelve el token o null. */
+  const solicitarRecuperacion = useCallback((correo) => {
+    const c = String(correo).trim().toLowerCase();
+    const u = rawRef.current.usuarios.find((x) => (x.correo_empresarial || '').toLowerCase() === c && x.estado === 'Activo');
+    if (!u) return null;
+    const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    enlaces.current.set(token, { id_usuario: u.id, vence: Date.now() + 30 * 60 * 1000, usado: false });
+    return token;
+  }, []);
+
+  const enlaceValido = useCallback((token) => {
+    const e = enlaces.current.get(token);
+    return !!e && !e.usado && e.vence > Date.now();
+  }, []);
+
+  const restablecerClave = useCallback((token, clave) => {
+    if (!enlaceValido(token)) return false;
+    const e = enlaces.current.get(token);
+    e.usado = true;
+    update('usuarios', e.id_usuario, { contrasena: clave });
+    return true;
+  }, [enlaceValido, update]);
 
   /* --------------------------------------------------------------
      Valores derivados.
@@ -258,38 +300,14 @@ export function DataProvider({ children }) {
      sin que lleguen nunca al formulario de creación o edición.
      -------------------------------------------------------------- */
   const db = useMemo(() => {
-    const tallas = porId(raw.tallas);
     const tipos = porId(raw.tipos_insumo);
     const unidades = porId(raw.unidades_medida);
     const permisos = porId(raw.permisos);
     const rolesM = porId(raw.roles);
-    const categoriasM = porId(raw.categorias);
-    const productosM = porId(raw.productos);
     const insumosM = porId(raw.insumos);
     const proveedoresM = porId(raw.proveedores);
     const clientesM = porId(raw.clientes);
     const usuariosM = porId(raw.usuarios);
-
-    /* Una variante es un producto dividido por talla: hereda del producto su
-       categoria y su precio (no son columnas de varianteproducto) y aporta las
-       existencias, que solo viven aqui. */
-    const variantes = raw.variantes.map((v) => {
-      const p = productosM.get(v.id_producto);
-      const t = tallas.get(v.id_talla);
-      return {
-        ...v,
-        calc_producto: p?.nombre || '—',
-        calc_talla: t?.nombre || '—',
-        calc_etiqueta: `${p?.nombre || '—'} · ${t?.nombre || '—'}`,
-        calc_categoria: categoriasM.get(p?.id_categoria)?.nombre || '—',
-        calc_precio: Number(p?.precio || 0),
-        calc_valor: Number(v.stock || 0) * Number(p?.precio || 0),
-        calc_estado_producto: p?.estado || '—',
-        /* Una variante se ofrece solo si ella y su producto estan activos. */
-        calc_disponible: v.estado === 'Activo' && p?.estado === 'Activo' ? 'Disponible' : 'No disponible',
-      };
-    });
-    const variantesM = porId(variantes);
 
     const insumos = raw.insumos.map((i) => ({
       ...i,
@@ -297,51 +315,43 @@ export function DataProvider({ children }) {
       calc_unidad: unidades.get(i.id_unidad_medida)?.nombre || '—',
       calc_abreviatura: unidades.get(i.id_unidad_medida)?.abreviatura || '',
       calc_valor: Number(i.stock) * Number(i.precio_unitario),
-      /* Cada insumo guarda su propio minimo; UMBRAL_STOCK_BAJO solo respalda
-         las filas que todavia no traen la columna. */
       calc_minimo: Number(i.stock_minimo ?? UMBRAL_STOCK_BAJO),
     }));
 
-    const totalCompra = (c) =>
-      suma(c.detalle_insumos || [], (l) => l.cantidad * l.precio_unitario) +
-      suma(c.detalle_productos || [], (l) => l.cantidad * l.precio_unitario);
-
     const compras = raw.compras.map((c) => ({
       ...c,
+      calc_codigo: codigoCompra(c.id),
       calc_proveedor: proveedoresM.get(c.id_proveedor)?.nombre || '—',
-      calc_total: totalCompra(c),
-      calc_lineas: (c.detalle_insumos || []).length + (c.detalle_productos || []).length,
-      /* Mes de la compra ("2026-08"): la columna `fecha` guarda el dia exacto,
-         pero el listado se filtra por mes, que es como se consulta el historial. */
-      calc_periodo: (c.fecha || '').slice(0, 7),
-      /* Insumos que trae la compra en sus lineas de detalle_compra_insumo: el
-         listado filtra por esta lista para responder "que compras traen este
-         insumo" sin abrir el detalle de cada una. */
+      calc_total: suma(c.detalle_insumos || [], (l) => l.cantidad * l.precio_unitario),
+      calc_lineas: (c.detalle_insumos || []).length,
+      /* Insumos que trae la compra: el filtro y la busqueda responden "que
+         compras traen este insumo" sin abrir el detalle de cada una. */
       calc_insumos: (c.detalle_insumos || []).map((l) => l.id_insumo),
+      calc_insumos_txt: (c.detalle_insumos || []).map((l) => insumosM.get(l.id_insumo)?.nombre || '').join(' · '),
     }));
 
-    const abonadoPorPedido = new Map();
+    const abonosPorPedido = new Map();
     raw.abonos.forEach((a) => {
-      abonadoPorPedido.set(a.id_pedido, (abonadoPorPedido.get(a.id_pedido) || 0) + Number(a.monto || 0));
+      abonosPorPedido.set(a.id_pedido, [...(abonosPorPedido.get(a.id_pedido) || []), a]);
     });
 
-    /* El total del pedido suma los productos base (detalle_pedido) y los
-       insumos que se gastan en la personalizacion (detalle_pedido_insumo). */
-    const lineaSubtotal = (l) => l.subtotal ?? l.cantidad * l.precio_unitario;
+    /* El total del registro es la suma de los insumos que se gastan
+       (detalle_pedido_insumo); el saldo es el total menos los abonos. */
     const pedidos = raw.pedidos.map((p) => {
-      const totalProductos = suma(p.detalles || [], lineaSubtotal);
-      const totalInsumos = suma(p.insumos || [], lineaSubtotal);
-      const total = totalProductos + totalInsumos;
-      const abonado = abonadoPorPedido.get(p.id) || 0;
+      const total = redondear(suma(p.insumos || [], (l) => l.subtotal ?? l.cantidad * l.precio_unitario));
+      const abonos = abonosPorPedido.get(p.id) || [];
+      const abonado = redondear(suma(abonos, (a) => a.monto));
       return {
         ...p,
+        calc_codigo: codigoPedido(p.id),
         calc_cliente: clientesM.get(p.id_cliente)?.nombre || '—',
-        calc_total_productos: totalProductos,
-        calc_total_insumos: totalInsumos,
         calc_total: total,
         calc_abonado: abonado,
-        calc_saldo: Math.max(0, total - abonado),
-        calc_lineas: (p.detalles || []).length,
+        calc_saldo: Math.max(0, redondear(total - abonado)),
+        calc_pct: total ? Math.round((abonado / total) * 100) : 0,
+        calc_abonos: abonos.length,
+        calc_abono_inicial: abonos.length ? 'Registrado' : 'Pendiente',
+        calc_lineas: (p.insumos || []).length,
       };
     });
     const pedidosM = porId(pedidos);
@@ -350,10 +360,12 @@ export function DataProvider({ children }) {
       const p = pedidosM.get(a.id_pedido);
       return {
         ...a,
-        calc_pedido: p ? `PED-${String(p.id).padStart(4, '0')}` : '—',
+        calc_codigo: codigoAbono(a.id),
+        calc_pedido: p ? p.calc_codigo : '—',
         calc_cliente: p?.calc_cliente || '—',
         calc_total_pedido: p?.calc_total || 0,
         calc_saldo: p?.calc_saldo ?? 0,
+        calc_estado_pedido: p?.estado || '—',
       };
     });
 
@@ -363,35 +375,31 @@ export function DataProvider({ children }) {
       return m;
     };
     const usuariosPorRol = cuenta(raw.usuarios, 'id_rol');
-    const productosPorCategoria = cuenta(raw.productos, 'id_categoria');
     const comprasPorProveedor = cuenta(raw.compras, 'id_proveedor');
     const pedidosPorCliente = cuenta(raw.pedidos, 'id_cliente');
 
-    /* El producto no guarda existencias: su total es la suma de las de todas
-       sus variantes. Las tallas en si se consultan en Variante producto. */
-    const stockPorProducto = new Map();
-    raw.variantes.forEach((v) => {
-      stockPorProducto.set(v.id_producto, (stockPorProducto.get(v.id_producto) || 0) + Number(v.stock || 0));
-    });
-    const variantesPorProducto = cuenta(raw.variantes, 'id_producto');
+    /* Nombre con que se muestra el registro afectado de un movimiento. */
+    const registroMovimiento = (m) => {
+      if (m.tabla === 'compra') return codigoCompra(m.id_registro);
+      if (m.tabla === 'pedido') return codigoPedido(m.id_registro);
+      if (m.tabla === 'abono') return codigoAbono(m.id_registro);
+      const e = etiquetaFila(m.valor_nuevo || m.valor_anterior || {});
+      return e === '—' ? `#${m.id_registro}` : e;
+    };
 
     return {
       // catálogos
       permisos: raw.permisos,
-      tallas: raw.tallas,
+      privilegios: raw.privilegios,
       tipos_insumo: raw.tipos_insumo,
       unidades_medida: raw.unidades_medida,
-      variantes,
-      fichas_tecnicas: raw.fichas_tecnicas.map((f) => ({
-        ...f,
-        calc_insumo: insumosM.get(f.id_insumo)?.nombre || '—',
-        calc_variante: variantesM.get(f.id_varianteproducto)?.calc_etiqueta || '—',
-      })),
 
       roles: raw.roles.map((r) => ({
         ...r,
         calc_usuarios: usuariosPorRol.get(r.id) || 0,
         calc_permisos: (r.permisos || []).map((id) => permisos.get(id)?.nombre).filter(Boolean),
+        calc_total_permisos: (r.permisos || []).length,
+        calc_total_privilegios: (r.privilegios || []).length,
         /* Texto fijo para poder filtrar por asignacion: el filtro de la tabla
            compara valores exactos, no cuenta registros. */
         calc_uso: (usuariosPorRol.get(r.id) || 0) > 0 ? 'Con usuarios' : 'Sin usuarios',
@@ -400,21 +408,6 @@ export function DataProvider({ children }) {
       usuarios: raw.usuarios.map((u) => ({
         ...u,
         calc_rol: rolesM.get(u.id_rol)?.nombre || '—',
-      })),
-
-      categorias: raw.categorias.map((c) => ({
-        ...c,
-        calc_productos: productosPorCategoria.get(c.id) || 0,
-        /* Texto fijo para poder filtrar por uso: el filtro de la tabla compara
-           valores exactos, no cuenta registros. */
-        calc_uso: (productosPorCategoria.get(c.id) || 0) > 0 ? 'Con productos' : 'Sin productos',
-      })),
-
-      productos: raw.productos.map((p) => ({
-        ...p,
-        calc_categoria: categoriasM.get(p.id_categoria)?.nombre || '—',
-        calc_stock: stockPorProducto.get(p.id) || 0,
-        calc_variantes: variantesPorProducto.get(p.id) || 0,
       })),
 
       insumos,
@@ -436,8 +429,8 @@ export function DataProvider({ children }) {
       abonos,
 
       /* Historial: solo lectura. Se resuelve el modulo, el responsable y el
-         registro afectado (el nombre sale del propio JSON guardado por el
-         trigger, porque la fila original pudo haberse eliminado). */
+         registro afectado (el nombre sale del propio JSON guardado, porque la
+         fila original pudo haberse eliminado). */
       movimientos: raw.movimientos.map((m) => {
         const u = usuariosM.get(m.id_usuario);
         const cambios = camposCambiados(m.valor_anterior, m.valor_nuevo);
@@ -447,9 +440,7 @@ export function DataProvider({ children }) {
           calc_accion: ETIQUETA_ACCION[m.accion] || m.accion,
           calc_usuario: u?.nombre_empleado || 'Sistema',
           calc_alias: u?.nombre_usuario || '—',
-          calc_registro: etiquetaFila(m.valor_nuevo || m.valor_anterior || {}) === '—'
-            ? `#${m.id_registro}`
-            : etiquetaFila(m.valor_nuevo || m.valor_anterior),
+          calc_registro: registroMovimiento(m),
           calc_cambios: cambios,
           calc_total_cambios: cambios.length,
           calc_fecha: m.fecha_cambio.slice(0, 10),
@@ -459,31 +450,52 @@ export function DataProvider({ children }) {
   }, [raw]);
 
   /** Opciones `{value, label, baja}` para los select de llave foránea: `baja`
-   *  lleva el motivo cuando la fila ya no se puede elegir (ver `motivoBaja`).
-   *  La lista siempre viene completa, de modo que los registros que ya
-   *  apuntan a una fila dada de baja sigan mostrando su nombre. */
+   *  lleva el motivo cuando la fila ya no se puede elegir (ver `motivoBaja`,
+   *  o el criterio propio que reciba). La lista siempre viene completa, de
+   *  modo que los registros que ya apuntan a una fila dada de baja sigan
+   *  mostrando su nombre. */
   const opciones = useCallback(
-    (coleccion, etiqueta = (r) => r.nombre) =>
-      db[coleccion].map((r) => ({ value: r.id, label: etiqueta(r), baja: motivoBaja(r) })),
+    (coleccion, etiqueta = (r) => r.nombre, baja = motivoBaja) =>
+      db[coleccion].map((r) => ({ value: r.id, label: etiqueta(r), baja: baja(r) })),
     [db]
   );
+
+  /**
+   * Insumos que no alcanzan para las lineas de un pedido: [{ nombre, pide, hay }].
+   * `anterior` es el registro tal como esta guardado; si ya venia descontando,
+   * lo suyo vuelve a contar como disponible para el mismo registro.
+   */
+  const faltantes = useCallback((lineas, anterior) => {
+    const yaDescontado = anterior && consumeInventario(anterior.estado) ? anterior.insumos || [] : [];
+    const pide = new Map();
+    (lineas || []).forEach((l) => pide.set(l.id_insumo, (pide.get(l.id_insumo) || 0) + Number(l.cantidad || 0)));
+    const out = [];
+    for (const [id, cantidad] of pide) {
+      const fila = db.insumos.find((x) => String(x.id) === String(id));
+      if (!fila) continue;
+      const propio = suma(yaDescontado.filter((l) => String(l.id_insumo) === String(id)), (l) => l.cantidad);
+      const hay = redondear(Number(fila.stock || 0) + propio);
+      if (cantidad > hay) out.push({ nombre: fila.nombre, pide: cantidad, hay });
+    }
+    return out;
+  }, [db]);
 
   /* "Hoy" del sistema: fijo, para que crear un registro no desplace los
      filtros Hoy/Semana/Mes/Año del dashboard. */
   const refFecha = hoyISO();
 
   /* ---- Indicadores globales (no dependen del período) ----
-     Los pedidos anulados se conservan en el listado, pero no se toman en
-     cuenta en ningun indicador (igual que las compras anuladas). */
+     Las cotizaciones todavia no son ventas, asi que solo cuentan los
+     registros que ya pasaron a pedido. */
   const stats = useMemo(() => {
     const bajoStock = db.insumos.filter((i) => i.stock <= i.calc_minimo);
-    const vigentes = db.pedidos.filter((p) => p.estado !== PEDIDO_ANULADO);
+    const vendidos = db.pedidos.filter((p) => p.estado !== COTIZACION);
     return {
-      porCobrar: suma(vigentes, (p) => p.calc_saldo),
+      porCobrar: suma(vendidos, (p) => p.calc_saldo),
       recaudado: suma(db.abonos, (a) => a.monto),
       bajoStock,
-      pedidosActivos: vigentes.filter((p) => p.estado !== 'Entregado / vendido').length,
-      totalPedidos: vigentes.length,
+      pedidosActivos: vendidos.filter((p) => p.estado !== ENTREGADO).length,
+      totalPedidos: db.pedidos.length,
       valorInventario: suma(db.insumos, (i) => i.calc_valor),
     };
   }, [db]);
@@ -493,8 +505,8 @@ export function DataProvider({ children }) {
     const { desde, hasta } = rangoPeriodo(periodo, refFecha);
     const previo = rangoPeriodo(periodo, refFecha, 1);
 
-    const enRango = (f, r) => f >= r.desde && f <= r.hasta;
-    const pedidosDe = (r) => db.pedidos.filter((p) => enRango(p.fecha_inicio, r) && p.estado !== PEDIDO_ANULADO);
+    const enRango = (f, r) => !!f && f >= r.desde && f <= r.hasta;
+    const pedidosDe = (r) => db.pedidos.filter((p) => p.estado !== COTIZACION && enRango(p.fecha_inicio, r));
     const comprasDe = (r) => db.compras.filter((c) => enRango(c.fecha, r) && c.estado !== COMPRA_ANULADA);
     const abonosDe = (r) => db.abonos.filter((a) => enRango(a.fecha, r));
 
@@ -509,62 +521,41 @@ export function DataProvider({ children }) {
     const comprasMes = suma(comprasPeriodo, (c) => c.calc_total);
     const recaudadoPeriodo = suma(abonosPeriodo, (a) => a.monto);
 
-    /* 0. Ventas / Compras por tramo del periodo (linea de area) */
+    /* Ventas / Compras por tramo del periodo (linea de area) */
     const tramos = tramosPeriodo(periodo, refFecha);
     const serie = {
       ventas: tramos.map((t) => ({ l: t.l, v: suma(pedidosDe(t), (p) => p.calc_total) })),
       compras: tramos.map((t) => ({ l: t.l, v: suma(comprasDe(t), (c) => c.calc_total) })),
     };
 
-    /* 1. Pedidos por estado (barras) */
+    /* Pedidos por estado (barras): las cotizaciones se cuentan por su fecha de
+       creacion y los demas por su fecha de inicio. */
     const porEstado = {};
-    pedidosPeriodo.forEach((p) => { porEstado[p.estado] = (porEstado[p.estado] || 0) + 1; });
+    db.pedidos
+      .filter((p) => enRango(p.estado === COTIZACION ? p.fecha_creacion : p.fecha_inicio, { desde, hasta }))
+      .forEach((p) => { porEstado[p.estado] = (porEstado[p.estado] || 0) + 1; });
 
-    /* 2. Compras por tipo de insumo (dona) */
+    /* Compras por tipo de insumo (dona) */
     const porTipo = {};
     comprasPeriodo.forEach((c) => {
       (c.detalle_insumos || []).forEach((l) => {
         const tipo = db.insumos.find((i) => i.id === l.id_insumo)?.calc_tipo || 'Otros';
         porTipo[tipo] = (porTipo[tipo] || 0) + l.cantidad * l.precio_unitario;
       });
-      (c.detalle_productos || []).forEach((l) => {
-        porTipo.Otros = (porTipo.Otros || 0) + l.cantidad * l.precio_unitario;
-      });
     });
     const comprasPorCategoria = Object.entries(porTipo)
       .map(([tipo, value]) => ({ label: tipo, value, color: COLOR_TIPO_INSUMO[tipo] || 'var(--error)' }))
       .sort((a, b) => b.value - a.value);
 
-    /* 3. Productos más vendidos (barras horizontales): se recorre detalle_pedido
-          y se agrupa por producto, sin importar la talla de la variante. */
-    const porProducto = new Map();
-    pedidosPeriodo.forEach((p) => {
-      (p.detalles || []).forEach((l) => {
-        const v = db.variantes.find((x) => x.id === l.id_varianteproducto);
-        const nombre = v?.calc_producto || 'Sin producto';
-        const acum = porProducto.get(nombre) || { monto: 0, unidades: 0 };
-        acum.monto += Number(l.subtotal ?? l.cantidad * l.precio_unitario);
-        acum.unidades += Number(l.cantidad || 0);
-        porProducto.set(nombre, acum);
-      });
-    });
-    const topProductos = [...porProducto]
-      .map(([l, a]) => ({ l, v: a.monto, unidades: a.unidades, nota: `${a.unidades} u.` }))
-      .sort((a, b) => b.v - a.v)
-      .slice(0, 5);
-
-    /* El primero de esa lista alimenta el KPI "Producto más vendido". */
-    const topProducto = topProductos[0] || null;
-
-    /* 4. Recaudo por método de pago (dona) */
+    /* Recaudo por método de pago (dona) */
     const porMetodo = {};
     abonosPeriodo.forEach((a) => { porMetodo[a.metodo_pago] = (porMetodo[a.metodo_pago] || 0) + Number(a.monto || 0); });
     const recaudoPorMetodo = Object.entries(porMetodo)
       .map(([label, value]) => ({ label, value, color: COLOR_METODO_PAGO[label] || 'var(--text-sec)' }))
       .sort((a, b) => b.value - a.value);
 
-    /* 4. Existencias más bajas (barras horizontales): no depende del período,
-          es la foto actual de la tabla `insumo`. */
+    /* Existencias más bajas (barras horizontales): no depende del período,
+       es la foto actual de la tabla `insumo`. */
     const existencias = [...db.insumos]
       .sort((a, b) => a.stock - b.stock)
       .slice(0, 6)
@@ -582,12 +573,9 @@ export function DataProvider({ children }) {
       porCobrar: stats.porCobrar,
       pedidosActivos: stats.pedidosActivos,
       bajoStock: stats.bajoStock,
-      // series de los cinco gráficos
       serie,
       porEstado,
       comprasPorCategoria,
-      topProductos,
-      topProducto,
       recaudoPorMetodo,
       existencias,
       // variación real de cada KPI contra el período anterior
@@ -600,11 +588,13 @@ export function DataProvider({ children }) {
     };
   }, [db, refFecha, stats]);
 
+  /** Avisos de la campana. `permiso` es el modulo que hay que tener para verlo. */
   const notificaciones = useMemo(() => {
     const out = [];
     stats.bajoStock.slice(0, 4).forEach((i) =>
       out.push({
         id: 'stk' + i.id,
+        permiso: 'Insumos',
         tipo: i.stock === 0 ? 'error' : 'warning',
         titulo: i.stock === 0 ? 'Insumo agotado' : 'Existencias bajas',
         texto: `${i.nombre} — ${i.stock} ${i.calc_abreviatura || i.calc_unidad.toLowerCase()} disponibles.`,
@@ -612,14 +602,15 @@ export function DataProvider({ children }) {
       })
     );
     db.pedidos
-      .filter((p) => p.estado === 'Completado - falta pago')
+      .filter((p) => p.estado === FALTA_PAGO)
       .slice(0, 3)
       .forEach((p) =>
         out.push({
           id: 'ped' + p.id,
+          permiso: 'Pedidos',
           tipo: 'info',
           titulo: 'Pedido con saldo pendiente',
-          texto: `PED-${String(p.id).padStart(4, '0')} — ${p.calc_cliente} tiene saldo por cobrar.`,
+          texto: `${p.calc_codigo} — ${p.calc_cliente} tiene saldo por cobrar.`,
           tiempo: 'Hoy',
         })
       );
@@ -629,9 +620,10 @@ export function DataProvider({ children }) {
       .forEach((c) =>
         out.push({
           id: 'cmp' + c.id,
+          permiso: 'Compras',
           tipo: 'success',
           titulo: 'Compra en tránsito',
-          texto: `CMP-${String(c.id).padStart(4, '0')} — ${c.calc_proveedor}.`,
+          texto: `${c.calc_codigo} — ${c.calc_proveedor}.`,
           tiempo: 'Ayer',
         })
       );
@@ -639,7 +631,12 @@ export function DataProvider({ children }) {
   }, [db, stats]);
 
   return (
-    <DataContext.Provider value={{ db, opciones, create, update, remove, dependencias, stats, getStats, notificaciones }}>
+    <DataContext.Provider
+      value={{
+        db, opciones, create, update, nuevoId, faltantes, stats, getStats, notificaciones,
+        setActor, registrarAcceso, solicitarRecuperacion, enlaceValido, restablecerClave,
+      }}
+    >
       {children}
     </DataContext.Provider>
   );

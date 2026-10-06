@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from '@shared/components/Icon.jsx';
-import { ESTADO_TONO, etiquetaFila } from '@shared/data/mock.js';
+import { ESTADO_TONO, etiquetaFila, CAMBIAR_ESTADO } from '@shared/data/mock.js';
 import { useData } from '@shared/context/DataContext.jsx';
+import { useAuth } from '@shared/context/AuthContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
 
 export default function EstadoCell({
@@ -23,10 +24,18 @@ export default function EstadoCell({
      sus estados son etapas por las que avanza -y tiene una tercera, la
      anulacion, que se aplica desde el formulario-, no dos valores opuestos. */
   comoLista = false,
-  disabled = false,
+  /* Permiso de la pantalla: sin el privilegio "Cambiar estado" en ese modulo
+     el estado se muestra, pero no se puede cambiar. */
+  modulo,
+  /* El modulo se encarga del cambio (confirmacion, cambios automaticos…):
+     recibe el estado elegido y la fila, y la celda no actualiza nada. */
+  alElegir,
+  disabled: bloqueado = false,
 }) {
   const { update } = useData();
+  const { puedeAccion } = useAuth();
   const toast = useToast();
+  const disabled = bloqueado || !puedeAccion(modulo, CAMBIAR_ESTADO);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
   const btnRef = useRef(null);
@@ -68,6 +77,7 @@ export default function EstadoCell({
   const cambiar = (nuevo) => {
     setOpen(false);
     if (nuevo === valor) return;
+    if (alElegir) { alElegir(nuevo, row); return; }
     const motivo = validarCambio?.(nuevo, row);
     if (motivo) {
       toast.error(motivo, `No fue posible cambiar el ${etiqueta}`);

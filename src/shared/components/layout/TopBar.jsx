@@ -10,8 +10,9 @@ import { useToast } from '@shared/context/ToastContext.jsx';
 const TONO_ICO = { error: 'xC', warning: 'alert', info: 'info', success: 'checkC' };
 
 export default function TopBar({ titulo, onOpenMenu }) {
-  const { user, logout } = useAuth();
-  const { notificaciones } = useData();
+  const { user, logout, puede } = useAuth();
+  /* Solo los avisos de los modulos a los que el rol tiene permiso. */
+  const notificaciones = useData().notificaciones.filter((n) => puede(n.permiso));
   const toast = useToast();
   const nav = useNavigate();
   const [openBell, setOpenBell] = useState(false);

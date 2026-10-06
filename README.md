@@ -75,18 +75,16 @@ En la pantalla de login puede hacer clic en el rol para autocompletar las creden
 |---|---|
 | `/` | Home (landing público: eslogan, carrusel, empresa, Instagram, FAQ, contacto y footer) |
 | `/login` | Inicio de sesión |
-| `/recuperar` | Recuperación de contraseña |
+| `/recuperar` | Recuperación de contraseña (y `?token=…` para restablecerla) |
 | `/app` | Dashboard con KPIs y gráficos |
 | `/app/roles` | Roles y permisos |
 | `/app/usuarios` | Usuarios |
 | `/app/movimientos` | Movimientos (historial de cambios de todos los módulos) |
 | `/app/insumos` | Insumos y control de existencias |
-| `/app/categorias` | Categorías de productos |
-| `/app/productos` | Catálogo de productos |
 | `/app/proveedores` | Proveedores |
-| `/app/compras` | Compras a proveedores |
+| `/app/compras` | Compras de insumos a proveedores |
 | `/app/clientes` | Clientes |
-| `/app/pedidos` | Pedidos y trazabilidad |
+| `/app/pedidos` | Cotizaciones · Pedidos · Ventas (pestañas sobre el mismo registro) |
 | `/app/abonos` | Abonos y saldos |
 | `/app/cuenta` | Mi cuenta (perfil, seguridad, preferencias, actividad) |
 
@@ -101,12 +99,20 @@ Inicio, Compras, Abonos, Pedidos y Cuenta. Las tablas se transforman en listas.
 - **Modo claro / oscuro** en todas las vistas (incluido el landing y el login).
   Se guarda en `localStorage`, respeta `prefers-color-scheme` y no parpadea al recargar.
   Se cambia desde la topbar, el sidebar o Cuenta → Preferencias.
-- **CRUD completo** en los 11 módulos: crear, ver detalle, editar y eliminar, con
-  modales animados y confirmación antes de borrar.
-- **Historial de movimientos** (Configuración → Movimientos): bitácora de solo consulta
-  de la tabla `movimientos`, con el módulo afectado, la acción (creación / modificación /
-  eliminación), el responsable, la fecha y hora, y el detalle campo por campo de
-  `valor_anterior` frente a `valor_nuevo`.
+- **Roles con permisos y privilegios**: cada rol tiene los módulos a los que entra
+  (permisos) y las acciones que puede hacer en cada uno (privilegios: agregar, editar,
+  ver detalle, cambiar estado, anular, ver/descargar diseño o comprobante). Los botones
+  de cada pantalla aparecen solo si el rol tiene el privilegio.
+- **Registro, consulta, edición y cambio de estado** en todos los módulos. Los registros
+  no se eliminan: se inactivan, y las compras se anulan.
+- **Cotizaciones, pedidos y ventas** son el mismo registro: la cotización guarda insumos,
+  descripción e imagen del diseño; el primer abono (50% o total) la pasa a pedido en
+  proceso; al terminarlo queda en «falta pago» o «completado» según el saldo; y la entrega
+  se registra en Ventas. Máximo dos abonos por pedido.
+- **Historial de movimientos** (Configuración → Movimientos): cada alta y cambio hecho en
+  el sistema queda registrado con el responsable, la fecha y hora y el detalle campo por
+  campo de `valor_anterior` frente a `valor_nuevo`, junto con los inicios de sesión, los
+  intentos fallidos y los cierres de sesión.
 - **Estados editables desde el listado**: cada estado (y el rol del usuario o el método
   de pago del abono) se cambia directamente en la fila de la tabla o de la lista móvil,
   sin abrir el detalle ni el formulario. Componente `ui/EstadoCell.jsx`.
@@ -117,19 +123,20 @@ Inicio, Compras, Abonos, Pedidos y Cuenta. Las tablas se transforman en listas.
   compras en tránsito).
 - **Tablas** con búsqueda, filtros desplegables, ordenamiento por columna,
   paginación ("Mostrando 1-8 de 42 …") y estado vacío.
-- **Dashboard con 4 KPI y 6 gráficos**, todos alimentados por los datos reales del
-  `DataContext` y recalculados con el selector de periodo Hoy · Semana · Mes · Año:
+- **Dashboard según el rol**: el Administrador y el Gerente ven todo; el Vendedor solo los
+  indicadores de ventas y el Almacenista solo los de compras. Indicadores y gráficos
+  alimentados por los datos reales del `DataContext` y recalculados con el selector de
+  periodo Hoy · Semana · Mes · Año:
 
   | # | Gráfico | Tipo | Qué muestra |
   |---|---|---|---|
   | 1 | Ventas / Compras | Línea de área con tooltip | Tendencia del periodo |
   | 2 | Pedidos por estado | Barras verticales | Carga de trabajo por etapa |
-  | 3 | Productos más vendidos | Barras horizontales | Top 5 por monto vendido |
-  | 4 | Compras por tipo de insumo | Dona | En qué se gasta el presupuesto |
-  | 5 | Recaudo por método de pago | Dona | Cómo pagan los clientes |
-  | 6 | Insumos con menores existencias | Barras horizontales con umbral | Riesgo de desabasto |
+  | 3 | Compras por tipo de insumo | Dona | En qué se gasta el presupuesto |
+  | 4 | Recaudo por método de pago | Dona | Cómo pagan los clientes |
+  | 5 | Insumos con menores existencias | Barras horizontales con umbral | Riesgo de desabasto |
 
-  Los 4 KPI (ventas, compras, abonos por cobrar y pedidos activos) muestran su
+  Los KPI (ventas, compras, abonos por cobrar y pedidos activos) muestran su
   variación real contra el periodo anterior, no un porcentaje fijo. Todo está hecho
   a mano en SVG/CSS, sin librerías de gráficos.
 - **Animaciones**: entrada de páginas y tarjetas escalonada, contador animado en los KPI,
@@ -161,14 +168,14 @@ src/
 │  ├─ configuracion/           Roles · Usuarios · Movimientos
 │  │  ├─ pages/                Una vista por módulo
 │  │  └─ components/           MovimientoDetalle (comparativo antes / después)
-│  ├─ compras/                 Insumos · Categorías · Productos · Proveedores · Compras
-│  └─ ventas/                  Clientes · Pedidos · Abonos
+│  ├─ compras/                 Insumos · Proveedores · Compras
+│  └─ ventas/                  Clientes · Pedidos (cotizaciones, pedidos, ventas) · Abonos
 │     └─ index.js              Barril: qué expone la funcionalidad hacia afuera
 │
 ├─ shared/                     Transversal a todas las funcionalidades
 │  ├─ components/
 │  │  ├─ Icon.jsx              Iconografía completa del sistema (SVG)
-│  │  ├─ CrudPage.jsx          Página CRUD reutilizable (la usan los 11 módulos)
+│  │  ├─ CrudPage.jsx          Página CRUD reutilizable (la usan todos los módulos)
 │  │  ├─ charts/               AreaChart · BarChart · HBarChart · DonutChart
 │  │  ├─ layout/               Sidebar · TopBar · BottomBar · Footer · AppLayout
 │  │  └─ ui/                   DataTable · Modal · ConfirmDialog · Form · KpiCard ·

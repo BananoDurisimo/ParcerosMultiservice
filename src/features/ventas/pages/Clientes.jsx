@@ -2,21 +2,55 @@ import CrudPage from '@shared/components/CrudPage.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import Icon from '@shared/components/Icon.jsx';
 import EstadoCell from '@shared/components/ui/EstadoCell.jsx';
+import Badge from '@shared/components/ui/Badge.jsx';
+import MiniTabla from '@shared/components/ui/MiniTabla.jsx';
 import { iniciales } from '@shared/context/AuthContext.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { TIPOS_DOCUMENTO, ESTADOS_REGISTRO } from '@shared/data/mock.js';
+import { money, fecha, TIPOS_DOCUMENTO, ESTADOS_REGISTRO, COTIZACION, ENTREGADO } from '@shared/data/mock.js';
+
+/** Etapa comercial del registro: cotizacion, pedido o venta. */
+const etapa = (p) => (p.estado === COTIZACION ? 'Cotización' : p.estado === ENTREGADO ? 'Venta' : 'Pedido');
 
 /** Tabla `cliente`: nombre, tipodocumento, documento, telefono, correo,
  *  direccion, estado. */
 export default function Clientes() {
   const { db, stats } = useData();
 
+  const detalle = (r) => (
+    <div>
+      <div className="detail-grid">
+        <div className="detail-item"><div className="dl">Nombre o razón social</div><div className="dv">{r.nombre}</div></div>
+        <div className="detail-item"><div className="dl">Documento</div><div className="dv">{r.tipodocumento}: {r.documento}</div></div>
+        <div className="detail-item"><div className="dl">Correo electrónico</div><div className="dv">{r.correo || '—'}</div></div>
+        <div className="detail-item"><div className="dl">Teléfono</div><div className="dv">{r.telefono || '—'}</div></div>
+        <div className="detail-item"><div className="dl">Dirección</div><div className="dv">{r.direccion || '—'}</div></div>
+        <div className="detail-item"><div className="dl">Estado</div><div className="dv"><Badge>{r.estado}</Badge></div></div>
+      </div>
+
+      <h3 className="det-section">Historial comercial</h3>
+      <MiniTabla
+        filas={db.pedidos.filter((p) => p.id_cliente === r.id).sort((a, b) => b.fecha_creacion.localeCompare(a.fecha_creacion))}
+        vacio="El cliente todavía no tiene cotizaciones, pedidos ni ventas."
+        columnas={[
+          { label: 'Código', render: (p) => p.calc_codigo },
+          { label: 'Tipo', render: (p) => <Badge tono="neutral" dot={false}>{etapa(p)}</Badge> },
+          { label: 'Fecha de creación', render: (p) => fecha(p.fecha_creacion) },
+          { label: 'Total', align: 'right', render: (p) => <span className="money">{money(p.calc_total)}</span> },
+          { label: 'Saldo pendiente', align: 'right', render: (p) => <span className="money">{money(p.calc_saldo)}</span> },
+          { label: 'Estado', render: (p) => <Badge>{p.estado}</Badge> },
+        ]}
+      />
+    </div>
+  );
+
   return (
     <CrudPage
       titulo="Clientes"
-      subtitulo="Clubes, ligas, academias y equipos: datos de contacto para el seguimiento de cotizaciones, pedidos y ventas."
+      subtitulo="Clubes, ligas, academias y equipos: datos de contacto e historial de cotizaciones, pedidos y ventas."
       icono="users"
+      modulo="Clientes"
       coleccion="clientes"
+      renderDetalle={detalle}
       entidad="clientes"
       singular="cliente"
       searchKeys={['nombre', 'documento', 'correo', 'telefono']}
@@ -48,7 +82,7 @@ export default function Clientes() {
         { key: 'correo', label: 'Correo', render: (r) => <span className="muted">{r.correo}</span> },
         { key: 'direccion', label: 'Dirección', render: (r) => <span className="caption">{r.direccion || '—'}</span> },
         { key: 'calc_pedidos', label: 'Pedidos', align: 'center', mobile: 'value', render: (r) => <span className="badge badge-info">{r.calc_pedidos}</span> },
-        { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="clientes" options={ESTADOS_REGISTRO} /> },
+        { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="clientes" modulo="Clientes" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[
         { name: 'nombre', label: 'Nombre o razón social', type: 'text', required: true },

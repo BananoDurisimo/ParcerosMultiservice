@@ -16,6 +16,7 @@ export default function Usuarios() {
       titulo="Usuarios"
       subtitulo="Administre los usuarios del sistema y los accesos disponibles según el rol asignado."
       icono="user"
+      modulo="Usuarios"
       coleccion="usuarios"
       entidad="usuarios"
       singular="usuario"
@@ -44,14 +45,14 @@ export default function Usuarios() {
         { key: 'cargo', label: 'Cargo', mobile: 'meta', render: (r) => <span className="muted">{r.cargo || '—'}</span> },
         { key: 'calc_rol', label: 'Rol', mobile: 'meta', render: (r) => <span className="badge badge-primary">{r.calc_rol}</span> },
         { key: 'fecha_ingreso', label: 'Fecha de ingreso', render: (r) => <span className="caption">{fecha(r.fecha_ingreso)}</span> },
-        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="usuarios" options={ESTADOS_REGISTRO} /> },
+        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="usuarios" modulo="Usuarios" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[
         { name: 'nombre_empleado', label: 'Nombre del empleado', type: 'text', noSpecial: true },
         { name: 'documento', label: 'Documento', type: 'text' },
         { name: 'nombre_usuario', label: 'Nombre de usuario', type: 'text', required: true, noSpecial: true, unique: true, hint: 'Único en el sistema, sin espacios.' },
-        { name: 'contrasena', label: 'Contraseña', type: 'password', required: true, placeholder: 'Mínimo 6 caracteres', ocultarEnDetalle: true },
-        { name: 'correo_empresarial', label: 'Correo empresarial', type: 'email', unique: true },
+        { name: 'contrasena', label: 'Contraseña', type: 'password', required: true, minLength: 6, placeholder: 'Mínimo 6 caracteres', ocultarEnDetalle: true },
+        { name: 'correo_empresarial', label: 'Correo empresarial', type: 'email', required: true, unique: true, hint: 'Es el correo con el que el usuario inicia sesión.' },
         { name: 'telefono', label: 'Teléfono', type: 'tel' },
         { name: 'cargo', label: 'Cargo', type: 'text' },
         { name: 'fecha_ingreso', label: 'Fecha de ingreso', type: 'date' },

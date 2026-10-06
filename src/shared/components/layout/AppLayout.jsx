@@ -15,8 +15,6 @@ const TITULOS = {
   '/app/usuarios': 'Usuarios',
   '/app/movimientos': 'Movimientos',
   '/app/insumos': 'Insumos',
-  '/app/categorias': 'Categorías',
-  '/app/productos': 'Productos',
   '/app/proveedores': 'Proveedores',
   '/app/compras': 'Compras',
   '/app/clientes': 'Clientes',

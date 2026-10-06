@@ -9,15 +9,18 @@ import { fechaHora, TONO_ACCION, ICONO_ACCION } from '@shared/data/mock.js';
 export default function MovimientoDetalle({ m }) {
   if (!m) return null;
 
-  const esAlta = m.accion === 'INSERT';
+  const esAlta = m.accion === 'INSERT' || m.tabla === 'acceso';
   const esBaja = m.accion === 'DELETE';
   const tono = TONO_ACCION[m.accion] || 'neutral';
 
-  const titulo = esAlta
-    ? 'Valores registrados'
-    : esBaja
-      ? 'Valores eliminados'
-      : 'Columnas modificadas';
+  const esAcceso = m.tabla === 'acceso';
+  const titulo = esAcceso
+    ? 'Datos del acceso'
+    : esAlta
+      ? 'Valores registrados'
+      : esBaja
+        ? 'Valores eliminados'
+        : 'Columnas modificadas';
 
   return (
     <div>
@@ -61,7 +64,7 @@ export default function MovimientoDetalle({ m }) {
           El movimiento no registra diferencias entre el valor anterior y el nuevo.
         </div>
       ) : (
-        <div className="table-scroll">
+        <div className="mini-scroll">
           <table className="diff-tbl">
             <thead>
               <tr>
@@ -87,8 +90,8 @@ export default function MovimientoDetalle({ m }) {
       )}
 
       <p className="caption" style={{ marginTop: 14 }}>
-        Este registro lo generó automáticamente un trigger de la base de datos. La contraseña de los
-        usuarios nunca se guarda en el historial.
+        Este registro lo generó automáticamente el sistema. La contraseña de los usuarios nunca se
+        guarda en el historial.
       </p>
     </div>
   );

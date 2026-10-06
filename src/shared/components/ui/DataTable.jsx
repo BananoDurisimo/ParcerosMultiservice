@@ -5,9 +5,12 @@ import { normOpciones } from './Form.jsx';
 
 /**
  * Tabla estandar del sistema: busqueda, filtros, orden, paginacion,
- * acciones CRUD (punto 1) y version movil en lista.
- * Los registros no se eliminan: se consultan y se editan, y en los modulos
- * de compras y pedidos la baja se hace anulando desde el formulario.
+ * acciones por fila (punto 1) y version movil en lista.
+ * Los registros no se eliminan: se consultan y se editan, y en el modulo de
+ * compras la baja se hace anulando desde el formulario.
+ *
+ * Un filtro es un desplegable `{ key, label, options }` o un rango de fechas
+ * `{ key, label, type: 'rango' }` (desde / hasta).
  */
 export default function DataTable({
   columns,
@@ -21,6 +24,10 @@ export default function DataTable({
   createLabel = 'Agregar',
   onView,
   onEdit,
+  /* Si la fila admite edicion (p. ej. una compra anulada no). */
+  puedeEditarFila = () => true,
+  /* Botones propios del modulo junto a "Ver detalle" y "Editar". */
+  accionesExtra,
   emptyText = 'No hay registros que coincidan con la búsqueda.',
 }) {
   const [q, setQ] = useState('');
@@ -28,6 +35,9 @@ export default function DataTable({
   const [sort, setSort] = useState({ key: null, dir: 'asc' });
   const [page, setPage] = useState(1);
   const [openFilters, setOpenFilters] = useState(false);
+
+  /* Un rango con la fecha final antes de la inicial no se aplica. */
+  const rangoInvalido = (v) => !!v?.desde && !!v?.hasta && v.hasta < v.desde;
 
   const filtered = useMemo(() => {
     let out = rows;
@@ -37,13 +47,20 @@ export default function DataTable({
         (searchKeys.length ? searchKeys : Object.keys(r)).some((k) => String(r[k] ?? '').toLowerCase().includes(t))
       );
     }
-    /* Un filtro compara contra el valor de la columna, salvo cuando la fila
-       guarda una lista -los insumos de una compra, por ejemplo-: ahi basta con
-       que uno de sus elementos coincida. */
-    Object.entries(fv).forEach(([k, v]) => {
+    filters.forEach((f) => {
+      const v = fv[f.key];
       if (!v) return;
+      if (f.type === 'rango') {
+        if (rangoInvalido(v)) return;
+        if (v.desde) out = out.filter((r) => !!r[f.key] && r[f.key] >= v.desde);
+        if (v.hasta) out = out.filter((r) => !!r[f.key] && r[f.key] <= v.hasta);
+        return;
+      }
+      /* Un filtro compara contra el valor de la columna, salvo cuando la fila
+         guarda una lista -los insumos de una compra, por ejemplo-: ahi basta
+         con que uno de sus elementos coincida. */
       out = out.filter((r) =>
-        Array.isArray(r[k]) ? r[k].some((x) => String(x) === v) : String(r[k]) === v
+        Array.isArray(r[f.key]) ? r[f.key].some((x) => String(x) === v) : String(r[f.key]) === v
       );
     });
     if (sort.key) {
@@ -54,14 +71,14 @@ export default function DataTable({
       });
     }
     return out;
-  }, [rows, q, fv, sort, searchKeys]);
+  }, [rows, q, fv, sort, searchKeys, filters]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
   useEffect(() => { setPage(1); }, [q, fv, rows.length]);
   const current = Math.min(page, pages);
   const slice = filtered.slice((current - 1) * pageSize, current * pageSize);
 
-  const activos = Object.values(fv).filter(Boolean).length;
+  const activos = Object.values(fv).filter((v) => (typeof v === 'object' ? v.desde || v.hasta : v)).length;
 
   const toggleSort = (key) =>
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
@@ -70,10 +87,12 @@ export default function DataTable({
   const mMeta  = columns.filter((c) => c.mobile === 'meta');
   const mValue = columns.find((c) => c.mobile === 'value');
 
+  const hayAcciones = !!(onView || onEdit || accionesExtra);
   const acciones = (r) => (
     <>
       {onView && <button className="icon-btn is-view" onClick={() => onView(r)} title="Ver detalle"><Icon name="eye" size={16} /></button>}
-      {onEdit && <button className="icon-btn is-edit" onClick={() => onEdit(r)} title="Editar"><Icon name="edit" size={16} /></button>}
+      {onEdit && puedeEditarFila(r) && <button className="icon-btn is-edit" onClick={() => onEdit(r)} title="Editar"><Icon name="edit" size={16} /></button>}
+      {accionesExtra && accionesExtra(r)}
     </>
   );
 
@@ -102,7 +121,27 @@ export default function DataTable({
 
       {openFilters && filters.length > 0 && (
         <div className="toolbar anim-in" style={{ background: 'var(--surface-2)' }}>
-          {filters.map((f) => (
+          {filters.map((f) => f.type === 'rango' ? (
+            <div className="field" key={f.key} style={{ minWidth: 290 }}>
+              <label style={{ fontSize: 11.5 }}>{f.label}</label>
+              <div className="row" style={{ gap: 6 }}>
+                <input
+                  className="input" type="date" style={{ minHeight: 34 }} aria-label={`${f.label}: desde`}
+                  value={fv[f.key]?.desde || ''}
+                  onChange={(e) => setFv({ ...fv, [f.key]: { ...fv[f.key], desde: e.target.value } })}
+                />
+                <span className="caption">a</span>
+                <input
+                  className={`input ${rangoInvalido(fv[f.key]) ? 'has-error' : ''}`} type="date" style={{ minHeight: 34 }} aria-label={`${f.label}: hasta`}
+                  value={fv[f.key]?.hasta || ''}
+                  onChange={(e) => setFv({ ...fv, [f.key]: { ...fv[f.key], hasta: e.target.value } })}
+                />
+              </div>
+              {rangoInvalido(fv[f.key]) && (
+                <span className="field-error"><Icon name="alert" size={12} /> La fecha final no puede ser anterior a la inicial.</span>
+              )}
+            </div>
+          ) : (
             <div className="field" key={f.key} style={{ minWidth: 170 }}>
               <label style={{ fontSize: 11.5 }}>{f.label}</label>
               <select className="select" style={{ minHeight: 34 }} value={fv[f.key] || ''} onChange={(e) => setFv({ ...fv, [f.key]: e.target.value })}>
@@ -142,7 +181,7 @@ export default function DataTable({
                       </span>
                     </th>
                   ))}
-                  {(onView || onEdit) && <th style={{ textAlign: 'right' }}>Acciones</th>}
+                  {hayAcciones && <th style={{ textAlign: 'right' }}>Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -153,7 +192,7 @@ export default function DataTable({
                         {c.render ? c.render(r) : r[c.key]}
                       </td>
                     ))}
-                    {(onView || onEdit) && <td><div className="cell-actions">{acciones(r)}</div></td>}
+                    {hayAcciones && <td><div className="cell-actions">{acciones(r)}</div></td>}
                   </tr>
                 ))}
               </tbody>
@@ -173,7 +212,7 @@ export default function DataTable({
                   </div>
                 </div>
                 {mValue && <div style={{ textAlign: 'right' }}>{mValue.render ? mValue.render(r) : r[mValue.key]}</div>}
-                <div className="cell-actions">{acciones(r)}</div>
+                {hayAcciones && <div className="cell-actions">{acciones(r)}</div>}
               </div>
             ))}
           </div>

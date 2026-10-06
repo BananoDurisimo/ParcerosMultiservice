@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import Icon from '@shared/components/Icon.jsx';
 import { money } from '@shared/data/mock.js';
+import { leerArchivo, esImagen, esPdf } from '@shared/data/archivos.js';
 
 /**
  * Las opciones de un select, multiselect o editor de líneas se declaran como
@@ -36,51 +37,14 @@ const valorDe = (opts, texto) => {
 };
 
 /* --------------------------------------------------------------
-   Comprobante: URL externa o imagen subida desde el equipo.
+   Archivo adjunto: imagen del diseño o comprobante de pago.
    El archivo se guarda como data URL (no hay backend); cuando llegue
    la API, basta con subirlo y guardar la URL que devuelva.
    -------------------------------------------------------------- */
-const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const MAX_IMAGEN_MB = 5;
-
-export const esImagenAdjunta = (v) => typeof v === 'string' && v.startsWith('data:image/');
-
-/** Abre en otra pestaña una URL o una imagen adjunta (los navegadores
-    bloquean abrir data URLs directamente, por eso se convierte a blob). */
-export async function abrirComprobante(v) {
-  if (!esImagenAdjunta(v)) { window.open(v, '_blank', 'noopener'); return; }
-  const blob = await (await fetch(v)).blob();
-  window.open(URL.createObjectURL(blob), '_blank', 'noopener');
-}
-
-/** Valida tipo, tamaño y contenido real (que el navegador pueda decodificarla). */
-function leerImagen(file) {
-  return new Promise((resolve, reject) => {
-    if (!TIPOS_IMAGEN.includes(file.type)) {
-      reject(new Error('El archivo debe ser una imagen JPG, PNG, WEBP o GIF.'));
-      return;
-    }
-    if (file.size > MAX_IMAGEN_MB * 1024 * 1024) {
-      reject(new Error(`La imagen no puede superar ${MAX_IMAGEN_MB} MB.`));
-      return;
-    }
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('No se pudo leer el archivo seleccionado.'));
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => resolve(reader.result);
-      img.onerror = () => reject(new Error('El archivo no es una imagen válida.'));
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-function ComprobanteField({ f, value, error, onChange, id, label }) {
+function ArchivoField({ f, value, error, onChange, readOnly, label }) {
   const inputFile = useRef(null);
   const [errArchivo, setErrArchivo] = useState('');
   const [nombre, setNombre] = useState('');
-  const adjunta = esImagenAdjunta(value);
   const msg = errArchivo || error;
 
   const subir = async (e) => {
@@ -88,7 +52,7 @@ function ComprobanteField({ f, value, error, onChange, id, label }) {
     e.target.value = '';
     if (!file) return;
     try {
-      onChange(await leerImagen(file));
+      onChange(await leerArchivo(file, f.tipos));
       setNombre(file.name);
       setErrArchivo('');
     } catch (err) {
@@ -103,22 +67,20 @@ function ComprobanteField({ f, value, error, onChange, id, label }) {
       {label}
       <div className="file-row">
         <input
-          id={id}
           className={`input ${msg ? 'has-error' : ''}`}
           type="text"
-          value={adjunta ? (nombre || 'Imagen adjunta') : (value ?? '')}
-          readOnly={adjunta}
-          placeholder={f.placeholder}
-          onChange={(e) => { setErrArchivo(''); onChange(e.target.value); }}
+          readOnly
+          value={value ? (nombre || (esPdf(value) ? 'Documento PDF adjunto' : 'Imagen adjunta')) : ''}
+          placeholder="Ningún archivo seleccionado"
         />
-        <input ref={inputFile} type="file" accept={TIPOS_IMAGEN.join(',')} hidden onChange={subir} />
-        {adjunta ? (
+        <input ref={inputFile} type="file" accept={f.tipos.join(',')} hidden onChange={subir} />
+        {!readOnly && (value ? (
           <button type="button" className="btn" onClick={quitar}><Icon name="x" size={15} /> Quitar</button>
         ) : (
-          <button type="button" className="btn" onClick={() => inputFile.current?.click()}><Icon name="download" size={15} /> Subir imagen</button>
-        )}
+          <button type="button" className="btn" onClick={() => inputFile.current?.click()}><Icon name="upload" size={15} /> Subir archivo</button>
+        ))}
       </div>
-      {adjunta && <img className="file-preview" src={value} alt="Vista previa del comprobante" />}
+      {esImagen(value) && <img className="file-preview" src={value} alt={f.label} />}
       {f.hint && !msg && <span className="caption">{f.hint}</span>}
       {msg && <span className="field-error"><Icon name="alert" size={12} /> {msg}</span>}
     </div>
@@ -141,13 +103,11 @@ export function validar(fields, values) {
     if (vacio) return;
     if (f.type === 'email' && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v)) errs[f.name] = 'Ingrese un correo electrónico válido.';
     if (f.type === 'tel' && !/^[\d\s()+-]{7,}$/.test(v)) errs[f.name] = 'Ingrese un teléfono válido (mínimo 7 dígitos).';
-    if (f.type === 'url' && !/^https?:\/\/\S+$/i.test(v)) errs[f.name] = 'Ingrese una URL válida (debe iniciar con http:// o https://).';
-    if (f.type === 'file' && !/^(https?:\/\/|blob:|data:)/i.test(v)) errs[f.name] = 'Adjunte un archivo o ingrese un enlace válido (http:// o https://).';
-    if (f.type === 'comprobante' && !esImagenAdjunta(v) && !/^https?:\/\/\S+$/i.test(v)) errs[f.name] = 'Ingrese una URL válida o suba una imagen.';
     if ((f.type === 'number' || f.type === 'money') && (isNaN(Number(v)) || Number(v) < 0)) errs[f.name] = 'Ingrese un valor numérico válido.';
     if (f.min !== undefined && Number(v) < f.min) errs[f.name] = `El valor mínimo permitido es ${f.min}.`;
     if (f.type === 'text' && f.noSpecial && /[<>{}[\]$%^*]/.test(v)) errs[f.name] = 'Este campo no puede contener caracteres especiales.';
     if (f.maxLength && String(v).length > f.maxLength) errs[f.name] = `Máximo ${f.maxLength} caracteres.`;
+    if (f.minLength && String(v).length < f.minLength) errs[f.name] = `Mínimo ${f.minLength} caracteres.`;
   });
   return errs;
 }
@@ -165,14 +125,12 @@ export function Field({ f, value, error, onChange, readOnly }) {
     </label>
   );
 
-  if (f.type === 'file') return <FileField f={f} value={value} error={error} onChange={onChange} readOnly={readOnly} />;
-
   if (f.type === 'multiselect') {
     return <MultiSelectField f={f} value={value} error={error} onChange={onChange} readOnly={readOnly} />;
   }
 
-  if (f.type === 'comprobante') {
-    return <ComprobanteField f={f} value={value} error={error} onChange={onChange} id={id} label={label} />;
+  if (f.type === 'archivo') {
+    return <ArchivoField f={f} value={value} error={error} onChange={onChange} readOnly={readOnly} label={label} />;
   }
 
   if (f.type === 'switch') {
@@ -311,85 +269,6 @@ function MultiSelectField({ f, value, error, onChange, readOnly }) {
           {f.hint}
         </span>
       )}
-    </div>
-  );
-}
-
-/* --------------------------------------------------------------
-   Campo de archivo adjunto (comprobantes, soportes de pago)
-
-   Se admite un enlace externo o un archivo del propio equipo. Como el
-   prototipo no tiene servidor de almacenamiento, el archivo elegido se
-   referencia con un object URL del navegador, que sirve para abrirlo desde
-   el listado y el detalle durante la sesion.
-   -------------------------------------------------------------- */
-const MAX_ARCHIVO_MB = 5;
-
-function FileField({ f, value, error, onChange, readOnly }) {
-  const id = 'f-' + f.name;
-  const selector = useRef(null);
-  const [nombre, setNombre] = useState('');
-  const [aviso, setAviso] = useState('');
-
-  const esLocal = typeof value === 'string' && value.startsWith('blob:');
-
-  const elegir = (e) => {
-    const archivo = e.target.files?.[0];
-    e.target.value = '';
-    if (!archivo) return;
-    if (archivo.size > MAX_ARCHIVO_MB * 1024 * 1024) {
-      setAviso(`El archivo supera el máximo permitido de ${MAX_ARCHIVO_MB} MB.`);
-      return;
-    }
-    setAviso('');
-    setNombre(archivo.name);
-    onChange(URL.createObjectURL(archivo));
-  };
-
-  const quitar = () => { setNombre(''); setAviso(''); onChange(''); };
-
-  return (
-    <div className={`field ${f.full ? 'full' : ''}`}>
-      <label htmlFor={id}>
-        {f.label} {f.required && !readOnly && <span className="req">*</span>}
-      </label>
-
-      <div className="file-field">
-        <input
-          id={id}
-          className={`input ${error ? 'has-error' : ''}`}
-          type="text"
-          value={esLocal ? (nombre || 'Archivo adjunto') : (value ?? '')}
-          readOnly={readOnly || esLocal}
-          placeholder={f.placeholder || 'https://…'}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        {!readOnly && (esLocal ? (
-          <button type="button" className="btn btn-sm" onClick={quitar}>
-            <Icon name="x" size={15} /> Quitar
-          </button>
-        ) : (
-          <button type="button" className="btn btn-sm" onClick={() => selector.current?.click()}>
-            <Icon name="upload" size={15} /> Subir archivo
-          </button>
-        ))}
-        <input
-          ref={selector}
-          type="file"
-          accept={f.accept || 'image/*,application/pdf'}
-          hidden
-          onChange={elegir}
-        />
-      </div>
-
-      {aviso && <span className="field-error"><Icon name="alert" size={12} /> {aviso}</span>}
-      {error && !aviso && <span className="field-error"><Icon name="alert" size={12} /> {error}</span>}
-      {!aviso && !error && esLocal && (
-        <span className="caption">
-          Archivo tomado de este equipo. <a href={value} target="_blank" rel="noreferrer">Abrir</a>
-        </span>
-      )}
-      {!aviso && !error && !esLocal && f.hint && <span className="caption">{f.hint}</span>}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import MovimientoDetalle from '@features/configuracion/components/MovimientoDetalle.jsx';
 import { iniciales } from '@shared/context/AuthContext.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
+import { useAuth } from '@shared/context/AuthContext.jsx';
 import {
   fecha,
   hora,
@@ -15,6 +16,7 @@ import {
   TONO_ACCION,
   ICONO_ACCION,
   MODULOS_AUDITADOS,
+  VER_DETALLE,
 } from '@shared/data/mock.js';
 
 /**
@@ -28,6 +30,7 @@ import {
  */
 export default function Movimientos() {
   const { db } = useData();
+  const { puedeAccion } = useAuth();
   const [actual, setActual] = useState(null);
 
   const rows = db.movimientos;
@@ -91,8 +94,9 @@ export default function Movimientos() {
       <div className="alert alert-info" style={{ marginBottom: 16 }}>
         <Icon name="info" size={18} />
         <div>
-          Este historial es de <strong>solo consulta</strong>: la base de datos lo llena de forma
-          automática cada vez que se crea, modifica o elimina un registro en cualquier módulo.
+          Este historial es de <strong>solo consulta</strong>: se llena de forma automática cada vez que
+          se crea o modifica un registro en cualquier módulo, y con cada inicio de sesión, intento de
+          acceso fallido y cierre de sesión.
         </div>
       </div>
 
@@ -175,7 +179,7 @@ export default function Movimientos() {
           { key: 'id_usuario', label: 'Responsable', options: opcionesUsuario },
           { key: 'calc_fecha', label: 'Fecha', options: [...new Set(rows.map((r) => r.calc_fecha))].map((f) => ({ value: f, label: fecha(f) })) },
         ]}
-        onView={setActual}
+        onView={puedeAccion('Movimientos', VER_DETALLE) ? setActual : undefined}
         emptyText="No hay movimientos que coincidan con la búsqueda o los filtros aplicados."
       />
 

@@ -5,23 +5,30 @@ import Modal from './ui/Modal.jsx';
 import ConfirmDialog from './ui/ConfirmDialog.jsx';
 import { Field, ItemsEditor, normOpciones, validar } from './ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
+import { useAuth } from '@shared/context/AuthContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
-import { etiquetaFila } from '@shared/data/mock.js';
+import { etiquetaFila, AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ANULAR } from '@shared/data/mock.js';
 
 /**
  * Pagina CRUD reutilizable: cabecera, resumen, tabla, formulario y detalle.
- * La usan los 11 modulos.
  *
- * Los registros nunca se eliminan (no hay boton de borrar en la tabla): los
- * modulos que mueven dinero -compras y pedidos- reciben la prop `anulacion`
- * para dar de baja el documento desde el formulario de edicion, dejandolo en
- * la base de datos con su estado en "Anulada"/"Anulado".
+ * `modulo` es el permiso (tabla `permiso`) de la pantalla: los botones de
+ * agregar, editar, ver detalle, cambiar estado y anular solo aparecen si el
+ * rol del usuario tiene el privilegio correspondiente en ese modulo.
+ *
+ * Los registros nunca se eliminan (no hay boton de borrar en la tabla): el
+ * modulo de compras recibe la prop `anulacion` para dar de baja el documento
+ * desde el formulario de edicion, dejandolo en la base de datos con su estado
+ * en "Anulada".
  */
 export default function CrudPage({
   titulo,
   subtitulo,
   icono,
+  modulo,
   coleccion,
+  /* Filas a listar; por defecto toda la coleccion. */
+  filas,
   entidad,
   singular,
   columnas,
@@ -31,18 +38,33 @@ export default function CrudPage({
   defaults = {},
   pageSize = 8,
   resumen = null,
+  /* Contenido entre la cabecera y la tabla (p. ej. las pestañas de Pedidos). */
+  subnav = null,
   renderDetalle,
   beforeSave,
+  /* Guardado propio del modulo: recibe los datos ya validados y se encarga de
+     persistirlos y de avisar. Si no viene, se crea o actualiza la fila. */
+  alGuardar,
   pageActions,
   etiquetaRegistro,
   validarExtra,
   conDetalle = true,
+  conCrear = true,
+  puedeEditarFila = () => true,
+  accionesExtra,
   tablaCompacta = false,
-  anulacion = null, // { valor, campo = 'estado', mensaje(reg) }
+  emptyText,
+  anulacion = null, // { valor, campo = 'estado', mensaje(reg), validar(reg) }
 }) {
   const { db, create, update } = useData();
+  const { puedeAccion } = useAuth();
   const toast = useToast();
-  const rows = db[coleccion];
+  const rows = filas || db[coleccion];
+
+  const puedeCrear = conCrear && puedeAccion(modulo, AGREGAR);
+  const puedeEditar = puedeAccion(modulo, EDITAR);
+  const puedeVer = conDetalle && puedeAccion(modulo, VER_DETALLE);
+  const puedeEstado = puedeAccion(modulo, CAMBIAR_ESTADO);
 
   const [modo, setModo] = useState(null); // 'crear' | 'editar' | 'ver'
   const [actual, setActual] = useState(null);
@@ -57,14 +79,14 @@ export default function CrudPage({
   const campoAnulacion = anulacion?.campo || 'estado';
   const estaAnulado = (r) => !!anulacion && r?.[campoAnulacion] === anulacion.valor;
 
-  /* Campos marcados `soloEditar`: no se piden al crear. El registro nace con el
-     valor de `defaults` -por ejemplo el estado "Activo"- y se cambia despues
-     desde la tabla o editando. */
+  /* Campos marcados `soloEditar`: no se piden al crear (el registro nace con
+     el valor de `defaults`). Campos `soloCrear`: se piden al crear y al editar
+     se muestran bloqueados; con `ocultarAlEditar` ni siquiera se muestran.
+     El estado solo aparece si el rol puede cambiarlo. */
   const camposFormulario = campos
     .filter((f) => !(f.soloEditar && modo === 'crear'))
-    /* Un registro ya anulado conserva su estado en el desplegable aunque la
-       lista de opciones no lo ofrezca: asi el formulario muestra el estado
-       real y basta elegir otro para reactivarlo. */
+    .filter((f) => !(f.ocultarAlEditar && modo === 'editar'))
+    .filter((f) => !(f.name === 'estado' && modo === 'editar' && !puedeEstado))
     .map((f) =>
       estaAnulado(actual) && f.name === campoAnulacion && f.options && !f.options.includes(anulacion.valor)
         ? { ...f, options: [...f.options, anulacion.valor] }
@@ -78,7 +100,7 @@ export default function CrudPage({
 
   const setVal = (name, v) => {
     setValues((s) => ({ ...s, [name]: v }));
-    if (errors[name]) setErrors((e) => ({ ...e, [name]: undefined }));
+    setErrors((e) => (e[name] ? { ...e, [name]: undefined } : e));
   };
 
   /** Campos `unique`: el valor no puede repetirse en otra fila (sin distinguir mayusculas). */
@@ -87,7 +109,7 @@ export default function CrudPage({
     const errs = {};
     campos.forEach((f) => {
       if (!f.unique || !norm(values[f.name])) return;
-      if (rows.some((r) => r.id !== actual?.id && norm(r[f.name]) === norm(values[f.name]))) {
+      if (db[coleccion].some((r) => r.id !== actual?.id && norm(r[f.name]) === norm(values[f.name]))) {
         errs[f.name] = 'Ya existe un registro con este valor.';
       }
     });
@@ -105,15 +127,22 @@ export default function CrudPage({
     /* El payload se arma unicamente con los campos declarados, que son las
        columnas reales de la tabla: asi los valores derivados (calc_*) que
        vienen en la fila al editar nunca se escriben en la "base de datos". */
-    let data = { ...defaults };
-    campos.forEach((f) => {
+    let data = modo === 'crear' ? { ...defaults } : {};
+    camposFormulario.forEach((f) => {
       if (f.type === 'custom') return; // solo presentacion: no es una columna
+      /* Un componente propio puede llenar varias columnas a la vez. */
+      if (f.type === 'component' && f.columnas) {
+        f.columnas.forEach((c) => { data[c] = values[c]; });
+        return;
+      }
       const v = values[f.name];
       data[f.name] = f.type === 'number' || f.type === 'money' ? Number(v || 0) : v;
     });
     if (beforeSave) data = beforeSave(data, modo, actual);
 
-    if (modo === 'crear') {
+    if (alGuardar) {
+      alGuardar(data, modo, actual);
+    } else if (modo === 'crear') {
       create(coleccion, data);
       toast.success(`El registro de ${singular} se guardó correctamente.`);
     } else {
@@ -123,9 +152,15 @@ export default function CrudPage({
     cerrar();
   };
 
-  const puedeAnular = !!anulacion && modo === 'editar' && !estaAnulado(actual);
+  const puedeAnular = !!anulacion && modo === 'editar' && !estaAnulado(actual) && puedeAccion(modulo, ANULAR);
 
   const confirmarAnulacion = () => {
+    const motivo = anulacion.validar?.(anular);
+    if (motivo) {
+      toast.error(motivo, `No fue posible anular la ${singular}`);
+      setAnular(null);
+      return;
+    }
     update(coleccion, anular.id, { [campoAnulacion]: anulacion.valor });
     toast.warning(`Se anuló el registro de ${singular}: ${etiqueta(anular)}.`, 'Registro anulado');
     setAnular(null);
@@ -145,6 +180,7 @@ export default function CrudPage({
   };
 
   const etiqueta = (r) => (r ? (etiquetaRegistro ? etiquetaRegistro(r) : etiquetaFila(r)) : '—');
+  const editable = (r) => puedeEditar && puedeEditarFila(r);
 
   return (
     <div className="anim-page">
@@ -158,6 +194,8 @@ export default function CrudPage({
         </div>
         <div className="row">{pageActions}</div>
       </div>
+
+      {subnav}
 
       {resumen && (
         <div className="kpi-grid stagger" style={{ marginBottom: 16 }}>
@@ -173,17 +211,20 @@ export default function CrudPage({
         entidad={entidad}
         pageSize={pageSize}
         compacta={tablaCompacta}
-        onCreate={abrirCrear}
+        onCreate={puedeCrear ? abrirCrear : undefined}
         createLabel={`Agregar ${singular}`}
-        onView={conDetalle ? abrirVer : undefined}
-        onEdit={abrirEditar}
+        onView={puedeVer ? abrirVer : undefined}
+        onEdit={puedeEditar ? abrirEditar : undefined}
+        puedeEditarFila={puedeEditarFila}
+        accionesExtra={accionesExtra}
+        emptyText={emptyText}
       />
 
       {/* Formulario crear / editar */}
       <Modal
         open={modo === 'crear' || modo === 'editar'}
         onClose={cerrar}
-        size={campos.some((c) => c.type === 'items') ? 'lg' : ''}
+        size={campos.some((c) => c.type === 'items' || c.type === 'component') ? 'lg' : ''}
         title={modo === 'crear' ? `Agregar ${singular}` : `Editar ${singular}`}
         subtitle={modo === 'crear' ? 'Complete la información requerida.' : `Modificando: ${etiqueta(actual)}`}
         footer={
@@ -211,39 +252,58 @@ export default function CrudPage({
         )}
 
         <div className="form-grid">
-          {camposFormulario.map((f) =>
-            f.type === 'custom' ? (
+          {camposFormulario.map((f) => {
+            const bloqueado = !!f.soloCrear && modo === 'editar';
+            if (f.type === 'custom') {
               /* Bloque de solo lectura calculado con los valores del formulario
-                 (por ejemplo, el total en vivo de un pedido). */
-              <div key={f.name} className={`field ${f.full ? 'full' : ''}`}>{f.render(values)}</div>
-            ) : f.type === 'items' ? (
-              <ItemsEditor key={f.name} f={f} value={values[f.name] || []} error={errors[f.name]} onChange={(v) => setVal(f.name, v)} />
-            ) : (
-              <Field key={f.name} f={f} value={values[f.name]} error={errors[f.name]} onChange={(v) => setVal(f.name, v)} />
-            )
-          )}
+                 (por ejemplo, el total en vivo de una cotizacion). */
+              return <div key={f.name} className={`field ${f.full ? 'full' : ''}`}>{f.render(values, modo, actual)}</div>;
+            }
+            if (f.type === 'component') {
+              return (
+                <div key={f.name} className="field full">
+                  {f.render({ value: values[f.name], onChange: (v) => setVal(f.name, v), error: errors[f.name], errors, values, setVal, modo })}
+                </div>
+              );
+            }
+            if (f.type === 'items') {
+              return <ItemsEditor key={f.name} f={f} value={values[f.name] || []} error={errors[f.name]} readOnly={bloqueado} onChange={(v) => setVal(f.name, v)} />;
+            }
+            return (
+              <Field
+                key={f.name}
+                f={f}
+                value={values[f.name]}
+                error={errors[f.name]}
+                readOnly={bloqueado}
+                onChange={(v) => setVal(f.name, v)}
+              />
+            );
+          })}
         </div>
       </Modal>
 
       {/* Detalle */}
       <Modal
-        open={conDetalle && modo === 'ver'}
+        open={puedeVer && modo === 'ver'}
         onClose={cerrar}
         title={`Detalle de ${singular}`}
         subtitle={etiqueta(actual)}
-        size={campos.some((c) => c.type === 'items') ? 'lg' : ''}
+        size={renderDetalle || campos.some((c) => c.type === 'items') ? 'lg' : ''}
         footer={
           <>
             <button className="btn" onClick={cerrar}>Cerrar</button>
-            <button className="btn btn-warning" onClick={() => abrirEditar(actual)}>
-              <Icon name="edit" size={16} /> Editar
-            </button>
+            {actual && editable(actual) && (
+              <button className="btn btn-warning" onClick={() => abrirEditar(actual)}>
+                <Icon name="edit" size={16} /> Editar
+              </button>
+            )}
           </>
         }
       >
         {actual && (renderDetalle ? renderDetalle(actual) : (
           <div className="detail-grid">
-            {campos.filter((f) => f.type !== 'items' && f.type !== 'custom' && !f.ocultarEnDetalle).map((f) => (
+            {campos.filter((f) => !['items', 'custom', 'component'].includes(f.type) && !f.ocultarEnDetalle).map((f) => (
               <div className="detail-item" key={f.name}>
                 <div className="dl">{f.label}</div>
                 <div className="dv">{textoDetalle(f, actual[f.name])}</div>

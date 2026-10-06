@@ -7,7 +7,7 @@ import { Home } from '@features/home';
 import { Login, Recuperar, Cuenta } from '@features/auth';
 import { Dashboard } from '@features/dashboard';
 import { Roles, Usuarios, Movimientos } from '@features/configuracion';
-import { Insumos, Categorias, Productos, Variantes, Proveedores, Compras } from '@features/compras';
+import { Insumos, Proveedores, Compras } from '@features/compras';
 import { Clientes, Pedidos, Abonos } from '@features/ventas';
 
 /**
@@ -34,9 +34,6 @@ export default function AppRoutes() {
 
           {/* Compras */}
           <Route path="insumos" element={<Insumos />} />
-          <Route path="categorias" element={<Categorias />} />
-          <Route path="productos" element={<Productos />} />
-          <Route path="variantes" element={<Variantes />} />
           <Route path="proveedores" element={<Proveedores />} />
           <Route path="compras" element={<Compras />} />
 

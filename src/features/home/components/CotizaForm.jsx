@@ -24,8 +24,9 @@ export default function CotizaForm() {
     e.preventDefault();
     const n = {};
     if (!f.nombre.trim()) n.nombre = 'Ingrese su nombre.';
+    else if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ .'-]+$/.test(f.nombre.trim())) n.nombre = 'El nombre solo admite letras y espacios.';
     if (!f.tipo) n.tipo = 'Seleccione el tipo de uniforme.';
-    if (f.cantidad && !(Number(f.cantidad) > 0)) n.cantidad = 'Ingrese una cantidad mayor que cero.';
+    if (f.cantidad && !(Number(f.cantidad) > 0 && Number.isInteger(Number(f.cantidad)))) n.cantidad = 'Ingrese una cantidad entera mayor que cero.';
     if (!/^[\d\s()+-]{7,}$/.test(f.telefono)) n.telefono = 'Ingrese un teléfono válido.';
     setErrs(n);
     if (Object.keys(n).length) return;

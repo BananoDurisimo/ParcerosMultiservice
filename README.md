@@ -101,10 +101,14 @@ Inicio, Compras, Abonos, Pedidos y Cuenta. Las tablas se transforman en listas.
   Se cambia desde la topbar, el sidebar o Cuenta → Preferencias.
 - **Roles con permisos y privilegios**: cada rol tiene los módulos a los que entra
   (permisos) y las acciones que puede hacer en cada uno (privilegios: agregar, editar,
-  ver detalle, cambiar estado, anular, ver/descargar diseño o comprobante). Los botones
-  de cada pantalla aparecen solo si el rol tiene el privilegio.
-- **Registro, consulta, edición y cambio de estado** en todos los módulos. Los registros
-  no se eliminan: se inactivan, y las compras se anulan.
+  ver detalle, cambiar estado, anular, eliminar, ver/descargar diseño o comprobante). Los
+  botones de cada pantalla aparecen solo si el rol tiene el privilegio.
+- **Registro, consulta, edición, cambio de estado y eliminación** en todos los módulos
+  (menos el historial de movimientos, que es la auditoría). Eliminar pide confirmación y
+  se impide cuando otros registros dependen de la fila (un cliente con pedidos, un rol con
+  usuarios…): en esos casos se inactiva, y las compras además se pueden anular.
+- **Llaves foráneas con buscador** en todos los formularios (cliente, proveedor, insumo,
+  rol, pedido) y validación de todos los campos al confirmar.
 - **Cotizaciones, pedidos y ventas** son el mismo registro: la cotización guarda insumos,
   descripción e imagen del diseño; el primer abono (50% o total) la pasa a pedido en
   proceso; al terminarlo queda en «falta pago» o «completado» según el saldo; y la entrega

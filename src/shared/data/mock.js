@@ -104,25 +104,27 @@ export const EDITAR = 'Editar';
 export const VER_DETALLE = 'Ver detalle';
 export const CAMBIAR_ESTADO = 'Cambiar estado';
 export const ANULAR = 'Anular';
+export const ELIMINAR = 'Eliminar';
 export const VER_DISENO = 'Ver diseño';
 export const DESCARGAR_DISENO = 'Descargar diseño';
 export const VER_COMPROBANTE = 'Ver comprobante';
 export const DESCARGAR_COMPROBANTE = 'Descargar comprobante';
 
 /** Acciones que ofrece cada modulo. Consultar el listado (buscar y filtrar)
- *  lo da el permiso mismo: los privilegios son lo que se puede hacer dentro. */
+ *  lo da el permiso mismo: los privilegios son lo que se puede hacer dentro.
+ *  El historial de movimientos no se puede eliminar: es la auditoria. */
 const ACCIONES_MODULO = [
-  ['Roles', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO]],
-  ['Usuarios', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO]],
+  ['Roles', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ELIMINAR]],
+  ['Usuarios', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ELIMINAR]],
   ['Movimientos', [VER_DETALLE]],
-  ['Insumos', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO]],
-  ['Proveedores', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO]],
-  ['Compras', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ANULAR]],
-  ['Clientes', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO]],
-  ['Cotizaciones', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, VER_DISENO, DESCARGAR_DISENO]],
-  ['Pedidos', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, VER_DISENO, DESCARGAR_DISENO]],
-  ['Ventas', [VER_DETALLE, CAMBIAR_ESTADO, VER_DISENO, DESCARGAR_DISENO, VER_COMPROBANTE, DESCARGAR_COMPROBANTE]],
-  ['Abonos', [AGREGAR, EDITAR, VER_DETALLE, VER_COMPROBANTE, DESCARGAR_COMPROBANTE]],
+  ['Insumos', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ELIMINAR]],
+  ['Proveedores', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ELIMINAR]],
+  ['Compras', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ANULAR, ELIMINAR]],
+  ['Clientes', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ELIMINAR]],
+  ['Cotizaciones', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ELIMINAR, VER_DISENO, DESCARGAR_DISENO]],
+  ['Pedidos', [AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ELIMINAR, VER_DISENO, DESCARGAR_DISENO]],
+  ['Ventas', [VER_DETALLE, CAMBIAR_ESTADO, ELIMINAR, VER_DISENO, DESCARGAR_DISENO, VER_COMPROBANTE, DESCARGAR_COMPROBANTE]],
+  ['Abonos', [AGREGAR, EDITAR, VER_DETALLE, ELIMINAR, VER_COMPROBANTE, DESCARGAR_COMPROBANTE]],
 ];
 
 // Tabla: permiso (id_permiso, nombre)
@@ -206,6 +208,8 @@ export const ETIQUETA_CAMPO = {
   nombre_empleado: 'Nombre del empleado',
   nombre_usuario: 'Nombre de usuario',
   nombrepersonacontacto: 'Persona de contacto',
+  telefono_contacto: 'Teléfono del contacto',
+  correo_contacto: 'Correo del contacto',
   metodo_pago: 'Método de pago',
   url_comprobante: 'Comprobante',
   imagen_diseno: 'Imagen del diseño',
@@ -456,12 +460,12 @@ export const seed = {
 
   // Tabla: proveedor
   proveedores: [
-    { id: 1, nombre: 'Textiles Nicaragua S.A', nombrepersonacontacto: 'Roberto Solís', id_tipo_insumo: 1, telefono: '2278 4410', correo: 'ventas@textilesni.com', direccion: 'Km 8 Carretera Norte, Managua', nit: 'J0310000451', estado: 'Activo' },
-    { id: 2, nombre: 'Distribuidora El Cosido', nombrepersonacontacto: 'Marta Aguilar', id_tipo_insumo: 2, telefono: '2255 9032', correo: 'contacto@elcosido.ni', direccion: 'Mercado Oriental, Módulo 22', nit: 'J0310000672', estado: 'Activo' },
-    { id: 3, nombre: 'Impresiones Managua', nombrepersonacontacto: 'Jorge Núñez', id_tipo_insumo: 3, telefono: '2299 1187', correo: 'info@impresionesmga.com', direccion: 'Bolonia, de la Rotonda 2c al sur', nit: 'J0310000893', estado: 'Activo' },
-    { id: 4, nombre: 'Accesorios del Norte', nombrepersonacontacto: 'Elena Vílchez', id_tipo_insumo: 4, telefono: '2712 3345', correo: 'ventas@accnorte.ni', direccion: 'Estelí, Barrio El Calvario', nit: 'J0310001014', estado: 'Activo' },
-    { id: 5, nombre: 'Bordados Estelí', nombrepersonacontacto: 'Luis Zamora', id_tipo_insumo: 4, telefono: '2713 8890', correo: 'bordados.esteli@gmail.com', direccion: 'Estelí, Av. Central', nit: 'J0310001235', estado: 'Inactivo' },
-    { id: 6, nombre: 'Confecciones del Sur', nombrepersonacontacto: 'Ada Miranda', id_tipo_insumo: 1, telefono: '2552 4471', correo: 'confeccionessur@ni.com', direccion: 'Rivas, Barrio San Francisco', nit: 'J0310001456', estado: 'Activo' },
+    { id: 1, nombre: 'Textiles Nicaragua S.A', nombrepersonacontacto: 'Roberto Solís', id_tipo_insumo: 1, telefono: '2278 4410', correo: 'ventas@textilesni.com', telefono_contacto: '8854 1203', correo_contacto: 'rsolis@textilesni.com', direccion: 'Km 8 Carretera Norte, Managua', nit: 'J0310000451', estado: 'Activo' },
+    { id: 2, nombre: 'Distribuidora El Cosido', nombrepersonacontacto: 'Marta Aguilar', id_tipo_insumo: 2, telefono: '2255 9032', correo: 'contacto@elcosido.ni', telefono_contacto: '8723 4410', correo_contacto: 'maguilar@elcosido.ni', direccion: 'Mercado Oriental, Módulo 22', nit: 'J0310000672', estado: 'Activo' },
+    { id: 3, nombre: 'Impresiones Managua', nombrepersonacontacto: 'Jorge Núñez', id_tipo_insumo: 3, telefono: '2299 1187', correo: 'info@impresionesmga.com', telefono_contacto: '8610 7752', correo_contacto: 'jnunez@impresionesmga.com', direccion: 'Bolonia, de la Rotonda 2c al sur', nit: 'J0310000893', estado: 'Activo' },
+    { id: 4, nombre: 'Accesorios del Norte', nombrepersonacontacto: 'Elena Vílchez', id_tipo_insumo: 4, telefono: '2712 3345', correo: 'ventas@accnorte.ni', telefono_contacto: '8477 9021', correo_contacto: 'evilchez@accnorte.ni', direccion: 'Estelí, Barrio El Calvario', nit: 'J0310001014', estado: 'Activo' },
+    { id: 5, nombre: 'Bordados Estelí', nombrepersonacontacto: 'Luis Zamora', id_tipo_insumo: 4, telefono: '2713 8890', correo: 'bordados.esteli@gmail.com', telefono_contacto: '8399 1145', correo_contacto: 'lzamora.bordados@gmail.com', direccion: 'Estelí, Av. Central', nit: 'J0310001235', estado: 'Inactivo' },
+    { id: 6, nombre: 'Confecciones del Sur', nombrepersonacontacto: 'Ada Miranda', id_tipo_insumo: 1, telefono: '2552 4471', correo: 'confeccionessur@ni.com', telefono_contacto: '8566 3398', correo_contacto: 'amiranda@confeccionessur.ni', direccion: 'Rivas, Barrio San Francisco', nit: 'J0310001456', estado: 'Activo' },
   ],
 
   /* Tabla: compra (id_compra, id_proveedor, fecha, fecha_entrega, estado)

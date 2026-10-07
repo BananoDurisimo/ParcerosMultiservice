@@ -589,6 +589,7 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 .modal { width: 100%; max-width: 620px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); animation: popIn .28s var(--ease) both; max-height: calc(100vh - 36px); display: flex; flex-direction: column; margin: auto; }
 .modal.sm { max-width: 430px; }
 .modal.lg { max-width: 860px; }
+.modal.xl { max-width: 1180px; }
 .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 18px 20px; border-bottom: 1px solid var(--border-soft); flex: none; }
 [data-theme='dark'] .modal-head { border-color: var(--border); }
 .modal-body { padding: 20px; overflow-y: auto; }
@@ -604,11 +605,93 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 .detail-item .dv { font-size: 14px; margin-top: 2px; }
 
 /* Editor de lineas (compras / pedidos) --------------------- */
-.items-box { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-.items-row { display: grid; grid-template-columns: 2fr .8fr 1fr auto; gap: 8px; align-items: center; padding: 9px 10px; border-bottom: 1px solid var(--border-soft); }
+/* Sin overflow oculto: el desplegable con buscador de la linea se sale de la caja. */
+.items-box { border: 1px solid var(--border); border-radius: var(--radius); }
+.items-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, .9fr) minmax(0, 1fr) minmax(0, .9fr) 70px; gap: 8px; align-items: center; padding: 9px 10px; border-bottom: 1px solid var(--border-soft); }
 [data-theme='dark'] .items-row { border-color: var(--border); }
-.items-row.head { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-sec); font-weight: 600; }
-.items-foot { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px; background: var(--surface-2); }
+.items-row.head { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-sec); font-weight: 600; border-radius: var(--radius) var(--radius) 0 0; }
+.items-row.is-editing { background: color-mix(in srgb, var(--warning) 8%, transparent); }
+.items-sub { text-align: right; }
+.items-acc { display: flex; justify-content: flex-end; gap: 2px; }
+.items-foot { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px; background: var(--surface-2); border-radius: 0 0 var(--radius) var(--radius); }
+@media (max-width: 640px) {
+  .items-row { grid-template-columns: 1fr 1fr; }
+  .items-row > :first-child { grid-column: 1 / -1; }
+  .items-row.head { display: none; }
+}
+
+/* Cantidad con su unidad de medida al lado ("12 yd") */
+.input-unidad { position: relative; display: flex; align-items: center; }
+.input-unidad .input { padding-right: 46px; }
+.input-unidad .unidad { position: absolute; right: 10px; font-size: 12px; color: var(--text-sec); pointer-events: none; }
+
+/* Desplegable con buscador (llaves foraneas) --------------- */
+.ss { position: relative; width: 100%; min-width: 0; }
+.ss-trigger { text-align: left; cursor: pointer; display: flex; align-items: center; }
+.ss-trigger:disabled { cursor: default; opacity: .75; }
+.ss-valor { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ss-placeholder { color: var(--text-sec); }
+.ss.is-open .ss-trigger { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
+.ss-panel {
+  position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0; min-width: 240px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg); padding: 8px; animation: fadeIn .15s var(--ease);
+}
+.ss-search { max-width: none; min-width: 0; }
+.ss-search .input { min-height: 34px; }
+.ss-search .input, .ins-buscar .input { padding-left: 36px; }
+.ss-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 228px; overflow-y: auto; }
+.ss-opt { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; cursor: pointer; }
+.ss-opt.is-active { background: var(--surface-3); }
+.ss-opt.is-selected { color: var(--primary); font-weight: 500; }
+.ss-opt.is-disabled { color: var(--text-sec); opacity: .6; cursor: not-allowed; }
+.ss-empty { padding: 10px; }
+
+/* Formulario en dos columnas (pedido) ---------------------- */
+.form-split { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.form-col { display: flex; flex-direction: column; gap: 15px; min-width: 0; }
+.form-col-der { padding-left: 22px; border-left: 1px solid var(--border-soft); }
+[data-theme='dark'] .form-col-der { border-color: var(--border); }
+@media (max-width: 960px) {
+  .form-split { grid-template-columns: 1fr; }
+  .form-col-der { padding-left: 0; border-left: 0; padding-top: 18px; border-top: 1px solid var(--border-soft); }
+}
+.form-section { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--border-soft); font-size: 13.5px; font-weight: 600; color: var(--text); }
+
+/* Catalogo de insumos del pedido --------------------------- */
+.ins-catalogo { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.ins-catalogo .ins-buscar { padding: 10px; background: var(--surface-2); border-bottom: 1px solid var(--border-soft); }
+.ins-catalogo .ins-buscar .search-wrap { max-width: none; }
+.ins-lista { max-height: 250px; overflow-y: auto; }
+.ins-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border-soft); }
+.ins-item:last-child { border-bottom: 0; }
+.ins-item.is-baja { opacity: .55; }
+.ins-item .ins-nombre { font-size: 13.5px; font-weight: 500; }
+.ins-item .btn { flex: none; }
+.ins-agregados { border: 1px solid var(--border); border-radius: var(--radius); }
+.ins-linea { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) 34px; gap: 8px; align-items: center; padding: 9px 10px; border-bottom: 1px solid var(--border-soft); }
+.ins-linea.head { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-sec); font-weight: 600; border-radius: var(--radius) var(--radius) 0 0; }
+.ins-linea:last-child { border-bottom: 0; }
+.ins-linea .input { min-height: 34px; padding: 6px 10px; }
+@media (max-width: 560px) {
+  .ins-linea { grid-template-columns: 1fr 1fr 34px; }
+  .ins-linea > :first-child { grid-column: 1 / -1; }
+  .ins-linea.head { display: none; }
+}
+
+/* Desglose del total del pedido */
+.desglose > div.linea { font-size: 12.5px; }
+.desglose .linea .caption { display: block; }
+
+/* Opciones de monto del abono (50% / 100% / saldo) --------- */
+.monto-opciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.monto-op { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); cursor: pointer; text-align: left; transition: border-color .2s, background-color .2s; }
+.monto-op:hover:not(:disabled) { border-color: var(--primary); }
+.monto-op.is-on { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 3px var(--primary-ring); }
+.monto-op:disabled { cursor: default; opacity: .6; }
+.monto-op .pct { font-size: 12px; color: var(--text-sec); font-weight: 500; }
+.monto-op strong { font-size: 16px; }
+.monto-opciones.has-error .monto-op { border-color: var(--error); }
 
 /* Landing (Home) ------------------------------------------- */
 .pub-nav { position: sticky; top: 0; z-index: 50; height: 66px; display: flex; align-items: center; gap: 14px; padding: 0 24px; background: color-mix(in srgb, var(--surface) 84%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-soft); }

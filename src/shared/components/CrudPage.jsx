@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Icon from './Icon.jsx';
 import DataTable from './ui/DataTable.jsx';
 import Modal from './ui/Modal.jsx';
@@ -7,7 +7,7 @@ import { Field, ItemsEditor, normOpciones, validar } from './ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
-import { etiquetaFila, AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ANULAR } from '@shared/data/mock.js';
+import { etiquetaFila, AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ANULAR, ELIMINAR } from '@shared/data/mock.js';
 
 /**
  * Pagina CRUD reutilizable: cabecera, resumen, tabla, formulario y detalle.
@@ -16,10 +16,20 @@ import { etiquetaFila, AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ANULAR } fr
  * agregar, editar, ver detalle, cambiar estado y anular solo aparecen si el
  * rol del usuario tiene el privilegio correspondiente en ese modulo.
  *
- * Los registros nunca se eliminan (no hay boton de borrar en la tabla): el
- * modulo de compras recibe la prop `anulacion` para dar de baja el documento
- * desde el formulario de edicion, dejandolo en la base de datos con su estado
- * en "Anulada".
+ * Eliminar (privilegio «Eliminar») borra la fila tras una confirmacion. Cada
+ * modulo puede pasar `eliminacion` para impedirlo cuando otros registros
+ * dependen de la fila (`validar` devuelve el motivo), para explicar en la
+ * confirmacion lo que va a pasar (`mensaje`) o para borrar a su manera, por
+ * ejemplo en cascada (`alEliminar`). Ademas, el modulo de compras recibe la
+ * prop `anulacion` para dar de baja el documento sin borrarlo, dejandolo en
+ * la base de datos con su estado en "Anulada".
+ *
+ * Formulario en dos columnas: los campos con `col: 'izq'` van a la columna
+ * izquierda y el resto a la derecha (p. ej. los insumos del pedido a un lado
+ * y el desglose, la descripcion y el diseño al otro).
+ *
+ * `abrirCon`: valores con que abrir de una vez el formulario de agregar (p. ej.
+ * el abono de una cotizacion, desde el listado de cotizaciones).
  */
 export default function CrudPage({
   titulo,
@@ -55,8 +65,11 @@ export default function CrudPage({
   tablaCompacta = false,
   emptyText,
   anulacion = null, // { valor, campo = 'estado', mensaje(reg), validar(reg) }
+  eliminacion = {}, // { validar(reg), mensaje(reg), alEliminar(reg) }
+  abrirCon = null,
+  alAbrirCon,
 }) {
-  const { db, create, update } = useData();
+  const { db, create, update, remove } = useData();
   const { puedeAccion } = useAuth();
   const toast = useToast();
   const rows = filas || db[coleccion];
@@ -65,6 +78,7 @@ export default function CrudPage({
   const puedeEditar = puedeAccion(modulo, EDITAR);
   const puedeVer = conDetalle && puedeAccion(modulo, VER_DETALLE);
   const puedeEstado = puedeAccion(modulo, CAMBIAR_ESTADO);
+  const puedeEliminar = puedeAccion(modulo, ELIMINAR);
 
   const [modo, setModo] = useState(null); // 'crear' | 'editar' | 'ver'
   const [actual, setActual] = useState(null);
@@ -75,6 +89,7 @@ export default function CrudPage({
   const [tocados, setTocados] = useState({});
   const [intentado, setIntentado] = useState(false);
   const [anular, setAnular] = useState(null);
+  const [eliminar, setEliminar] = useState(null);
 
   /* Anular no borra la fila: solo cambia su estado, de modo que el documento
      siga apareciendo en los listados y en el historial de movimientos. Como es
@@ -98,15 +113,33 @@ export default function CrudPage({
     );
 
   const reiniciarValidacion = () => { setTocados({}); setIntentado(false); };
-  const abrirCrear = () => { setValues({ ...defaults }); reiniciarValidacion(); setActual(null); setModo('crear'); };
+  const abrirCrear = (iniciales) => { setValues({ ...defaults, ...iniciales }); reiniciarValidacion(); setActual(null); setModo('crear'); };
   const abrirEditar = (r) => { setValues({ ...r }); reiniciarValidacion(); setActual(r); setModo('editar'); };
   const abrirVer = (r) => { setActual(r); setModo('ver'); };
   const cerrar = () => { setModo(null); setActual(null); reiniciarValidacion(); };
 
-  const setVal = (name, v) => {
+  /* `tocar = false` cambia el valor sin marcar el campo (p. ej. cuando el
+     sistema lo reinicia por otro campo y el usuario aun no lo ha diligenciado). */
+  const setVal = (name, v, tocar = true) => {
     setValues((s) => ({ ...s, [name]: v }));
-    setTocados((t) => (t[name] ? t : { ...t, [name]: true }));
+    if (tocar) setTocados((t) => (t[name] ? t : { ...t, [name]: true }));
   };
+
+  /* Un campo puede ajustar otros al cambiar (`alCambiar`): por ejemplo, al
+     elegir otro pedido se reinicia el monto del abono. */
+  const cambiarCampo = (f, v) => {
+    setVal(f.name, v);
+    f.alCambiar?.(v, setVal, values);
+  };
+
+  /* Abre el formulario de agregar ya diligenciado cuando otra pantalla lo pide. */
+  useEffect(() => {
+    if (!abrirCon) return;
+    if (puedeCrear) abrirCrear(abrirCon);
+    else toast.error(`Su rol no tiene permiso para agregar ${entidad}.`, 'Acción no permitida');
+    alAbrirCon?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrirCon]);
 
   /** Campos `unique`: el valor no puede repetirse en otra fila (sin distinguir mayusculas). */
   const repetidos = (vals) => {
@@ -135,9 +168,17 @@ export default function CrudPage({
 
   const guardar = () => {
     const errs = calcularErrores(values);
-    if (Object.keys(errs).length) {
+    const n = Object.keys(errs).length;
+    if (n) {
       setIntentado(true);
-      toast.error('Revise los campos marcados en el formulario.', 'Validación de campos');
+      toast.error(
+        n === 1 ? 'Hay 1 campo con error: corríjalo para poder guardar.' : `Hay ${n} campos con error: corríjalos para poder guardar.`,
+        'Validación de campos'
+      );
+      /* Lleva la vista al primer campo con error. */
+      requestAnimationFrame(() => {
+        document.querySelector('.modal .field-error')?.closest('.field')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
       return;
     }
     /* El payload se arma unicamente con los campos declarados, que son las
@@ -185,6 +226,27 @@ export default function CrudPage({
 
   /** Resuelve el texto de un campo en el modal de detalle (los select y
       multiselect de llave foranea guardan ids, no nombres). */
+  const pedirEliminar = (r) => {
+    const motivo = eliminacion.validar?.(r);
+    if (motivo) { toast.error(motivo, `No es posible eliminar el registro de ${singular}`); return; }
+    setEliminar(r);
+  };
+
+  const confirmarEliminar = () => {
+    const r = eliminar;
+    /* Se vuelve a validar: entre abrir el dialogo y confirmar pudo cambiar algo. */
+    const motivo = eliminacion.validar?.(r);
+    if (motivo) {
+      toast.error(motivo, `No es posible eliminar el registro de ${singular}`);
+    } else {
+      if (eliminacion.alEliminar) eliminacion.alEliminar(r);
+      else remove(coleccion, r.id);
+      toast.success(`Se eliminó el registro de ${singular}: ${etiqueta(r)}.`, 'Registro eliminado');
+      if (actual?.id === r.id) cerrar();
+    }
+    setEliminar(null);
+  };
+
   const textoDetalle = (f, v) => {
     if (v === undefined || v === null || v === '') return '—';
     if (f.type === 'select' || f.type === 'multiselect') {
@@ -196,6 +258,39 @@ export default function CrudPage({
   };
 
   const etiqueta = (r) => (r ? (etiquetaRegistro ? etiquetaRegistro(r) : etiquetaFila(r)) : '—');
+
+  const dividido = camposFormulario.some((f) => f.col === 'izq');
+  const izquierda = camposFormulario.filter((f) => f.col === 'izq');
+  const derecha = camposFormulario.filter((f) => f.col !== 'izq');
+
+  const renderCampo = (f) => {
+    const bloqueado = !!f.soloCrear && modo === 'editar';
+    if (f.type === 'custom') {
+      /* Bloque de solo lectura calculado con los valores del formulario
+         (por ejemplo, el total en vivo de una cotizacion). */
+      return <div key={f.name} className={`field ${f.full ? 'full' : ''}`}>{f.render(values, modo, actual)}</div>;
+    }
+    if (f.type === 'component') {
+      return (
+        <div key={f.name} className={`field ${f.full === false ? '' : 'full'}`}>
+          {f.render({ value: values[f.name], onChange: (v) => cambiarCampo(f, v), error: errors[f.name], errors, values, setVal, modo, actual, bloqueado })}
+        </div>
+      );
+    }
+    if (f.type === 'items') {
+      return <ItemsEditor key={f.name} f={f} value={values[f.name] || []} error={errors[f.name]} readOnly={bloqueado} onChange={(v) => cambiarCampo(f, v)} />;
+    }
+    return (
+      <Field
+        key={f.name}
+        f={f}
+        value={values[f.name]}
+        error={errors[f.name]}
+        readOnly={bloqueado}
+        onChange={(v) => cambiarCampo(f, v)}
+      />
+    );
+  };
   const editable = (r) => puedeEditar && puedeEditarFila(r);
 
   return (
@@ -227,11 +322,12 @@ export default function CrudPage({
         entidad={entidad}
         pageSize={pageSize}
         compacta={tablaCompacta}
-        onCreate={puedeCrear ? abrirCrear : undefined}
+        onCreate={puedeCrear ? () => abrirCrear() : undefined}
         createLabel={`Agregar ${singular}`}
         onView={puedeVer ? abrirVer : undefined}
         onEdit={puedeEditar ? abrirEditar : undefined}
         puedeEditarFila={puedeEditarFila}
+        onDelete={puedeEliminar ? pedirEliminar : undefined}
         accionesExtra={accionesExtra}
         emptyText={emptyText}
       />
@@ -240,7 +336,7 @@ export default function CrudPage({
       <Modal
         open={modo === 'crear' || modo === 'editar'}
         onClose={cerrar}
-        size={campos.some((c) => c.type === 'items' || c.type === 'component') ? 'lg' : ''}
+        size={dividido ? 'xl' : campos.some((c) => c.type === 'items' || c.type === 'component') ? 'lg' : ''}
         title={modo === 'crear' ? `Agregar ${singular}` : `Editar ${singular}`}
         subtitle={modo === 'crear' ? 'Complete la información requerida.' : `Modificando: ${etiqueta(actual)}`}
         footer={
@@ -267,36 +363,14 @@ export default function CrudPage({
           </div>
         )}
 
-        <div className="form-grid">
-          {camposFormulario.map((f) => {
-            const bloqueado = !!f.soloCrear && modo === 'editar';
-            if (f.type === 'custom') {
-              /* Bloque de solo lectura calculado con los valores del formulario
-                 (por ejemplo, el total en vivo de una cotizacion). */
-              return <div key={f.name} className={`field ${f.full ? 'full' : ''}`}>{f.render(values, modo, actual)}</div>;
-            }
-            if (f.type === 'component') {
-              return (
-                <div key={f.name} className="field full">
-                  {f.render({ value: values[f.name], onChange: (v) => setVal(f.name, v), error: errors[f.name], errors, values, setVal, modo })}
-                </div>
-              );
-            }
-            if (f.type === 'items') {
-              return <ItemsEditor key={f.name} f={f} value={values[f.name] || []} error={errors[f.name]} readOnly={bloqueado} onChange={(v) => setVal(f.name, v)} />;
-            }
-            return (
-              <Field
-                key={f.name}
-                f={f}
-                value={values[f.name]}
-                error={errors[f.name]}
-                readOnly={bloqueado}
-                onChange={(v) => setVal(f.name, v)}
-              />
-            );
-          })}
-        </div>
+        {dividido ? (
+          <div className="form-split">
+            <div className="form-col">{izquierda.map(renderCampo)}</div>
+            <div className="form-col form-col-der"><div className="form-grid">{derecha.map(renderCampo)}</div></div>
+          </div>
+        ) : (
+          <div className="form-grid">{camposFormulario.map(renderCampo)}</div>
+        )}
       </Modal>
 
       {/* Detalle */}
@@ -308,6 +382,11 @@ export default function CrudPage({
         size={renderDetalle || campos.some((c) => c.type === 'items') ? 'lg' : ''}
         footer={
           <>
+            {actual && puedeEliminar && (
+              <button className="btn btn-danger" style={{ marginRight: 'auto' }} onClick={() => pedirEliminar(actual)}>
+                <Icon name="trash" size={16} /> Eliminar
+              </button>
+            )}
             <button className="btn" onClick={cerrar}>Cerrar</button>
             {actual && editable(actual) && (
               <button className="btn btn-warning" onClick={() => abrirEditar(actual)}>
@@ -328,6 +407,20 @@ export default function CrudPage({
           </div>
         ))}
       </Modal>
+
+      <ConfirmDialog
+        open={!!eliminar}
+        onClose={() => setEliminar(null)}
+        onConfirm={confirmarEliminar}
+        titulo={`Eliminar ${singular}`}
+        confirmLabel="Eliminar"
+        icono="trash"
+        mensaje={
+          eliminar && (eliminacion.mensaje
+            ? eliminacion.mensaje(eliminar)
+            : `Se eliminará el registro de ${singular} "${etiqueta(eliminar)}". Esta acción no se puede deshacer.`)
+        }
+      />
 
       {anulacion && (
         <ConfirmDialog

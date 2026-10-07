@@ -6,6 +6,8 @@ import { ItemsView } from '@shared/components/ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { money, fecha, hoyISO, ESTADOS_COMPRA, ESTADOS_COMPRA_ACTIVOS, COMPRA_ANULADA } from '@shared/data/mock.js';
 
+const unidadDe = (i) => i?.calc_abreviatura || i?.calc_unidad || '';
+
 /** Tabla `compra` (id_proveedor, fecha, fecha_entrega, estado) con su detalle
  *  detalle_compra_insumo (id_insumo, cantidad, precio_unitario).
  *
@@ -16,7 +18,8 @@ export default function Compras() {
   const { db, getStats, opciones } = useData();
   const stats = getStats('Mes');
   const proveedores = opciones('proveedores');
-  const insumos = opciones('insumos', (i) => `${i.nombre} (${i.calc_abreviatura || i.calc_unidad})`);
+  const insumos = opciones('insumos', (i) => `${i.nombre} (${unidadDe(i)})`);
+  const unidad = (id) => unidadDe(db.insumos.find((i) => i.id === id));
 
   /* Solo los insumos que ya figuran en alguna compra: ofrecer el catalogo
      completo llenaria el desplegable de opciones sin resultados. */
@@ -37,7 +40,7 @@ export default function Compras() {
       </div>
 
       <h3 className="det-section">Insumos adquiridos</h3>
-      <ItemsView lineas={r.detalle_insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" totalLabel="Total de la compra" />
+      <ItemsView lineas={r.detalle_insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" totalLabel="Total de la compra" unidad={unidad} />
     </div>
   );
 
@@ -59,6 +62,21 @@ export default function Compras() {
       ]}
       defaults={{ detalle_insumos: [], estado: 'En tránsito', fecha: hoyISO(), fecha_entrega: '' }}
       etiquetaRegistro={codigo}
+      eliminacion={{
+        /* Borrar una compra recibida retira del inventario lo que ingreso: no
+           se puede si esas existencias ya se gastaron. */
+        validar: (r) => {
+          if (r.estado !== 'Recibida') return null;
+          const faltan = (r.detalle_insumos || []).filter((l) => {
+            const i = db.insumos.find((x) => x.id === l.id_insumo);
+            return i && Number(i.stock) < Number(l.cantidad);
+          });
+          return faltan.length
+            ? `Sus insumos ya se usaron en producción (${faltan.map((l) => db.insumos.find((x) => x.id === l.id_insumo)?.nombre).join(', ')}): no se pueden retirar del inventario. Puede anularla.`
+            : null;
+        },
+        mensaje: (r) => `Se eliminará la compra ${codigo(r)} de ${r.calc_proveedor}.${r.estado === 'Recibida' ? ' Sus insumos se retirarán del inventario.' : ''} Esta acción no se puede deshacer; si solo quiere darla de baja, anúlela.`,
+      }}
       anulacion={{
         valor: COMPRA_ANULADA,
         mensaje: (r) => `La compra ${codigo(r)} de ${r.calc_proveedor} quedará marcada como anulada: se conserva en el listado y en el historial, pero deja de sumar en los totales de compras.`,
@@ -95,25 +113,29 @@ export default function Compras() {
         },
       ]}
       campos={[
-        { name: 'id_proveedor', label: 'Proveedor', type: 'select', options: proveedores, required: true },
+        { name: 'id_proveedor', label: 'Proveedor', type: 'select', options: proveedores, required: true, buscarPlaceholder: 'Buscar proveedor…' },
         {
           name: 'estado', label: 'Estado', type: 'select', options: ESTADOS_COMPRA_ACTIVOS, required: true,
           hint: 'Al marcarla como recibida, sus insumos ingresan a las existencias.',
         },
-        { name: 'fecha', label: 'Fecha de realización', type: 'date', required: true },
+        { name: 'fecha', label: 'Fecha de realización', type: 'date', required: true, maxHoy: true },
         { name: 'fecha_entrega', label: 'Fecha de entrega', type: 'date', required: true },
         {
           name: 'detalle_insumos', label: 'Insumos adquiridos', type: 'items', required: true,
           itemKey: 'id_insumo', itemLabel: 'Insumo', options: insumos, decimales: true,
-          precioSugerido: precioInsumo, totalLabel: 'Total de la compra',
+          precioSugerido: precioInsumo, unidad, totalLabel: 'Total de la compra',
           hint: 'Indique la cantidad y el precio de compra de cada insumo. Al elegirlo se sugiere su precio unitario; puede ajustarlo.',
         },
       ]}
-      validarExtra={(v) =>
-        v.fecha && v.fecha_entrega && v.fecha_entrega < v.fecha
-          ? { fecha_entrega: 'La fecha de entrega no puede ser anterior a la fecha de la compra.' }
-          : null
-      }
+      validarExtra={(v) => {
+        if (v.fecha && v.fecha_entrega && v.fecha_entrega < v.fecha) {
+          return { fecha_entrega: 'La fecha de entrega no puede ser anterior a la fecha de la compra.' };
+        }
+        if (v.estado === 'Recibida' && v.fecha_entrega && v.fecha_entrega > hoyISO()) {
+          return { fecha_entrega: 'Una compra recibida no puede tener la fecha de entrega en el futuro.' };
+        }
+        return null;
+      }}
     />
   );
 }

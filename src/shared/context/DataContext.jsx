@@ -253,6 +253,26 @@ export function DataProvider({ children }) {
     });
   }, []);
 
+  /* Eliminar quita la fila de la tabla. Igual que al guardar, `conStock`
+     deshace lo que el documento movia en las existencias (una compra recibida
+     retira lo que habia ingresado; un pedido en produccion devuelve lo que
+     habia descontado), y el trigger deja la fila borrada en el historial. */
+  const remove = useCallback((col, id) => {
+    const actor = actorRef.current;
+    setRaw((d) => {
+      const anterior = d[col].find((r) => r.id === id);
+      if (!anterior) return d;
+      let out = conStock({ ...d, [col]: d[col].filter((r) => r.id !== id) }, col, anterior, null);
+      if (TABLA[col]) {
+        out = conMovimiento(out, {
+          tabla: TABLA[col], id_registro: id, accion: 'DELETE',
+          valor_anterior: valorAuditado(d, anterior), valor_nuevo: null, id_usuario: actor,
+        });
+      }
+      return out;
+    });
+  }, []);
+
   /** Trazabilidad de los accesos: ingreso, intento fallido y cierre de sesion. */
   const registrarAcceso = useCallback((accion, { correo, resultado, id_usuario = null }) => {
     setRaw((d) => conMovimiento(d, {
@@ -633,7 +653,7 @@ export function DataProvider({ children }) {
   return (
     <DataContext.Provider
       value={{
-        db, opciones, create, update, nuevoId, faltantes, stats, getStats, notificaciones,
+        db, opciones, create, update, remove, nuevoId, faltantes, stats, getStats, notificaciones,
         setActor, registrarAcceso, solicitarRecuperacion, enlaceValido, restablecerClave,
       }}
     >

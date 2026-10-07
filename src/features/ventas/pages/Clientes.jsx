@@ -54,6 +54,11 @@ export default function Clientes() {
       entidad="clientes"
       singular="cliente"
       searchKeys={['nombre', 'documento', 'correo', 'telefono']}
+      eliminacion={{
+        validar: (r) => (r.calc_pedidos > 0
+          ? `${r.nombre} tiene ${r.calc_pedidos} cotización(es), pedido(s) o venta(s) registradas. Para conservar su historial, desactívelo en lugar de eliminarlo.`
+          : null),
+      }}
       filtros={[
         { key: 'tipodocumento', label: 'Tipo de documento', options: TIPOS_DOCUMENTO },
         { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
@@ -85,12 +90,12 @@ export default function Clientes() {
         { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="clientes" modulo="Clientes" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[
-        { name: 'nombre', label: 'Nombre o razón social', type: 'text', required: true },
+        { name: 'nombre', label: 'Nombre o razón social', type: 'text', required: true, noSpecial: true, minLength: 3, maxLength: 80 },
         { name: 'tipodocumento', label: 'Tipo de documento', type: 'select', options: TIPOS_DOCUMENTO, required: true },
-        { name: 'documento', label: 'Número de documento', type: 'text', required: true, unique: true, hint: 'No puede repetirse: la columna es única.' },
+        { name: 'documento', label: 'Número de documento', type: 'text', required: true, unique: true, alfanumerico: true, minLength: 5, maxLength: 20, hint: 'No puede repetirse: la columna es única.' },
         { name: 'correo', label: 'Correo electrónico', type: 'email', required: true, unique: true, hint: 'No puede repetirse: la columna es única.' },
         { name: 'telefono', label: 'Teléfono', type: 'tel' },
-        { name: 'direccion', label: 'Dirección', type: 'text', full: true },
+        { name: 'direccion', label: 'Dirección', type: 'text', full: true, maxLength: 150 },
         { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Un cliente inactivo conserva sus pedidos y abonos, pero ya no se propone para pedidos nuevos.' },
       ]}
     />

@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import CrudPage from '@shared/components/CrudPage.jsx';
 import EstadoCell from '@shared/components/ui/EstadoCell.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import Modal from '@shared/components/ui/Modal.jsx';
 import Icon from '@shared/components/Icon.jsx';
 import DetalleRegistro from '@features/ventas/components/DetalleRegistro.jsx';
+import InsumosPedido, { DesglosePedido } from '@features/ventas/components/InsumosPedido.jsx';
+import MontoAbono from '@features/ventas/components/MontoAbono.jsx';
+import { validarLineas } from '@shared/components/ui/Form.jsx';
 import { DisenoModal, ComprobantesModal } from '@features/ventas/components/Archivos.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
@@ -13,7 +16,7 @@ import { useToast } from '@shared/context/ToastContext.jsx';
 import {
   money, fecha, hoyISO, METODOS_PAGO,
   COTIZACION, EN_PROCESO, FALTA_PAGO, COMPLETADO, ENTREGADO,
-  VER_DISENO, DESCARGAR_DISENO, VER_COMPROBANTE, DESCARGAR_COMPROBANTE,
+  AGREGAR, VER_DISENO, DESCARGAR_DISENO, VER_COMPROBANTE, DESCARGAR_COMPROBANTE,
 } from '@shared/data/mock.js';
 
 /**
@@ -33,6 +36,10 @@ import {
  * cotizacion a pedido en proceso (modulo de Abonos); al terminar la
  * elaboracion el sistema elige «falta pago» o «completado» segun el saldo; y
  * la entrega se registra desde Ventas.
+ *
+ * El formulario va en dos columnas: a la izquierda el catalogo de insumos con
+ * su buscador y los insumos agregados; a la derecha lo informativo (cliente,
+ * fecha, desglose del total, abono inicial, descripcion e imagen del diseño).
  */
 
 const VISTAS = [
@@ -47,25 +54,25 @@ const TIPOS_COMPROBANTE = ['image/jpeg', 'image/png', 'image/webp', 'application
 const subtotalLineas = (lineas = []) =>
   lineas.reduce((s, l) => s + Number(l.cantidad || 0) * Number(l.precio_unitario || 0), 0);
 const redondear = (n) => Math.round(n * 100) / 100;
-const conSubtotal = (l) => ({ ...l, subtotal: redondear(l.cantidad * l.precio_unitario) });
+/* Las lineas se editan como texto en el formulario; se guardan como numeros. */
+const conSubtotal = (l) => {
+  const cantidad = Number(l.cantidad);
+  const precio = Number(l.precio_unitario);
+  return { ...l, cantidad, precio_unitario: precio, subtotal: redondear(cantidad * precio) };
+};
 const listaFaltantes = (faltan) => faltan.map((f) => `${f.nombre} (se piden ${f.pide} y hay ${f.hay})`).join('; ');
 
-/** Total en vivo del formulario. */
-function ResumenTotal({ total, abonoSugerido }) {
-  return (
-    <div className="pedido-total">
-      <div className="is-total"><span>Total</span><strong className="money">{money(total)}</strong></div>
-      {abonoSugerido && (
-        <div><span>Abono inicial permitido</span><strong className="money">{money(total / 2)} (50%) o {money(total)} (total)</strong></div>
-      )}
-    </div>
-  );
-}
+/** Porcentajes permitidos para el abono inicial de un pedido. */
+const opcionesAbonoInicial = (total) => [
+  { value: 50, titulo: '50% del total', monto: redondear(total / 2) },
+  { value: 100, titulo: '100% (pago completo)', monto: total },
+];
 
 export default function Pedidos() {
-  const { db, opciones, create, update, nuevoId, faltantes } = useData();
+  const { db, opciones, create, update, remove, nuevoId, faltantes } = useData();
   const { puede, puedeAccion } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
 
   const visibles = VISTAS.filter((v) => puede(v.permiso));
@@ -81,13 +88,12 @@ export default function Pedidos() {
   if (!vista) return null;
   const modulo = vista.permiso;
 
-  const clientes = opciones('clientes');
-  const unidad = (i) => i.calc_abreviatura || i.calc_unidad;
-  /* Al elegir cada insumo conviene ver cuanto hay en existencias. */
-  const insumosEditor = opciones('insumos', (i) => `${i.nombre} (${unidad(i)}) · ${i.stock} disponibles`);
-  const precioInsumo = (id) => db.insumos.find((i) => i.id === id)?.precio_unitario;
+  /* El cliente se busca por nombre o por documento. */
+  const clientes = opciones('clientes', (c) => `${c.nombre} · ${c.tipodocumento} ${c.documento}`);
+  const clientesFiltro = opciones('clientes');
 
   const acciones = {
+    agregarAbono: puedeAccion('Abonos', AGREGAR),
     verDiseno: puedeAccion(modulo, VER_DISENO),
     descargarDiseno: puedeAccion(modulo, DESCARGAR_DISENO),
     verComprobante: puedeAccion(modulo, VER_COMPROBANTE),
@@ -168,21 +174,28 @@ export default function Pedidos() {
 
   /* ---------- Validaciones comunes ---------- */
   const totalForm = (v) => redondear(subtotalLineas(v.insumos));
+  const validarInsumos = (v) => {
+    if (!(v.insumos || []).length) return { insumos: 'Agregue al menos un insumo desde el catálogo.' };
+    const e = validarLineas(v.insumos, 'id_insumo');
+    return e ? { insumos: e } : null;
+  };
   const validarTotalAbonado = (v, actual) =>
     actual && actual.calc_abonado > 0 && totalForm(v) < actual.calc_abonado
       ? { insumos: `El total no puede quedar por debajo de lo ya abonado (${money(actual.calc_abonado)}).` }
       : null;
 
   const camposBase = [
-    { name: 'id_cliente', label: 'Cliente', type: 'select', options: clientes, required: true, soloCrear: vista.id === 'pedidos' },
     {
-      name: 'insumos', label: 'Insumos a utilizar', type: 'items', required: true,
-      itemKey: 'id_insumo', itemLabel: 'Insumo', options: insumosEditor, decimales: true,
-      precioSugerido: precioInsumo, totalLabel: 'Total',
-      hint: 'Cantidad de cada insumo que se va a gastar y su precio. Al elegirlo se sugiere su precio unitario; puede ajustarlo. Admite decimales.',
+      name: 'id_cliente', label: 'Cliente', type: 'select', options: clientes, required: true, soloCrear: vista.id === 'pedidos',
+      buscarPlaceholder: 'Buscar cliente por nombre o documento…',
     },
     {
-      name: 'descripcion', label: 'Descripción de la personalización', type: 'textarea', full: true, required: true, maxLength: 600,
+      name: 'insumos', type: 'component', col: 'izq', required: true,
+      render: ({ value, onChange, error, bloqueado }) => <InsumosPedido value={value || []} onChange={onChange} error={error} readOnly={bloqueado} />,
+    },
+    { name: 'desglose', type: 'custom', full: true, render: (v) => <DesglosePedido lineas={v.insumos || []} /> },
+    {
+      name: 'descripcion', label: 'Descripción de la personalización', type: 'textarea', full: true, required: true, maxLength: 600, minLength: 10,
       placeholder: 'Ej.: camisetas con escudo sublimado en el pecho, nombre y número en la espalda; 10 talla M y 12 talla L…',
       hint: 'Lo que se va a elaborar con los insumos: diseño, colores, tallas y cantidades.',
     },
@@ -191,6 +204,26 @@ export default function Pedidos() {
       hint: 'Diseño aprobado por el cliente (JPG, PNG o WEBP, máx. 5 MB).',
     },
   ];
+  const [campoCliente, campoInsumos, campoDesglose, ...camposInfo] = camposBase;
+
+  /* Acceso directo al abono del registro: abre Abonos con el formulario listo. */
+  const puedeAbonar = (r) => acciones.agregarAbono && r.estado !== ENTREGADO && r.calc_saldo > 0 && r.calc_abonos < 2;
+  const irAAbonar = (r) => navigate(`/app/abonos?pedido=${r.id}`);
+
+  /* Eliminar el registro borra tambien sus abonos (dependen de el) y, si ya
+     estaba en produccion, devuelve sus insumos al inventario. */
+  const eliminacion = {
+    mensaje: (r) => [
+      `Se eliminará ${r.calc_codigo} de ${r.calc_cliente}.`,
+      r.calc_abonos ? ` También se eliminarán sus ${r.calc_abonos} abono(s) por ${money(r.calc_abonado)}.` : '',
+      r.estado !== COTIZACION ? ' Los insumos que tenía descontados volverán al inventario.' : '',
+      ' Esta acción no se puede deshacer.',
+    ].join(''),
+    alEliminar: (r) => {
+      db.abonos.filter((a) => a.id_pedido === r.id).forEach((a) => remove('abonos', a.id));
+      remove('pedidos', r.id);
+    },
+  };
 
   /* ---------- Configuracion de cada pestaña ---------- */
   const comun = {
@@ -199,8 +232,14 @@ export default function Pedidos() {
     coleccion: 'pedidos',
     etiquetaRegistro: (r) => r.calc_codigo,
     renderDetalle: (r) => <DetalleRegistro r={r} onVerDiseno={setDiseno} acciones={acciones} />,
+    eliminacion,
     accionesExtra: (r) => (
       <>
+        {vista.id !== 'ventas' && puedeAbonar(r) && (
+          <button className="icon-btn" style={{ color: 'var(--success)' }} onClick={() => irAAbonar(r)} title="Agregar abono">
+            <Icon name="dollar" size={16} />
+          </button>
+        )}
         {acciones.verDiseno && (
           <button className="icon-btn" onClick={() => setDiseno(r)} title="Ver diseño"><Icon name="image" size={16} /></button>
         )}
@@ -235,7 +274,7 @@ export default function Pedidos() {
       singular: 'cotización',
       searchKeys: ['calc_cliente', 'fecha_creacion', 'descripcion'],
       filtros: [
-        { key: 'id_cliente', label: 'Cliente', options: clientes },
+        { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },
         { key: 'fecha_creacion', label: 'Fecha de creación', type: 'rango' },
         { key: 'calc_abono_inicial', label: 'Abono inicial', options: ['Registrado', 'Pendiente'] },
       ],
@@ -254,12 +293,13 @@ export default function Pedidos() {
         { key: 'estado', label: 'Estado', mobile: 'meta', render: celdaEstado },
       ],
       campos: [
-        camposBase[0],
-        { name: 'fecha_creacion', label: 'Fecha de creación', type: 'date', required: true },
-        ...camposBase.slice(1),
-        { name: 'resumen', type: 'custom', full: true, render: (v) => <ResumenTotal total={totalForm(v)} /> },
+        campoInsumos,
+        campoCliente,
+        { name: 'fecha_creacion', label: 'Fecha de creación', type: 'date', required: true, maxHoy: true, hint: 'No puede ser posterior a hoy.' },
+        campoDesglose,
+        ...camposInfo,
       ],
-      validarExtra: (v, modo, actual) => validarTotalAbonado(v, actual),
+      validarExtra: (v, modo, actual) => ({ ...validarInsumos(v), ...validarTotalAbonado(v, actual) }),
       beforeSave: (d, modo) => ({
         ...d,
         insumos: (d.insumos || []).map(conSubtotal),
@@ -279,10 +319,10 @@ export default function Pedidos() {
       searchKeys: ['calc_cliente', 'estado', 'fecha_inicio', 'descripcion'],
       filtros: [
         { key: 'estado', label: 'Estado', options: [EN_PROCESO, FALTA_PAGO, COMPLETADO] },
-        { key: 'id_cliente', label: 'Cliente', options: clientes },
+        { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },
         { key: 'fecha_inicio', label: 'Fecha de inicio', type: 'rango' },
       ],
-      defaults: { insumos: [], descripcion: '', imagen_diseno: '', fecha_inicio: hoyISO(), abono_metodo: 'Efectivo', abono_comprobante: '' },
+      defaults: { insumos: [], descripcion: '', imagen_diseno: '', fecha_inicio: hoyISO(), abono_pct: '', abono_metodo: 'Efectivo', abono_comprobante: '' },
       /* La edicion solo aplica mientras el pedido se elabora. */
       puedeEditarFila: (r) => r.estado === EN_PROCESO,
       resumen: [
@@ -307,11 +347,27 @@ export default function Pedidos() {
         { key: 'estado', label: 'Estado', mobile: 'meta', render: celdaEstado },
       ],
       campos: [
-        camposBase[0],
-        { name: 'fecha_inicio', label: 'Fecha de inicio', type: 'date', required: true, soloCrear: true },
-        ...camposBase.slice(1),
-        { name: 'resumen', type: 'custom', full: true, render: (v, modo) => <ResumenTotal total={totalForm(v)} abonoSugerido={modo === 'crear'} /> },
-        { name: 'abono_monto', label: 'Abono inicial (C$)', type: 'money', required: true, min: 0, ocultarAlEditar: true, hint: 'El 50% del total o el pago completo.' },
+        campoInsumos,
+        campoCliente,
+        {
+          name: 'fecha_inicio', label: 'Fecha de inicio', type: 'date', required: true, soloCrear: true, maxHoy: true,
+          hint: 'Es la fecha del abono inicial; no puede ser posterior a hoy.',
+        },
+        campoDesglose,
+        ...camposInfo,
+        {
+          name: 'abono_pct', type: 'component', required: true, ocultarAlEditar: true,
+          render: ({ value, onChange, error, values }) => (
+            <MontoAbono
+              label="Abono inicial"
+              opciones={totalForm(values) > 0 ? opcionesAbonoInicial(totalForm(values)) : []}
+              vacio="Agregue insumos para calcular el abono inicial (50% o 100% del total)."
+              value={value}
+              onChange={onChange}
+              error={error}
+            />
+          ),
+        },
         { name: 'abono_metodo', label: 'Método de pago', type: 'select', options: METODOS_PAGO, required: true, ocultarAlEditar: true },
         {
           name: 'abono_comprobante', label: 'Comprobante del abono', type: 'archivo', full: true, tipos: TIPOS_COMPROBANTE, ocultarAlEditar: true,
@@ -319,16 +375,15 @@ export default function Pedidos() {
         },
       ],
       validarExtra: (v, modo, actual) => {
-        const total = totalForm(v);
-        if (modo === 'crear' && v.abono_monto !== '' && v.abono_monto !== undefined && total > 0) {
-          const m = Number(v.abono_monto);
-          if (Math.abs(m - total / 2) > 0.01 && Math.abs(m - total) > 0.01) {
-            return { abono_monto: 'El abono inicial debe ser el 50% del total o el pago completo.' };
-          }
+        const lineas = validarInsumos(v);
+        if (lineas) return lineas;
+        const errs = {};
+        if (modo === 'crear' && v.abono_pct !== '' && ![50, 100].includes(Number(v.abono_pct))) {
+          errs.abono_pct = 'El abono inicial debe ser el 50% del total o el pago completo.';
         }
         const faltan = faltantes(v.insumos, modo === 'editar' ? actual : null);
-        if (faltan.length) return { insumos: `No hay existencias suficientes: ${listaFaltantes(faltan)}.` };
-        return validarTotalAbonado(v, actual);
+        if (faltan.length) return { ...errs, insumos: `No hay existencias suficientes: ${listaFaltantes(faltan)}.` };
+        return { ...errs, ...validarTotalAbonado(v, actual) };
       },
       alGuardar: (d, modo, actual) => {
         const lineas = (d.insumos || []).map(conSubtotal);
@@ -352,8 +407,9 @@ export default function Pedidos() {
           insumos: lineas,
           historial_estados: [{ estado: COTIZACION, fecha: d.fecha_inicio }, { estado: EN_PROCESO, fecha: d.fecha_inicio }],
         });
+        const total = redondear(subtotalLineas(lineas));
         create('abonos', {
-          id_pedido: id, monto: Number(d.abono_monto), fecha: d.fecha_inicio,
+          id_pedido: id, monto: redondear((total * Number(d.abono_pct)) / 100), fecha: d.fecha_inicio,
           metodo_pago: d.abono_metodo, url_comprobante: d.abono_comprobante || '',
         });
         toast.success('El registro de pedido se guardó correctamente.');
@@ -371,7 +427,7 @@ export default function Pedidos() {
       searchKeys: ['calc_cliente', 'fecha_entrega', 'descripcion'],
       filtros: [
         { key: 'estado', label: 'Estado', options: [{ value: COMPLETADO, label: 'Pendiente de entrega' }, { value: ENTREGADO, label: ENTREGADO }] },
-        { key: 'id_cliente', label: 'Cliente', options: clientes },
+        { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },
         { key: 'fecha_entrega', label: 'Fecha de entrega', type: 'rango' },
       ],
       resumen: [
@@ -387,7 +443,7 @@ export default function Pedidos() {
         { key: 'calc_total', label: 'Total de la venta', align: 'right', mobile: 'value', render: (r) => <span className="money">{money(r.calc_total)}</span> },
         { key: 'estado', label: 'Estado', mobile: 'meta', render: celdaEstado },
       ],
-      campos: camposBase,
+      campos: [campoInsumos, campoCliente, campoDesglose, ...camposInfo],
     },
   }[vista.id];
 

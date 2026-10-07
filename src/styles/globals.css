@@ -1273,6 +1273,8 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
   border: 1.5px solid var(--border); background: var(--surface); color: #fff; transition: all .18s;
 }
 .perm-accion.is-on .perm-check { background: var(--primary); border-color: var(--primary); }
+.perm-accion.perm-todas { border-style: dashed; color: var(--primary); font-weight: 500; }
+.perm-accion.perm-todas.is-on { border-style: solid; }
 .perm-error { padding: 0 12px 10px; }
 .perm-vacio { padding: 18px; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius); }
 

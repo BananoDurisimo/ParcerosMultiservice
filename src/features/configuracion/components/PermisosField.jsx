@@ -56,6 +56,14 @@ export default function PermisosField({ values, setVal, errors }) {
   const alternarAccion = (id) =>
     setVal('privilegios', privilegios.includes(id) ? privilegios.filter((x) => x !== id) : [...privilegios, id]);
 
+  /* Marca o desmarca de una vez todas las acciones de un modulo. */
+  const alternarAccionesDe = (acciones, todas) => {
+    const ids = acciones.map((a) => a.id);
+    setVal('privilegios', todas
+      ? privilegios.filter((id) => !ids.includes(id))
+      : [...privilegios.filter((id) => !ids.includes(id)), ...ids]);
+  };
+
   const totalAcciones = privilegios.filter((id) =>
     permisos.includes(db.privilegios.find((x) => x.id === id)?.id_permiso)
   ).length;
@@ -143,6 +151,17 @@ export default function PermisosField({ values, setVal, errors }) {
 
                   {on && (
                     <div className="perm-acciones">
+                      {acciones.length > 1 && (
+                        <button
+                          type="button"
+                          className={`perm-accion perm-todas ${marcadas === acciones.length ? 'is-on' : ''}`}
+                          aria-pressed={marcadas === acciones.length}
+                          onClick={() => alternarAccionesDe(acciones, marcadas === acciones.length)}
+                        >
+                          <Icon name={marcadas === acciones.length ? 'x' : 'checkC'} size={14} />
+                          {marcadas === acciones.length ? 'Quitar todas' : 'Todas'}
+                        </button>
+                      )}
                       {acciones.map((a) => {
                         const marcada = privilegios.includes(a.id);
                         return (

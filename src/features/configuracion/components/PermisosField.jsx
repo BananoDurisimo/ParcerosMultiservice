@@ -60,6 +60,22 @@ export default function PermisosField({ values, setVal, errors }) {
     permisos.includes(db.privilegios.find((x) => x.id === id)?.id_permiso)
   ).length;
 
+  /* Un solo boton marca todos los modulos con todas sus acciones, o los quita. */
+  const todoMarcado =
+    db.permisos.length > 0 &&
+    permisos.length === db.permisos.length &&
+    db.privilegios.every((pr) => privilegios.includes(pr.id));
+
+  const alternarTodo = () => {
+    if (todoMarcado) {
+      setVal('permisos', []);
+      setVal('privilegios', []);
+    } else {
+      setVal('permisos', db.permisos.map((p) => p.id));
+      setVal('privilegios', db.privilegios.map((pr) => pr.id));
+    }
+  };
+
   return (
     <div className="perm">
       <div className="perm-top">
@@ -88,6 +104,15 @@ export default function PermisosField({ values, setVal, errors }) {
         <span><strong>{permisos.length}</strong> de {db.permisos.length} permiso(s) seleccionado(s)</span>
         <span className="perm-punto" />
         <span><strong>{totalAcciones}</strong> acción(es)</span>
+        <button
+          type="button"
+          className={`btn btn-sm perm-todo ${todoMarcado ? '' : 'btn-primary'}`}
+          aria-pressed={todoMarcado}
+          onClick={alternarTodo}
+        >
+          <Icon name={todoMarcado ? 'x' : 'checkC'} size={15} />
+          {todoMarcado ? 'Quitar todos' : 'Seleccionar todos'}
+        </button>
       </div>
 
       {grupos.map((g) => (

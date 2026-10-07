@@ -1217,8 +1217,9 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
 .perm-limpiar { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 99px; background: var(--surface-2); color: var(--text-sec); cursor: pointer; }
 .perm-limpiar:hover { color: var(--text); }
 
+.perm-todo { margin-left: auto; }
 .perm-resumen {
-  display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 9px 14px; border-radius: var(--radius-sm);
   background: var(--surface-2); font-size: 12.5px; color: var(--text-sec);
 }
 .perm-resumen strong { color: var(--primary); font-weight: 600; }

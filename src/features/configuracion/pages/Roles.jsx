@@ -3,7 +3,7 @@ import EstadoCell from '@shared/components/ui/EstadoCell.jsx';
 import Badge from '@shared/components/ui/Badge.jsx';
 import MiniTabla from '@shared/components/ui/MiniTabla.jsx';
 import HistorialRegistro from '@shared/components/ui/HistorialRegistro.jsx';
-import PermisosField, { SIN_ACCIONES } from '@features/configuracion/components/PermisosField.jsx';
+import PermisosField from '@features/configuracion/components/PermisosField.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { ESTADOS_REGISTRO } from '@shared/data/mock.js';
 
@@ -12,15 +12,10 @@ import { ESTADOS_REGISTRO } from '@shared/data/mock.js';
 export default function Roles() {
   const { db } = useData();
 
-  /* Un rol necesita al menos un permiso, y cada permiso al menos una accion. */
-  const validarExtra = (v) => {
-    const permisos = v.permisos || [];
-    if (!permisos.length) return { permisos: 'Este campo no puede estar vacío.' };
-    const sinAcciones = permisos.some(
-      (id) => !db.privilegios.some((pr) => pr.id_permiso === id && (v.privilegios || []).includes(pr.id))
-    );
-    return sinAcciones ? { privilegios: SIN_ACCIONES } : null;
-  };
+  /* Un rol necesita al menos un permiso. Las acciones son opcionales: con el
+     modulo activo el rol ya puede consultar su listado. */
+  const validarExtra = (v) =>
+    (v.permisos || []).length ? null : { permisos: 'Este campo no puede estar vacío.' };
 
   const detalle = (r) => (
     <div>

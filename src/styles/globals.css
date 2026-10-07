@@ -1236,7 +1236,6 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
 }
 .perm-card:hover { border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
 .perm-card.is-on { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
-.perm-card.has-error { border-color: var(--error); box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 14%, transparent); }
 
 .perm-head {
   display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border: 0; background: transparent;
@@ -1273,9 +1272,8 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
   border: 1.5px solid var(--border); background: var(--surface); color: #fff; transition: all .18s;
 }
 .perm-accion.is-on .perm-check { background: var(--primary); border-color: var(--primary); }
-.perm-accion.perm-todas { border-style: dashed; color: var(--primary); font-weight: 500; }
+.perm-accion.perm-todas { margin-left: auto; border-style: dashed; color: var(--primary); font-weight: 500; }
 .perm-accion.perm-todas.is-on { border-style: solid; }
-.perm-error { padding: 0 12px 10px; }
 .perm-vacio { padding: 18px; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius); }
 
 @media (max-width: 640px) {

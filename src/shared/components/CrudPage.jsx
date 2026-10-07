@@ -69,7 +69,11 @@ export default function CrudPage({
   const [modo, setModo] = useState(null); // 'crear' | 'editar' | 'ver'
   const [actual, setActual] = useState(null);
   const [values, setValues] = useState({});
-  const [errors, setErrors] = useState({});
+  /* Validacion en tiempo real: los errores se recalculan con cada cambio y
+     se muestran en el campo apenas el usuario lo toca. Los campos que no ha
+     tocado se marcan recien al intentar guardar. */
+  const [tocados, setTocados] = useState({});
+  const [intentado, setIntentado] = useState(false);
   const [anular, setAnular] = useState(null);
 
   /* Anular no borra la fila: solo cambia su estado, de modo que el documento
@@ -93,34 +97,46 @@ export default function CrudPage({
         : f
     );
 
-  const abrirCrear = () => { setValues({ ...defaults }); setErrors({}); setActual(null); setModo('crear'); };
-  const abrirEditar = (r) => { setValues({ ...r }); setErrors({}); setActual(r); setModo('editar'); };
+  const reiniciarValidacion = () => { setTocados({}); setIntentado(false); };
+  const abrirCrear = () => { setValues({ ...defaults }); reiniciarValidacion(); setActual(null); setModo('crear'); };
+  const abrirEditar = (r) => { setValues({ ...r }); reiniciarValidacion(); setActual(r); setModo('editar'); };
   const abrirVer = (r) => { setActual(r); setModo('ver'); };
-  const cerrar = () => { setModo(null); setActual(null); setErrors({}); };
+  const cerrar = () => { setModo(null); setActual(null); reiniciarValidacion(); };
 
   const setVal = (name, v) => {
     setValues((s) => ({ ...s, [name]: v }));
-    setErrors((e) => (e[name] ? { ...e, [name]: undefined } : e));
+    setTocados((t) => (t[name] ? t : { ...t, [name]: true }));
   };
 
   /** Campos `unique`: el valor no puede repetirse en otra fila (sin distinguir mayusculas). */
-  const repetidos = () => {
+  const repetidos = (vals) => {
     const norm = (v) => String(v ?? '').trim().toLowerCase();
     const errs = {};
     campos.forEach((f) => {
-      if (!f.unique || !norm(values[f.name])) return;
-      if (db[coleccion].some((r) => r.id !== actual?.id && norm(r[f.name]) === norm(values[f.name]))) {
-        errs[f.name] = 'Ya existe un registro con este valor.';
+      if (!f.unique || !norm(vals[f.name])) return;
+      if (db[coleccion].some((r) => r.id !== actual?.id && norm(r[f.name]) === norm(vals[f.name]))) {
+        errs[f.name] = `Ya existe un ${singular} con este ${(f.label || 'valor').toLowerCase()}.`;
       }
     });
     return errs;
   };
 
-  const guardar = () => {
-    const errs = { ...repetidos(), ...validar(camposFormulario, values), ...(validarExtra ? validarExtra(values, modo, actual) : null) };
+  const calcularErrores = (vals) => {
+    const errs = { ...repetidos(vals), ...validar(camposFormulario, vals), ...(validarExtra ? validarExtra(vals, modo, actual) : null) };
     Object.keys(errs).forEach((k) => errs[k] === undefined && delete errs[k]);
+    return errs;
+  };
+
+  const formularioAbierto = modo === 'crear' || modo === 'editar';
+  const erroresVivos = formularioAbierto ? calcularErrores(values) : {};
+  const errors = intentado
+    ? erroresVivos
+    : Object.fromEntries(Object.entries(erroresVivos).filter(([k]) => tocados[k]));
+
+  const guardar = () => {
+    const errs = calcularErrores(values);
     if (Object.keys(errs).length) {
-      setErrors(errs);
+      setIntentado(true);
       toast.error('Revise los campos marcados en el formulario.', 'Validación de campos');
       return;
     }

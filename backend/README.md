@@ -7,6 +7,7 @@ DBDiagram: no almacena totales ni existencias; se calculan con vistas.
 
 1. Cree una base de datos PostgreSQL: `CREATE DATABASE parceros_multiservice;`.
 2. Copie `.env.example` como `.env` y ajuste `DATABASE_URL` y `JWT_SECRET`.
+   Para una conexión externa de Render/Supabase, configure también `DB_SSL=true`.
 3. Ejecute `npm install` dentro de esta carpeta.
 4. Ejecute `npm run migrate` para crear tablas, restricciones, vistas y triggers.
 5. Ejecute `npm run seed` para los catálogos y el administrador inicial.

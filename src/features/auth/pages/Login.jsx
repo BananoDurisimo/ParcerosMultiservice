@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Icon from '@shared/components/Icon.jsx';
 import Logo from '@shared/components/Logo.jsx';
 import ThemeToggle from '@shared/components/ui/ThemeToggle.jsx';
-import { useAuth, DEMO } from '@shared/context/AuthContext.jsx';
+import { useAuth } from '@shared/context/AuthContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
 
 export default function Login() {
@@ -18,7 +18,7 @@ export default function Login() {
   const [errs, setErrs] = useState({});
   const [cargando, setCargando] = useState(false);
 
-  const enviar = (e) => {
+  const enviar = async (e) => {
     e.preventDefault();
     const n = {};
     if (!correo.trim()) n.correo = 'Este campo no puede estar vacío.';
@@ -29,16 +29,12 @@ export default function Login() {
     if (Object.keys(n).length) { toast.error('Revise los campos marcados.', 'Validación de campos'); return; }
 
     setCargando(true);
-    setTimeout(() => {
-      const r = login(correo, clave);
-      setCargando(false);
-      if (!r.ok) { toast.error(r.error, 'Error de acceso'); return; }
-      toast.success(`Bienvenido(a), ${r.user.nombre}.`, 'Acceso concedido');
-      nav(loc.state?.from || '/app', { replace: true });
-    }, 650);
+    const r = await login(correo, clave);
+    setCargando(false);
+    if (!r.ok) { toast.error(r.error, 'Error de acceso'); return; }
+    toast.success(`Bienvenido(a), ${r.user.nombre}.`, 'Acceso concedido');
+    nav(loc.state?.from || '/app', { replace: true });
   };
-
-  const rapido = (u) => { setCorreo(u.correo); setClave(u.clave); setErrs({}); };
 
   return (
     <div className="auth">
@@ -120,17 +116,6 @@ export default function Login() {
               ) : (<><Icon name="logout" size={16} /> Ingresar</>)}
             </button>
           </form>
-
-          <div className="card card-pad" style={{ marginTop: 22, background: 'var(--surface-2)' }}>
-            <div className="caption row" style={{ gap: 6, marginBottom: 9 }}>
-              <Icon name="info" size={14} /> Usuarios de prueba (contraseña: <strong>123456</strong>)
-            </div>
-            <div className="row" style={{ gap: 7, flexWrap: 'wrap' }}>
-              {DEMO.map((u) => (
-                <button key={u.correo} type="button" className="chip" onClick={() => rapido(u)}>{u.rol}</button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

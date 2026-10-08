@@ -64,7 +64,7 @@ export default function Usuarios() {
         { name: 'nombre_empleado', label: 'Nombre del empleado', type: 'text', required: true, soloLetras: true, minLength: 3, maxLength: 80 },
         { name: 'documento', label: 'Documento', type: 'text', alfanumerico: true, unique: true, maxLength: 20 },
         { name: 'nombre_usuario', label: 'Nombre de usuario', type: 'text', required: true, noSpecial: true, sinEspacios: true, unique: true, minLength: 3, maxLength: 30, hint: 'Único en el sistema, sin espacios.' },
-        { name: 'contrasena', label: 'Contraseña', type: 'password', required: true, minLength: 6, placeholder: 'Mínimo 6 caracteres', ocultarEnDetalle: true },
+        { name: 'contrasena', label: 'Contraseña', type: 'password', required: true, minLength: 6, placeholder: 'Mínimo 6 caracteres', ocultarEnDetalle: true, ocultarAlEditar: true },
         { name: 'correo_empresarial', label: 'Correo empresarial', type: 'email', required: true, unique: true, hint: 'Es el correo con el que el usuario inicia sesión.' },
         { name: 'telefono', label: 'Teléfono', type: 'tel' },
         { name: 'cargo', label: 'Cargo', type: 'text', noSpecial: true, maxLength: 60 },

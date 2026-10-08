@@ -5,6 +5,7 @@ import TopBar from './TopBar.jsx';
 import BottomBar from './BottomBar.jsx';
 import Icon from '@shared/components/Icon.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
+import { useData } from '@shared/context/DataContext.jsx';
 import { NAV } from '@shared/data/nav.js';
 
 const RUTAS = NAV.flatMap((g) => g.items);
@@ -34,8 +35,33 @@ function SinAcceso() {
   );
 }
 
+/** Mientras llegan los datos de la API. El plan gratuito de Render apaga el
+ *  servidor si nadie lo usa y la primera peticion puede tardar casi un minuto. */
+function CargandoDatos() {
+  const { estadoDatos, errorDatos, cargar } = useData();
+  const { logout } = useAuth();
+  const fallo = estadoDatos === 'error';
+  return (
+    <div className="carga-datos" role="status" aria-live="polite">
+      <div className="card card-pad carga-datos-card">
+        {fallo ? <Icon name="alert" size={26} /> : <span className="carga-spinner" aria-hidden="true" />}
+        <strong>{fallo ? 'No fue posible cargar los datos' : 'Conectando con el servidor…'}</strong>
+        <p className="caption">
+          {fallo ? errorDatos : 'Si el servidor estaba en reposo puede tardar hasta un minuto la primera vez.'}
+        </p>
+        {fallo && (
+          <div className="row" style={{ gap: 8, justifyContent: 'center' }}>
+            <button className="btn btn-primary" onClick={cargar}><Icon name="refresh" size={15} /> Reintentar</button>
+            <button className="btn" onClick={logout}>Cerrar sesión</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AppLayout() {
-  const { isAuth, puede } = useAuth();
+  const { isAuth, puede, cargandoSesion } = useAuth();
   const loc = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
@@ -43,6 +69,7 @@ export default function AppLayout() {
   useEffect(() => { setDrawer(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }, [loc.pathname]);
 
   if (!isAuth) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
+  if (cargandoSesion) return <CargandoDatos />;
 
   const ruta = RUTAS.find((it) => it.to === loc.pathname);
   const permitido = !ruta || puede(ruta.permiso);

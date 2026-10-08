@@ -1363,3 +1363,9 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
   .perm-grid { grid-template-columns: 1fr; }
   .perm-buscar { width: 100%; }
 }
+
+/* --- Carga de datos de la API --- */
+.carga-datos { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); }
+.carga-datos-card { max-width: 380px; display: grid; justify-items: center; gap: 10px; text-align: center; color: var(--text); }
+.carga-datos-card .ico { color: var(--warning); }
+.carga-spinner { width: 34px; height: 34px; border-radius: 99px; border: 3px solid var(--border); border-top-color: var(--primary); animation: spin .8s linear infinite; }

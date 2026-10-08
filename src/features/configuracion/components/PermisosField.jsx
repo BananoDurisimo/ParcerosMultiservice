@@ -2,8 +2,6 @@ import { useState } from 'react';
 import Icon from '@shared/components/Icon.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 
-export const SIN_ACCIONES = 'Seleccione al menos una acción para este módulo.';
-
 /** Procesos del menu lateral: los permisos se agrupan igual que los modulos. */
 const GRUPOS = [
   { titulo: 'Configuración', modulos: ['Roles', 'Usuarios', 'Movimientos'] },
@@ -21,7 +19,8 @@ const ICONO = {
  * Permisos y privilegios de un rol (tablas puente rolxpermiso y
  * rolxprivilegio). Cada permiso es un modulo del sistema; al activarlo se
  * despliegan sus privilegios -las acciones dentro del modulo- para marcarlos
- * uno por uno. Al desactivar el modulo se desmarcan tambien sus acciones.
+ * uno por uno. Activar el modulo ya permite consultar su listado, por eso un
+ * modulo puede quedar sin acciones. Al desactivarlo se desmarcan sus acciones.
  */
 export default function PermisosField({ values, setVal, errors }) {
   const { db } = useData();
@@ -55,6 +54,14 @@ export default function PermisosField({ values, setVal, errors }) {
 
   const alternarAccion = (id) =>
     setVal('privilegios', privilegios.includes(id) ? privilegios.filter((x) => x !== id) : [...privilegios, id]);
+
+  /* Marca o desmarca de una vez todas las acciones de un modulo. */
+  const alternarAccionesDe = (acciones, todas) => {
+    const ids = acciones.map((a) => a.id);
+    setVal('privilegios', todas
+      ? privilegios.filter((id) => !ids.includes(id))
+      : [...privilegios.filter((id) => !ids.includes(id)), ...ids]);
+  };
 
   const totalAcciones = privilegios.filter((id) =>
     permisos.includes(db.privilegios.find((x) => x.id === id)?.id_permiso)
@@ -123,9 +130,8 @@ export default function PermisosField({ values, setVal, errors }) {
               const on = permisos.includes(p.id);
               const acciones = accionesDe(p.id);
               const marcadas = acciones.filter((a) => privilegios.includes(a.id)).length;
-              const sinAcciones = on && marcadas === 0 && !!errors.privilegios;
               return (
-                <div key={p.id} className={`perm-card ${on ? 'is-on' : ''} ${sinAcciones ? 'has-error' : ''}`}>
+                <div key={p.id} className={`perm-card ${on ? 'is-on' : ''}`}>
                   <button
                     type="button"
                     className="perm-head"
@@ -136,7 +142,7 @@ export default function PermisosField({ values, setVal, errors }) {
                     <span className="perm-ico"><Icon name={ICONO[p.nombre] || 'lock'} size={17} /></span>
                     <span className="perm-nombre">
                       <span>{p.nombre}</span>
-                      <span className="caption">{on ? `${marcadas} de ${acciones.length} acción(es)` : `${acciones.length} acción(es) disponibles`}</span>
+                      <span className="caption">{!on ? `${acciones.length} acción(es) disponibles` : marcadas ? `${marcadas} de ${acciones.length} acción(es)` : 'Solo consulta del listado'}</span>
                     </span>
                     <span className="perm-switch" aria-hidden="true"><span /></span>
                   </button>
@@ -158,10 +164,18 @@ export default function PermisosField({ values, setVal, errors }) {
                           </button>
                         );
                       })}
+                      {acciones.length > 1 && (
+                        <button
+                          type="button"
+                          className={`perm-accion perm-todas ${marcadas === acciones.length ? 'is-on' : ''}`}
+                          aria-pressed={marcadas === acciones.length}
+                          onClick={() => alternarAccionesDe(acciones, marcadas === acciones.length)}
+                        >
+                          <Icon name={marcadas === acciones.length ? 'x' : 'checkC'} size={14} />
+                          {marcadas === acciones.length ? 'Quitar todas' : 'Todas'}
+                        </button>
+                      )}
                     </div>
-                  )}
-                  {sinAcciones && (
-                    <span className="field-error perm-error"><Icon name="alert" size={12} /> {SIN_ACCIONES}</span>
                   )}
                 </div>
               );

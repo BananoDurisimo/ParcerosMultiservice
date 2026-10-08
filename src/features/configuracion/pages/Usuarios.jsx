@@ -58,7 +58,7 @@ export default function Usuarios() {
         { key: 'cargo', label: 'Cargo', mobile: 'meta', render: (r) => <span className="muted">{r.cargo || '—'}</span> },
         { key: 'calc_rol', label: 'Rol', mobile: 'meta', render: (r) => <span className="badge badge-primary">{r.calc_rol}</span> },
         { key: 'fecha_ingreso', label: 'Fecha de ingreso', render: (r) => <span className="caption">{fecha(r.fecha_ingreso)}</span> },
-        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="usuarios" modulo="Usuarios" options={ESTADOS_REGISTRO} /> },
+        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="usuarios" modulo="Usuarios" options={ESTADOS_REGISTRO} disabled={r.correo_empresarial === 'admin@parceros.ni'} /> },
       ]}
       campos={[
         { name: 'nombre_empleado', label: 'Nombre del empleado', type: 'text', required: true, soloLetras: true, minLength: 3, maxLength: 80 },

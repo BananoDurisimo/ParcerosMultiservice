@@ -1,29 +1,44 @@
-# Parceros Multiservice — Frontend
+# Parceros Multiservice
 
-Capa de presentación (Sprint 07) del sistema de gestión de **Parceros Multiservice**.
-Construido con **React 18 + Vite + React Router**, sin dependencias de UI externas:
-todo el sistema de diseño (colores, tipografía, iconografía, componentes) está
-implementado según la guía de estilos del equipo.
+Sistema de gestión de **Parceros Multiservice** (proyecto formativo SENA). El
+repositorio tiene dos partes:
 
-> Solo frontend. No hay backend: los datos provienen de `src/shared/data/mock.js` y viven
-> en memoria a través de `DataContext`. Al conectar la API REST de Node.js basta con
-> reemplazar las funciones de ese contexto por llamadas HTTP.
+| Carpeta | Qué es | Stack |
+|---|---|---|
+| `/` (`src/`) | Frontend: sitio público y sistema de gestión | React 18 + Vite + React Router |
+| `backend/` | API REST con auditoría y permisos por rol | Node.js + Express + PostgreSQL |
+
+El frontend no usa librerías de UI ni de gráficos: el sistema de diseño (colores,
+tipografía, iconografía, componentes y gráficos SVG) está hecho a mano según la guía
+de estilos del equipo. La API está documentada en [`backend/README.md`](backend/README.md).
 
 ---
 
 ## Sitio publicado
 
-**https://bananodurisimo.github.io/ParcerosMultiservice/**
+- Frontend: **https://bananodurisimo.github.io/ParcerosMultiservice/**
+- API: **https://parceros-multiservice-api.onrender.com** (Render; la primera
+  petición tras un rato inactiva puede tardar en responder)
 
 ## Cómo ejecutarlo
+
+Por defecto el frontend usa la API publicada en Render, así que basta con:
 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
 ```
 
+Para trabajar contra una API local, levante `backend/` (ver su README) y copie
+`.env.example` como `.env`:
+
+```
+VITE_API_URL=http://localhost:3000/api
+```
+
 Otros comandos: `npm run build` (compila a `dist/`), `npm run preview` y
-`npm run deploy` (publica el sitio, ver abajo).
+`npm run deploy` (publica el sitio, ver abajo). Las pruebas del backend se
+ejecutan con `npm test` dentro de `backend/`.
 
 ## Despliegue
 
@@ -54,16 +69,17 @@ hook en un push puntual: `git push --no-verify`.
 > `push` del workflow, quitar el hook y cambiar Settings > Pages a "GitHub
 > Actions" como origen, porque hoy Pages sirve la rama `gh-pages`.
 
-## Usuarios de prueba
+## Acceso
+
+Los datos viven en PostgreSQL, no en el frontend. El único usuario inicial lo crea
+`npm run seed` en `backend/`:
 
 | Correo | Contraseña | Rol |
 |---|---|---|
-| admin@parceros.ni | 123456 | Administrador |
-| gerente@parceros.ni | 123456 | Gerente |
-| vendedor@parceros.ni | 123456 | Vendedor |
-| almacen@parceros.ni | 123456 | Almacenista |
+| admin@parceros.ni | Cambiar123! | Administrador |
 
-En la pantalla de login puede hacer clic en el rol para autocompletar las credenciales.
+Cambie la contraseña en el primer ingreso (Mi cuenta → Seguridad). Los demás roles
+y usuarios se crean desde Configuración → Roles y Usuarios.
 
 ---
 
@@ -185,7 +201,8 @@ src/
 │  │  └─ ui/                   DataTable · Modal · ConfirmDialog · Form · KpiCard ·
 │  │                           EstadoCell (estado editable en lista) · Carousel …
 │  ├─ context/                 ThemeContext · AuthContext · ToastContext · DataContext
-│  └─ data/                    mock.js (datos de ejemplo) · nav.js (menú)
+│  ├─ api/                     cliente.js (HTTP + token) · adaptador.js (BD ↔ colecciones)
+│  └─ data/                    mock.js (constantes y utilidades) · nav.js (menú)
 │
 ├─ assets/                     Recursos globales (logo)
 └─ styles/globals.css          Tokens de color, tipografía y componentes
@@ -212,11 +229,16 @@ import DataTable from '@shared/components/ui/DataTable.jsx';
 import { Roles, Usuarios, Movimientos } from '@features/configuracion';
 ```
 
-### Relación con la arquitectura por capas
+### Relación con la API
 
-Este proyecto es la **capa de presentación**. `DataContext` es el único punto que
-toca los datos, de modo que al integrar la API REST solo cambia ese archivo: los
-componentes y las páginas quedan intactos.
+`DataContext` es el único punto que toca los datos: carga todo con `GET /api/datos`
+y crea, edita o elimina con `POST/PUT/DELETE /api/{coleccion}` mediante
+`shared/api/cliente.js`. `adaptador.js` traduce las tablas de la base de datos
+(`id_cliente`, `activo`, `id_estado_pedido`…) a las colecciones que usan las páginas
+(`id`, `estado`…), por eso las vistas no conocen el esquema SQL. `mock.js` ya no
+contiene datos de ejemplo: solo constantes (estados, privilegios, colores) y
+formateadores. El token de sesión se guarda en `sessionStorage` y se envía como
+`Authorization: Bearer`; si la API responde 401, la sesión se cierra.
 
 ---
 

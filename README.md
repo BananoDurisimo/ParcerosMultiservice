@@ -76,7 +76,7 @@ Los datos viven en PostgreSQL, no en el frontend. El único usuario inicial lo c
 
 | Correo | Contraseña | Rol |
 |---|---|---|
-| admin@parceros.ni | Cambiar123! | Administrador |
+| admin@parceros.ni | 123456 | Administrador |
 
 Cambie la contraseña en el primer ingreso (Mi cuenta → Seguridad). Los demás roles
 y usuarios se crean desde Configuración → Roles y Usuarios.

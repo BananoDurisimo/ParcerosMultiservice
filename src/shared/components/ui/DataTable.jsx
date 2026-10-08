@@ -6,8 +6,8 @@ import { normOpciones } from './Form.jsx';
 /**
  * Tabla estandar del sistema: busqueda, filtros, orden, paginacion,
  * acciones por fila (punto 1) y version movil en lista.
- * Los registros no se eliminan: se consultan y se editan, y en el modulo de
- * compras la baja se hace anulando desde el formulario.
+ * Las acciones de cada fila son ver detalle, editar, las propias del modulo
+ * y eliminar (siempre al final, para no pulsarla por error).
  *
  * Un filtro es un desplegable `{ key, label, options }` o un rango de fechas
  * `{ key, label, type: 'rango' }` (desde / hasta).
@@ -24,6 +24,8 @@ export default function DataTable({
   createLabel = 'Agregar',
   onView,
   onEdit,
+  /* Eliminar: el modulo pide la confirmacion antes de borrar. */
+  onDelete,
   /* Si la fila admite edicion (p. ej. una compra anulada no). */
   puedeEditarFila = () => true,
   /* Botones propios del modulo junto a "Ver detalle" y "Editar". */
@@ -87,12 +89,13 @@ export default function DataTable({
   const mMeta  = columns.filter((c) => c.mobile === 'meta');
   const mValue = columns.find((c) => c.mobile === 'value');
 
-  const hayAcciones = !!(onView || onEdit || accionesExtra);
+  const hayAcciones = !!(onView || onEdit || onDelete || accionesExtra);
   const acciones = (r) => (
     <>
       {onView && <button className="icon-btn is-view" onClick={() => onView(r)} title="Ver detalle"><Icon name="eye" size={16} /></button>}
       {onEdit && puedeEditarFila(r) && <button className="icon-btn is-edit" onClick={() => onEdit(r)} title="Editar"><Icon name="edit" size={16} /></button>}
       {accionesExtra && accionesExtra(r)}
+      {onDelete && <button className="icon-btn is-delete" onClick={() => onDelete(r)} title="Eliminar"><Icon name="trash" size={16} /></button>}
     </>
   );
 

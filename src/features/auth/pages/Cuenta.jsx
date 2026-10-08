@@ -17,7 +17,7 @@ const TABS = [
 ];
 
 export default function Cuenta() {
-  const { user, logout } = useAuth();
+  const { user, logout, cambiarClave: guardarClave } = useAuth();
   const { theme, setTheme } = useTheme();
   const { db, update } = useData();
   const toast = useToast();
@@ -48,7 +48,11 @@ export default function Cuenta() {
     const otros = db.usuarios.filter((u) => u.id !== user.id);
     const igual = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
     if (!form.nombre.trim()) n.nombre = 'Este campo no puede estar vacío.';
+    else if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ .'-]+$/.test(form.nombre.trim())) n.nombre = 'Este campo solo admite letras y espacios.';
+    else if (form.nombre.trim().length > 80) n.nombre = 'Máximo 80 caracteres.';
     if (!form.usuario.trim()) n.usuario = 'Este campo no puede estar vacío.';
+    else if (/\s/.test(form.usuario.trim())) n.usuario = 'Este campo no puede contener espacios.';
+    else if (form.usuario.trim().length < 3) n.usuario = 'Mínimo 3 caracteres.';
     else if (otros.some((u) => igual(u.nombre_usuario, form.usuario))) n.usuario = 'Ese nombre de usuario ya está en uso.';
     if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(form.correo)) n.correo = 'Ingrese un correo electrónico válido.';
     else if (otros.some((u) => igual(u.correo_empresarial, form.correo))) n.correo = 'Ya existe otro usuario con este correo.';
@@ -64,16 +68,21 @@ export default function Cuenta() {
     toast.success('Su información de perfil se actualizó correctamente.');
   };
 
-  const cambiarClave = (e) => {
+  const cambiarClave = async (e) => {
     e.preventDefault();
     const n = {};
     if (!claves.actual) n.actual = 'Ingrese su contraseña actual.';
-    else if (claves.actual !== perfil?.contrasena) n.actual = 'La contraseña actual no es correcta.';
     if (claves.nueva.length < 6) n.nueva = 'La nueva contraseña debe tener al menos 6 caracteres.';
+    else if (claves.nueva === claves.actual) n.nueva = 'La nueva contraseña debe ser diferente de la actual.';
     if (claves.nueva !== claves.repetir) n.repetir = 'Las contraseñas no coinciden.';
     setErrs(n);
     if (Object.keys(n).length) { toast.error('No fue posible actualizar la contraseña.', 'Validación de campos'); return; }
-    update('usuarios', user.id, { contrasena: claves.nueva });
+    const r = await guardarClave(claves.actual, claves.nueva);
+    if (!r.ok) {
+      setErrs({ [r.campo || 'actual']: r.error });
+      toast.error(r.error, 'No fue posible actualizar la contraseña');
+      return;
+    }
     setClaves({ actual: '', nueva: '', repetir: '' });
     toast.success('Su contraseña se actualizó correctamente.');
   };

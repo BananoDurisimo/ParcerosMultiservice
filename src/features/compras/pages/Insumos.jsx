@@ -120,6 +120,14 @@ export default function Insumos() {
       entidad="insumos"
       singular="insumo"
       searchKeys={['nombre', 'calc_tipo', 'calc_unidad']}
+      eliminacion={{
+        validar: (r) => {
+          const compras = db.compras.filter((c) => (c.detalle_insumos || []).some((l) => l.id_insumo === r.id)).length;
+          const pedidos = db.pedidos.filter((p) => (p.insumos || []).some((l) => l.id_insumo === r.id)).length;
+          if (!compras && !pedidos) return null;
+          return `${r.nombre} figura en ${[compras && `${compras} compra(s)`, pedidos && `${pedidos} cotización(es) o pedido(s)`].filter(Boolean).join(' y ')}. Para conservar ese historial, desactívelo en lugar de eliminarlo.`;
+        },
+      }}
       filtros={[
         { key: 'id_tipo_insumo', label: 'Tipo de insumo', options: tipos },
         { key: 'id_unidad_medida', label: 'Unidad de medida', options: unidades },
@@ -167,7 +175,7 @@ export default function Insumos() {
         { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="insumos" modulo="Insumos" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[
-        { name: 'nombre', label: 'Nombre del insumo', type: 'text', required: true, full: true },
+        { name: 'nombre', label: 'Nombre del insumo', type: 'text', required: true, full: true, noSpecial: true, unique: true, maxLength: 80 },
         { name: 'id_tipo_insumo', label: 'Tipo de insumo', type: 'select', options: tipos, required: true },
         { name: 'id_unidad_medida', label: 'Unidad de medida', type: 'select', options: unidades, required: true },
         { name: 'stock', label: 'Existencias', type: 'number', required: true, min: 0 },

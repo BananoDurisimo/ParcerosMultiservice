@@ -12,9 +12,10 @@ import { money, fecha, ESTADOS_PEDIDO, FALTA_PAGO } from '@shared/data/mock.js';
  * el usuario con el diseño y los comprobantes en la pestaña desde la que abre.
  */
 export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
-  const { opciones } = useData();
+  const { db, opciones } = useData();
   const { descargarDiseno } = useDescargas();
-  const insumos = opciones('insumos', (i) => `${i.nombre} (${i.calc_abreviatura || i.calc_unidad})`);
+  const insumos = opciones('insumos');
+  const unidad = (id) => db.insumos.find((i) => i.id === id)?.calc_abreviatura || '';
   const idx = ESTADOS_PEDIDO.indexOf(r.estado);
   const fechaEtapa = (e) => (r.historial_estados || []).find((h) => h.estado === e)?.fecha;
 
@@ -33,7 +34,7 @@ export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
       <div className="pedido-desc">{r.descripcion || '—'}</div>
 
       <h3 className="det-section">Insumos</h3>
-      <ItemsView lineas={r.insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" totalLabel="Total" vacio="No se registraron insumos." />
+      <ItemsView lineas={r.insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" totalLabel="Total" vacio="No se registraron insumos." unidad={unidad} />
 
       <h3 className="det-section">Diseño aprobado por el cliente</h3>
       {r.imagen_diseno ? (

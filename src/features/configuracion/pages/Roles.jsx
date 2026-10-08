@@ -79,6 +79,11 @@ export default function Roles() {
       defaults={{ permisos: [], privilegios: [], estado: 'Activo' }}
       validarExtra={validarExtra}
       renderDetalle={detalle}
+      eliminacion={{
+        validar: (r) => (r.calc_usuarios > 0
+          ? `El rol ${r.nombre} está asignado a ${r.calc_usuarios} usuario(s). Asígneles otro rol antes de eliminarlo.`
+          : null),
+      }}
       columnas={[
         { key: 'nombre', label: 'Rol', mobile: 'title', render: (r) => <span className="cell-main">{r.nombre}</span> },
         { key: 'calc_permisos', label: 'Permisos', sortable: false, render: (r) => <span className="caption">{r.calc_permisos.join(' · ') || '—'}</span> },

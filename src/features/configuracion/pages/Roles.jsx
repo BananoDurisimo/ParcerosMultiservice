@@ -85,7 +85,7 @@ export default function Roles() {
         { key: 'calc_total_permisos', label: 'Total permisos', align: 'center', mobile: 'meta', sortable: false, render: (r) => <span className="badge badge-primary">{r.calc_total_permisos}</span> },
         { key: 'calc_total_privilegios', label: 'Privilegios', align: 'center', render: (r) => <span className="badge badge-neutral">{r.calc_total_privilegios}</span> },
         { key: 'calc_usuarios', label: 'Usuarios', align: 'center', mobile: 'meta', render: (r) => <strong>{r.calc_usuarios}</strong> },
-        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="roles" modulo="Roles" options={ESTADOS_REGISTRO} /> },
+        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="roles" modulo="Roles" options={ESTADOS_REGISTRO} disabled={r.nombre === 'Administrador'} /> },
       ]}
       campos={[
         { name: 'nombre', label: 'Nombre del rol', type: 'text', required: true, noSpecial: true, unique: true, maxLength: 40, full: true },

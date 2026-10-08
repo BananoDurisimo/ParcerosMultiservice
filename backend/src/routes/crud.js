@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { conUsuario } from '../db/pool.js';
+import { conUsuario, query } from '../db/pool.js';
 import { puede } from '../middleware/auth.js';
 
 /*
@@ -167,6 +167,14 @@ router.put('/:coleccion/:id', async (req, res, next) => {
     campos = PERFIL;
   }
   try {
+    /* El rol Administrador (y el rol de quien hace la peticion) no se puede inactivar:
+       dejaria el sistema sin nadie que pueda entrar a reactivarlo. */
+    if (req.params.coleccion === 'roles' && req.body.activo === false) {
+      const { rows: [rol] } = await query('SELECT nombre FROM rol WHERE id_rol=$1', [id]);
+      if (rol?.nombre === 'Administrador' || id === req.user.id_rol) {
+        return res.status(400).json({ message: 'El rol Administrador no se puede inactivar.' });
+      }
+    }
     const fila = await conUsuario(req.user.id_usuario, async (db) => {
       const actual = await actualizar(db, cfg, id, limpiar(campos, req.body));
       if (!actual) return null;

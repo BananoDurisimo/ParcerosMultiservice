@@ -25,6 +25,7 @@ primer inicio de sesión (Mi cuenta > Seguridad).
 |---|---|
 | `001_initial_schema.sql` | Tablas, vistas, kardex e historial |
 | `002_conexion_frontend.sql` | Auditoría corregida (id del registro y sin contraseña), adjuntos como `TEXT`, catálogos y permisos con los valores del frontend, regla privilegio ↔ módulo |
+| `003_proteger_rol_administrador.sql` | Reactiva el rol Administrador y lo protege con un trigger: no se puede inactivar ni renombrar |
 
 `npm start` ejecuta las migraciones pendientes antes de iniciar el servidor,
 así que en Render basta con desplegar. Son idempotentes: no se repiten.

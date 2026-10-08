@@ -137,9 +137,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .grow      { flex: 1; }
 .center    { text-align: center; }
 .right     { text-align: right; }
-.hr        { height: 1px; background: var(--border-soft); border: 0; margin: 16px 0; }
 .stack     { display: flex; flex-direction: column; gap: 6px; }
-.sr-only   { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Animaciones ---------------------------------------------- */
 @keyframes fadeUp     { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
@@ -149,10 +147,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @keyframes slideInL   { from { transform: translateX(-100%); } to { transform: none; } }
 @keyframes spin       { to { transform: rotate(360deg); } }
 @keyframes pulseRing  { 0% { box-shadow: 0 0 0 0 var(--primary-ring); } 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
-@keyframes shimmer    { 100% { background-position: 200% 0; } }
 @keyframes drawLine   { to { stroke-dashoffset: 0; } }
 @keyframes growBar    { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-@keyframes floaty     { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
 .anim-page   { animation: fadeUp .45s var(--ease) both; }
 .anim-in     { animation: fadeIn .3s var(--ease) both; }
@@ -191,8 +187,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; box-shadow: var(--shadow-sm); }
 .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
-.btn-success { background: transparent; border-color: color-mix(in srgb, var(--success) 45%, transparent); color: var(--success-fg); }
-.btn-success:hover { background: var(--success-bg); }
 .btn-warning { background: transparent; border-color: color-mix(in srgb, var(--warning) 45%, transparent); color: var(--warning-fg); }
 .btn-warning:hover { background: var(--warning-bg); }
 .btn-danger  { background: transparent; border-color: color-mix(in srgb, var(--error) 45%, transparent); color: var(--error-fg); }
@@ -235,14 +229,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .ms-limpiar { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; }
 .ms-limpiar:hover { transform: translateY(-50%); }
 
-/* Campo de archivo adjunto --------------------------------- */
-.file-field { display: flex; align-items: center; gap: 8px; }
-.file-field .input { flex: 1; min-width: 0; }
-.file-field .btn { flex: none; white-space: nowrap; }
-@media (max-width: 560px) {
-  .file-field { flex-wrap: wrap; }
-  .file-field .btn { width: 100%; justify-content: center; }
-}
 
 /* ============================================================
    Estado editable desde el listado (dropdown por portal)
@@ -552,7 +538,6 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 .empty { padding: 52px 20px; text-align: center; color: var(--text-sec); animation: fadeUp .4s var(--ease) both; }
 .empty .ico-wrap { width: 54px; height: 54px; margin: 0 auto 12px; border-radius: 99px; background: var(--surface-3); display: grid; place-items: center; color: var(--text-sec); }
 
-.skeleton { background: linear-gradient(90deg, var(--surface-3) 25%, var(--surface-2) 37%, var(--surface-3) 63%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear; border-radius: 6px; }
 
 /* Lista movil (reemplazo de tabla) ------------------------- */
 .mlist { display: none; flex-direction: column; }
@@ -581,7 +566,6 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 .kpi:hover::after { opacity: 1; }
 
 .grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
-.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .chart-box { padding: 16px; }
 
 /* Modales -------------------------------------------------- */
@@ -716,18 +700,12 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 
 
 .section { padding: 64px 24px; }
-.section-inner { max-width: 1120px; margin: 0 auto; }
 .section-title { text-align: center; margin-bottom: 34px; }
 .section-title h2 { font-size: 27px; font-weight: 600; letter-spacing: -.5px; }
 .section-title p { color: var(--text-sec); margin-top: 8px; }
 .feature h3 { margin-bottom: 6px; }
 .feature p { color: var(--text-sec); font-size: 13px; }
 
-.mv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.stats-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
-.stat-b { text-align: center; padding: 20px 14px; }
-.stat-b .n { font-size: 30px; font-weight: 700; color: var(--primary); letter-spacing: -1px; }
-.stat-b .l { font-size: 12.5px; color: var(--text-sec); }
 
 .cta { border-radius: var(--radius-lg); padding: 40px 30px; text-align: center; background: linear-gradient(120deg, var(--primary), #7C3AED); color: #fff; box-shadow: var(--shadow-lg); }
 .cta h2 { font-size: 26px; font-weight: 600; }
@@ -804,8 +782,7 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
    RESPONSIVE — Tablet / Movil
    ========================================================== */
 @media (max-width: 1080px) {
-  .grid-2, .grid-3 { grid-template-columns: 1fr; }
-  .hero-inner { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
   .hero h1 { font-size: 34px; }
   .auth { grid-template-columns: 1fr; }
   .auth-art { display: none; }
@@ -820,7 +797,7 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
   .sidebar.is-collapsed .nav-item span, .sidebar.is-collapsed .brand-name, .sidebar.is-collapsed .nav-section { display: block; }
   .main, .main.is-wide { margin-left: 0; }
   .content { padding: 15px; padding-bottom: 88px; }
-  .form-grid, .detail-grid, .mv-grid, .theme-picker { grid-template-columns: 1fr; }
+  .form-grid, .detail-grid, .theme-picker { grid-template-columns: 1fr; }
 
   .table-scroll { display: none; }
   .mlist { display: flex; }
@@ -855,7 +832,6 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
   .hero h1 { font-size: 29px; }
   .toolbar { padding: 12px; }
   .search-wrap { max-width: none; }
-  .btn-mobile-full { width: 100%; }
 }
 
 /* ============================================================
@@ -910,20 +886,6 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 .c-dot.on { width: 22px; background: var(--primary); }
 
 
-/* --- Productos --- */
-.prod-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.prod { overflow: hidden; display: flex; flex-direction: column; }
-.prod-media { position: relative; aspect-ratio: 1 / 1; color: var(--primary); background: linear-gradient(135deg, var(--primary-soft), var(--surface-3)); overflow: hidden; }
-.prod-media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .45s var(--ease); }
-.card-hover:hover .prod-media img { transform: scale(1.05); }
-.prod-ico {
-  position: absolute; left: 12px; bottom: 12px; width: 34px; height: 34px; border-radius: 10px;
-  display: grid; place-items: center; color: #fff; background: rgba(15,23,42,.55);
-  border: 1px solid rgba(255,255,255,.28); backdrop-filter: blur(6px);
-}
-.prod-body { padding: 16px 18px 18px; flex: 1; display: flex; flex-direction: column; }
-.prod-body h3 { font-size: 15.5px; font-weight: 600; }
-.prod-body p { font-size: 13px; color: var(--text-sec); margin-top: 6px; flex: 1; }
 
 /* --- Sobre la empresa --- */
 .lp-about { background: var(--surface); }
@@ -1006,8 +968,7 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 
 /* --- Responsive del landing --- */
 @media (max-width: 900px) {
-  .about-grid, .contact-grid, .prod-grid, .faq-grid { grid-template-columns: 1fr; }
-  .prod-grid { gap: 14px; }
+  .about-grid, .contact-grid, .faq-grid { grid-template-columns: 1fr; }
   .c-arrow.prev { left: 6px; }
   .c-arrow.next { right: 6px; }
   .footer-cols { grid-template-columns: 1fr 1fr; }
@@ -1266,17 +1227,6 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
   .hbar-track { grid-column: 1 / -1; }
 }
 
-/* ===== Accesos rapidos del dashboard ===== */
-.acceso-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.acceso {
-  display: flex; align-items: center; gap: 11px; padding: 12px 13px;
-  border: 1px solid var(--border-soft); border-radius: var(--radius);
-  background: var(--surface-2); color: var(--text); font-size: 13px;
-  transition: all .2s var(--ease);
-}
-.acceso:hover { text-decoration: none; border-color: var(--primary); color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-.acceso-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); flex: none; }
-@media (max-width: 560px) { .acceso-grid { grid-template-columns: 1fr; } }
 
 /* Detalles: tablas de solo lectura, diseño y permisos ------- */
 .mini-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }

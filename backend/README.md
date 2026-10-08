@@ -44,7 +44,6 @@ Todas, salvo `health` y `login`, requieren `Authorization: Bearer <token>`.
 | `POST` | `/api/{coleccion}` | Crear |
 | `PUT` | `/api/{coleccion}/:id` | Editar, cambiar estado o anular |
 | `DELETE` | `/api/{coleccion}/:id` | Eliminar |
-| `GET` | `/api/catalogos/:nombre`, `/api/inventario/stock`, `/api/dashboard/resumen`, `/api/movimientos` | Consultas sueltas |
 
 Colecciones: `clientes`, `proveedores`, `insumos`, `roles` (con `permisos` y
 `privilegios`), `usuarios` (con `contrasena` al crear), `compras` (con

@@ -5,7 +5,7 @@ import { api, leerToken, guardarToken, idDelToken, onSesionVencida } from '@shar
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const { db, setActor, cargar, vaciar, estadoDatos } = useData();
+  const { db, cargar, vaciar, estadoDatos } = useData();
   /* La sesion es el token que entrega la API; el id del usuario viene en el. */
   const [idSesion, setIdSesion] = useState(() => idDelToken(leerToken()));
 
@@ -44,8 +44,6 @@ export function AuthProvider({ children }) {
     };
   }, [db, idSesion]);
 
-  /* El responsable de cada movimiento del historial es el usuario en sesion. */
-  useEffect(() => { setActor(user?.id ?? null); }, [user?.id, setActor]);
 
   /** Inicia sesion contra la API y carga los datos. El servidor registra el
    *  acceso (exitoso o fallido) en la tabla `acceso`. */

@@ -4,7 +4,6 @@ import 'dotenv/config';
 import auth from './routes/auth.js';
 import datos from './routes/datos.js';
 import crud from './routes/crud.js';
-import system from './routes/system.js';
 import { requireAuth } from './middleware/auth.js';
 
 const app = express();
@@ -16,7 +15,6 @@ app.use(express.json({ limit: '8mb' }));
 app.get('/api/health', (_, res) => res.json({ ok: true, service: 'parceros-multiservice-api' }));
 app.use('/api/auth', auth);
 app.use('/api', requireAuth, datos);
-app.use('/api', requireAuth, system);
 app.use('/api', requireAuth, crud);
 app.use((_, res) => res.status(404).json({ message: 'Ruta no encontrada.' }));
 

@@ -14,7 +14,6 @@ import {
   COMPRA_ANULADA,
   ETIQUETA_ACCION,
   camposCambiados,
-  CAMPOS_NO_AUDITADOS,
   etiquetaFila,
   codigoCompra,
   codigoPedido,
@@ -114,89 +113,6 @@ const redondear = (n) => Math.round(n * 100) / 100;
  *  entrega: mientras es cotizacion todavia no consume nada. */
 export const consumeInventario = (estado) => ESTADOS_PEDIDO.indexOf(estado) >= 1;
 
-/* --------------------------------------------------------------
-   Movimiento de existencias
-
-   Las existencias de los insumos las mueven los documentos: una compra
-   recibida ingresa lo que trae y un pedido en produccion descuenta lo que
-   gasta. `efectoEnStock` traduce un documento a las unidades que suma (+) o
-   resta (-) en cada insumo; cambiarle el estado o anularlo ingresa o devuelve
-   las existencias por si solo.
-
-   Los datos semilla ya vienen con las existencias al dia: no se reprocesa el
-   historial, solo se aplican los movimientos que ocurren en la sesion.
-   -------------------------------------------------------------- */
-const lineasStock = (arr, signo) =>
-  (arr || []).map((l) => ({ id: l.id_insumo, n: signo * Number(l.cantidad || 0) }));
-
-function efectoEnStock(col, row) {
-  if (!row) return [];
-  if (col === 'compras') return row.estado === 'Recibida' ? lineasStock(row.detalle_insumos, 1) : [];
-  if (col === 'pedidos') return consumeInventario(row.estado) ? lineasStock(row.insumos, -1) : [];
-  return [];
-}
-
-/** Devuelve `d` con las existencias ya ajustadas al reemplazar el documento
- *  `anterior` por `nuevo`: se deshace el efecto que tenia y se aplica el nuevo. */
-function conStock(d, col, anterior, nuevo) {
-  if (col !== 'compras' && col !== 'pedidos') return d;
-  const delta = new Map();
-  efectoEnStock(col, anterior).forEach(({ id, n }) => delta.set(id, (delta.get(id) || 0) - n));
-  efectoEnStock(col, nuevo).forEach(({ id, n }) => delta.set(id, (delta.get(id) || 0) + n));
-  if (!delta.size) return d;
-  return {
-    ...d,
-    insumos: d.insumos.map((r) =>
-      delta.has(r.id) ? { ...r, stock: Math.max(0, redondear(Number(r.stock || 0) + delta.get(r.id))) } : r
-    ),
-  };
-}
-
-/* --------------------------------------------------------------
-   Historial de movimientos
-
-   Cada alta y cada cambio que se hace en la sesion queda registrado en la
-   tabla `movimientos` con el usuario que lo hizo, como lo haria el trigger de
-   la base de datos.
-   -------------------------------------------------------------- */
-const TABLA = {
-  roles: 'rol',
-  usuarios: 'usuario',
-  insumos: 'insumo',
-  proveedores: 'proveedor',
-  compras: 'compra',
-  clientes: 'cliente',
-  pedidos: 'pedido',
-  abonos: 'abono',
-};
-
-const ahora = () => {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  return `${hoyISO()}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-};
-
-/** Copia de la fila tal como la guardaria el trigger: sin el id ni la
- *  contrasena, y con las lineas de detalle escritas como texto
- *  ("Tela Dry-Fit × 30"). */
-function valorAuditado(d, row) {
-  if (!row) return null;
-  const { id, ...resto } = row;
-  const out = { ...resto };
-  CAMPOS_NO_AUDITADOS.forEach((k) => delete out[k]);
-  ['insumos', 'detalle_insumos'].forEach((k) => {
-    if (Array.isArray(out[k])) {
-      out[k] = out[k].map((l) => `${d.insumos.find((i) => i.id === l.id_insumo)?.nombre || '#' + l.id_insumo} × ${l.cantidad}`);
-    }
-  });
-  return out;
-}
-
-function conMovimiento(d, mov) {
-  const id = d.movimientos.length ? Math.max(...d.movimientos.map((m) => m.id)) + 1 : 1;
-  return { ...d, movimientos: [{ id, fecha_cambio: ahora(), ...mov }, ...d.movimientos] };
-}
-
 export function DataProvider({ children }) {
   const toast = useToast();
   const [raw, setRaw] = useState(VACIO);
@@ -273,11 +189,6 @@ export function DataProvider({ children }) {
 
   const cuerpo = (col, row) => aServidor(col, row, rawRef.current.catalogos, sid);
 
-  /* Usuario de la sesion: lo fija AuthContext y es el responsable que queda
-     en cada movimiento. */
-  const actorRef = useRef(null);
-  const setActor = useCallback((id) => { actorRef.current = id ?? null; }, []);
-
   /* Ids: se reservan aqui -y no dentro de la actualizacion de estado- para que
      quien crea un registro conozca su id de inmediato (p. ej. el pedido que
      nace con su abono inicial). */
@@ -288,79 +199,30 @@ export function DataProvider({ children }) {
     return max + 1;
   }, []);
 
-  /* Guardar y actualizar pasan por `conStock`, de modo que el movimiento de
-     existencias ocurre venga de donde venga el cambio: del formulario, del
-     desplegable de estado del listado o del dialogo de anulacion. */
+  /* Cada cambio se ve al instante; existencias e historial los recalcula la
+     base de datos y llegan con la recarga que sigue a la cola. */
   const create = useCallback((col, row) => {
     const creado = { ...row, id: row.id ?? nuevoId(col) };
-    const actor = actorRef.current;
     sincronizar(async () => {
       const fila = await api('POST', '/' + col, cuerpo(col, creado));
       const pk = Object.keys(fila).find((k) => k.startsWith('id_'));
       (idsServidor.current[col] ||= new Map()).set(creado.id, fila[pk]);
     });
-    aplicar((d) => {
-      let out = conStock({ ...d, [col]: [creado, ...d[col]] }, col, null, creado);
-      if (TABLA[col]) {
-        out = conMovimiento(out, {
-          tabla: TABLA[col], id_registro: creado.id, accion: 'INSERT',
-          valor_anterior: null, valor_nuevo: valorAuditado(d, creado), id_usuario: actor,
-        });
-      }
-      return out;
-    });
+    aplicar((d) => ({ ...d, [col]: [creado, ...d[col]] }));
     return creado;
   }, [nuevoId, aplicar, sincronizar]);
 
   const update = useCallback((col, id, patch) => {
-    const actor = actorRef.current;
     const previo = rawRef.current[col].find((r) => r.id === id);
-    if (previo) {
-      const enviar = { ...previo, ...patch };
-      sincronizar(() => api('PUT', `/${col}/${sid(col, id)}`, cuerpo(col, enviar)));
-    }
-    aplicar((d) => {
-      const anterior = d[col].find((r) => r.id === id);
-      if (!anterior) return d;
-      const nuevo = { ...anterior, ...patch };
-      let out = conStock({ ...d, [col]: d[col].map((r) => (r.id === id ? nuevo : r)) }, col, anterior, nuevo);
-      const antes = valorAuditado(d, anterior);
-      const despues = valorAuditado(d, nuevo);
-      if (TABLA[col] && camposCambiados(antes, despues).length) {
-        out = conMovimiento(out, {
-          tabla: TABLA[col], id_registro: id, accion: 'UPDATE',
-          valor_anterior: antes, valor_nuevo: despues, id_usuario: actor,
-        });
-      }
-      return out;
-    });
+    if (!previo) return;
+    sincronizar(() => api('PUT', `/${col}/${sid(col, id)}`, cuerpo(col, { ...previo, ...patch })));
+    aplicar((d) => ({ ...d, [col]: d[col].map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
   }, [aplicar, sincronizar, sid]);
 
-  /* Eliminar quita la fila de la tabla. Igual que al guardar, `conStock`
-     deshace lo que el documento movia en las existencias (una compra recibida
-     retira lo que habia ingresado; un pedido en produccion devuelve lo que
-     habia descontado), y el trigger deja la fila borrada en el historial. */
   const remove = useCallback((col, id) => {
-    const actor = actorRef.current;
     sincronizar(() => api('DELETE', `/${col}/${sid(col, id)}`));
-    aplicar((d) => {
-      const anterior = d[col].find((r) => r.id === id);
-      if (!anterior) return d;
-      let out = conStock({ ...d, [col]: d[col].filter((r) => r.id !== id) }, col, anterior, null);
-      if (TABLA[col]) {
-        out = conMovimiento(out, {
-          tabla: TABLA[col], id_registro: id, accion: 'DELETE',
-          valor_anterior: valorAuditado(d, anterior), valor_nuevo: null, id_usuario: actor,
-        });
-      }
-      return out;
-    });
+    aplicar((d) => ({ ...d, [col]: d[col].filter((r) => r.id !== id) }));
   }, [aplicar, sincronizar, sid]);
-
-  /** Los accesos (ingreso, intento fallido, cierre) los registra el
-   *  servidor en la tabla `acceso`; se conserva la funcion para no cambiar a
-   *  quien la llama. */
-  const registrarAcceso = useCallback(() => {}, []);
 
   /* --------------------------------------------------------------
      Recuperacion de contrasena: enlace de un solo uso, valido 30 minutos.
@@ -735,7 +597,7 @@ export function DataProvider({ children }) {
     <DataContext.Provider
       value={{
         db, opciones, create, update, remove, nuevoId, faltantes, stats, getStats, notificaciones,
-        setActor, registrarAcceso, solicitarRecuperacion, enlaceValido, restablecerClave,
+        solicitarRecuperacion, enlaceValido, restablecerClave,
         estadoDatos, errorDatos, cargar, vaciar,
       }}
     >

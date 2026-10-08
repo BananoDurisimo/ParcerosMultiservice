@@ -6,7 +6,7 @@
  * sessionStorage: dura mientras la pestaña este abierta y no queda en el
  * equipo al cerrarla.
  */
-export const API_URL = (import.meta.env.VITE_API_URL || 'https://parceros-multiservice-api.onrender.com').replace(/\/$/, '');
+export const API_URL = (import.meta.env.VITE_API_URL || 'https://parceros-multiservice-api.onrender.com').replace(/\/(api)?\/?$/, ''); // el origen, sin "/api": api() ya lo antepone
 
 const KEY = 'pm-token';
 

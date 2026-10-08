@@ -33,7 +33,7 @@ Para trabajar contra una API local, levante `backend/` (ver su README) y copie
 `.env.example` como `.env`:
 
 ```
-VITE_API_URL=http://localhost:3000/api
+VITE_API_URL=http://localhost:3000
 ```
 
 Otros comandos: `npm run build` (compila a `dist/`), `npm run preview` y

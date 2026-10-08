@@ -3,9 +3,9 @@
  *
  *   npm run deploy
  *
- * El flujo normal es el workflow .github/workflows/deploy.yml, que publica solo
- * con cada push a main. Este script existe como alternativa manual para cuando
- * Actions no esta disponible en la cuenta.
+ * Es el camino de publicacion en uso: el hook scripts/hooks/pre-push lo ejecuta
+ * en cada push a main. El workflow .github/workflows/deploy.yml quedo en
+ * disparo manual porque Actions esta bloqueado por facturacion en la cuenta.
  */
 import { execFileSync } from 'node:child_process';
 import { cpSync, rmSync, mkdirSync, copyFileSync, writeFileSync, readdirSync } from 'node:fs';

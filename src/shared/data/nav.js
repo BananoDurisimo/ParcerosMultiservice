@@ -27,6 +27,7 @@ export const NAV = [
          desde Pedidos, cada una en su pestaña. */
       { to: '/app/pedidos', icon: 'clipboard', label: 'Pedidos', permiso: ['Cotizaciones', 'Pedidos', 'Ventas'] },
       { to: '/app/abonos', icon: 'coin', label: 'Abonos', permiso: 'Abonos' },
+      { to: '/app/reportes', icon: 'chart', label: 'Reportes', permiso: 'Reportes' },
     ],
   },
 ];

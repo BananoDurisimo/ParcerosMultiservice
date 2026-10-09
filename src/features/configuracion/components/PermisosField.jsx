@@ -6,13 +6,13 @@ import { useData } from '@shared/context/DataContext.jsx';
 const GRUPOS = [
   { titulo: 'Configuración', modulos: ['Roles', 'Usuarios', 'Movimientos'] },
   { titulo: 'Compras', modulos: ['Insumos', 'Proveedores', 'Compras'] },
-  { titulo: 'Ventas', modulos: ['Clientes', 'Cotizaciones', 'Pedidos', 'Ventas', 'Abonos'] },
+  { titulo: 'Ventas', modulos: ['Clientes', 'Cotizaciones', 'Pedidos', 'Ventas', 'Abonos', 'Reportes'] },
 ];
 
 const ICONO = {
   Roles: 'shield', Usuarios: 'user', Movimientos: 'history',
   Insumos: 'package', Proveedores: 'truck', Compras: 'cart',
-  Clientes: 'users', Cotizaciones: 'clipboard', Pedidos: 'box', Ventas: 'coin', Abonos: 'dollar',
+  Clientes: 'users', Cotizaciones: 'clipboard', Pedidos: 'box', Ventas: 'coin', Abonos: 'dollar', Reportes: 'chart',
 };
 
 /**

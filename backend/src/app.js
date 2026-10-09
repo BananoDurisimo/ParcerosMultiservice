@@ -7,7 +7,12 @@ import crud from './routes/crud.js';
 import { requireAuth } from './middleware/auth.js';
 
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_URL?.split(',').map((o) => o.trim()) || true }));
+/* Origenes permitidos: los de FRONTEND_URL (la pagina publicada) y siempre el
+   servidor de desarrollo local, para poder probar el frontend en el equipo
+   contra esta API sin tocar la configuracion. Sin FRONTEND_URL se permite todo. */
+const publicados = process.env.FRONTEND_URL?.split(',').map((o) => o.trim());
+const LOCAL = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+app.use(cors({ origin: (origen, cb) => cb(null, !origen || !publicados || publicados.includes(origen) || LOCAL.test(origen)) }));
 /* El diseño del pedido y el comprobante del abono viajan como imagen
    (data URL) mientras no haya un servicio de archivos: hasta 5 MB cada uno. */
 app.use(express.json({ limit: '8mb' }));

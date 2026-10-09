@@ -106,6 +106,7 @@ export const VER_DISENO = 'Ver diseño';
 export const DESCARGAR_DISENO = 'Descargar diseño';
 export const VER_COMPROBANTE = 'Ver comprobante';
 export const DESCARGAR_COMPROBANTE = 'Descargar comprobante';
+export const EXPORTAR = 'Exportar';
 
 /* Los modulos (permisos) y sus acciones (privilegios) viven en la base de
    datos: backend/src/db/migrations/002_conexion_frontend.sql. */

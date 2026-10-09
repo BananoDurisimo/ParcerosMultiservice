@@ -21,6 +21,7 @@ const TITULOS = {
   '/app/clientes': 'Clientes',
   '/app/pedidos': 'Pedidos',
   '/app/abonos': 'Abonos',
+  '/app/reportes': 'Reportes',
   '/app/cuenta': 'Mi cuenta',
 };
 

@@ -102,6 +102,7 @@ y usuarios se crean desde Configuración → Roles y Usuarios.
 | `/app/clientes` | Clientes |
 | `/app/pedidos` | Cotizaciones · Pedidos · Ventas (pestañas sobre el mismo registro) |
 | `/app/abonos` | Abonos y saldos |
+| `/app/reportes` | Reportes de ingresos recibidos (filtros, resumen, movimientos y exportación a PDF, Excel y CSV) |
 | `/app/cuenta` | Mi cuenta (perfil, seguridad, preferencias, actividad) |
 
 **Mobile** — el layout es responsive; por debajo de 900px el sidebar se convierte en
@@ -162,6 +163,13 @@ Inicio, Compras, Abonos, Pedidos y Cuenta. Las tablas se transforman en listas.
 - **Animaciones**: entrada de páginas y tarjetas escalonada, contador animado en los KPI,
   trazado progresivo de las líneas del gráfico, transiciones de modales, drawer, toasts,
   hover en filas y botones. Todo respeta `prefers-reduced-motion`.
+- **Reportes de ingresos** (Ventas → Reportes): el dinero realmente recibido, calculado desde
+  cada abono por su fecha de pago. Filtros por día, semana, mes, año o rango personalizado,
+  tipo (abono / pago completo) y método de pago, con indicadores, tabla con detalle de cada
+  movimiento y exportación a PDF, Excel (.xlsx) y CSV que respeta los filtros activos. El
+  pendiente de cobro se muestra aparte y nunca suma a los ingresos. Los archivos se generan
+  en el navegador, sin librerías (`features/reportes/lib/exportar.js`); la lógica de cálculo
+  tiene su prueba: `node --test src/features/reportes/lib/ingresos.test.js`.
 - **Trazabilidad del pedido** en línea de tiempo con los cinco estados de la ficha.
 
 ---
@@ -189,7 +197,10 @@ src/
 │  │  ├─ pages/                Una vista por módulo
 │  │  └─ components/           MovimientoDetalle (comparativo antes / después)
 │  ├─ compras/                 Insumos · Proveedores · Compras
-│  └─ ventas/                  Clientes · Pedidos (cotizaciones, pedidos, ventas) · Abonos
+│  ├─ ventas/                  Clientes · Pedidos (cotizaciones, pedidos, ventas) · Abonos
+│  └─ reportes/                Reportes de ingresos
+│     ├─ pages/                Reportes.jsx (pantalla)
+│     ├─ lib/                  ingresos.js (cálculo) · exportar.js (PDF/Excel/CSV)
 │     └─ index.js              Barril: qué expone la funcionalidad hacia afuera
 │
 ├─ shared/                     Transversal a todas las funcionalidades

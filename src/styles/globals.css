@@ -1319,3 +1319,23 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
 .carga-datos-card { max-width: 380px; display: grid; justify-items: center; gap: 10px; text-align: center; color: var(--text); }
 .carga-datos-card .ico { color: var(--warning); }
 .carga-spinner { width: 34px; height: 34px; border-radius: 99px; border: 3px solid var(--border); border-top-color: var(--primary); animation: spin .8s linear infinite; }
+
+/* --- Reportes: filtros, exportacion --- */
+.rep-filtros { padding: 16px; margin-bottom: 16px; display: grid; gap: 14px; }
+.seg { display: inline-flex; gap: 2px; padding: 3px; max-width: 100%; overflow-x: auto; justify-self: start; border-radius: var(--radius); background: var(--surface-3); border: 1px solid var(--border-soft); }
+[data-theme='dark'] .seg { border-color: var(--border); }
+.seg button { border: 0; background: transparent; color: var(--text-sec); font: inherit; font-size: 13px; padding: 7px 14px; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; transition: background-color .18s var(--ease), color .18s var(--ease); }
+.seg button:hover { color: var(--text); }
+.seg button.is-on { background: var(--surface); color: var(--primary); font-weight: 600; box-shadow: var(--shadow-sm); }
+.rep-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items: start; }
+.rep-botones { display: flex; gap: 8px; flex-wrap: wrap; align-self: end; }
+.dot-pendiente { width: 7px; height: 7px; border-radius: 99px; background: var(--warning); margin-left: 2px; }
+.rep-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.rep-fecha { display: inline-flex; flex-direction: column; white-space: nowrap; font-size: 12.5px; }
+@media (max-width: 1180px) { .rep-kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); } }
+.rep-export { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 14px 16px; margin-top: 16px; }
+@media (max-width: 640px) {
+  .rep-botones .btn { flex: 1; justify-content: center; }
+  .rep-export .row, .rep-export .btn { width: 100%; }
+  .rep-export .btn { justify-content: center; }
+}

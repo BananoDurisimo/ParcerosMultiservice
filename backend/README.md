@@ -27,7 +27,8 @@ primer inicio de sesión (Mi cuenta > Seguridad).
 | `002_conexion_frontend.sql` | Auditoría corregida (id del registro y sin contraseña), adjuntos como `TEXT`, catálogos y permisos con los valores del frontend, regla privilegio ↔ módulo |
 | `003_proteger_rol_administrador.sql` | Reactiva el rol Administrador y lo protege con un trigger: no se puede inactivar ni renombrar |
 | `004_proteger_usuario_admin.sql` | Reactiva el usuario `admin@parceros.ni` y lo protege con triggers: no se puede inactivar ni eliminar |
-| `005_modulo_reportes.sql` | Permiso `Reportes` con los privilegios Ver detalle y Exportar, asignados al Administrador |
+| `005_modulo_reportes.sql` | Permiso `Reportes` (retirado en la 006) |
+| `006_productos_y_exportacion.sql` | Retira el módulo Reportes; tallas; categorías de producto, productos base con su receta y `detalle_pedido_producto`; la receta del pedido se copia a `detalle_pedido_insumo` con `de_receta`; total del pedido = productos + personalización; consumo de inventario agrupado por insumo; privilegio `Exportar` en abonos, cotizaciones, pedidos, ventas, insumos y compras |
 
 `npm start` ejecuta las migraciones pendientes antes de iniciar el servidor,
 así que en Render basta con desplegar. Son idempotentes: no se repiten.
@@ -50,7 +51,8 @@ Todas, salvo `health` y `login`, requieren `Authorization: Bearer <token>`.
 
 Colecciones: `clientes`, `proveedores`, `insumos`, `roles` (con `permisos` y
 `privilegios`), `usuarios` (con `contrasena` al crear), `compras` (con
-`detalles`), `pedidos` (con `insumos`) y `abonos`.
+`detalles`), `pedidos` (con `productos`, `insumos` de personalización e
+`insumos_receta`), `abonos`, `categorias_producto` y `productos` (con `receta`).
 
 ## Seguridad
 

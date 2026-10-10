@@ -113,6 +113,10 @@ const redondear = (n) => Math.round(n * 100) / 100;
  *  entrega: mientras es cotizacion todavia no consume nada. */
 export const consumeInventario = (estado) => ESTADOS_PEDIDO.indexOf(estado) >= 1;
 
+/** Todo lo que un pedido gasta del inventario: la copia de la receta de sus
+ *  productos mas los insumos de personalizacion. */
+export const consumoPedido = (p) => [...(p?.insumos_receta || []), ...(p?.insumos || [])];
+
 export function DataProvider({ children }) {
   const toast = useToast();
   const [raw, setRaw] = useState(VACIO);
@@ -271,6 +275,8 @@ export function DataProvider({ children }) {
     const proveedoresM = porId(raw.proveedores);
     const clientesM = porId(raw.clientes);
     const usuariosM = porId(raw.usuarios);
+    const tallasM = porId(raw.tallas);
+    const categoriasM = porId(raw.categorias_producto);
 
     const insumos = raw.insumos.map((i) => ({
       ...i,
@@ -293,15 +299,38 @@ export function DataProvider({ children }) {
       calc_insumos_txt: (c.detalle_insumos || []).map((l) => insumosM.get(l.id_insumo)?.nombre || '').join(' · '),
     }));
 
+    /* Producto base: prenda (categoria) + talla + tela, con su receta. El
+       costo es lo que valen hoy los insumos de una unidad; el margen compara
+       ese costo con el precio de venta. */
+    const productos = raw.productos.map((pr) => {
+      const costo = redondear(suma(pr.receta || [], (l) => l.cantidad * Number(insumosM.get(l.id_insumo)?.precio_unitario || 0)));
+      return {
+        ...pr,
+        calc_categoria: categoriasM.get(pr.id_categoria_producto)?.nombre || '—',
+        calc_talla: tallasM.get(pr.id_talla)?.nombre || '—',
+        calc_tela: insumosM.get(pr.id_insumo_tela)?.nombre || '—',
+        calc_costo: costo,
+        calc_margen: redondear(Number(pr.precio_venta) - costo),
+        calc_lineas_receta: (pr.receta || []).length,
+        calc_receta_txt: (pr.receta || []).map((l) => insumosM.get(l.id_insumo)?.nombre || '').join(' · '),
+        calc_insumos: (pr.receta || []).map((l) => l.id_insumo),
+      };
+    });
+    const productosM = porId(productos);
+
     const abonosPorPedido = new Map();
     raw.abonos.forEach((a) => {
       abonosPorPedido.set(a.id_pedido, [...(abonosPorPedido.get(a.id_pedido) || []), a]);
     });
 
-    /* El total del registro es la suma de los insumos que se gastan
-       (detalle_pedido_insumo); el saldo es el total menos los abonos. */
+    /* El total del registro es lo que se cobra: los productos (cantidad x
+       precio de venta) mas los insumos de personalizacion. La receta de los
+       productos no suma: solo descuenta inventario. El saldo es el total
+       menos los abonos. */
     const pedidos = raw.pedidos.map((p) => {
-      const total = redondear(suma(p.insumos || [], (l) => l.subtotal ?? l.cantidad * l.precio_unitario));
+      const totalProductos = redondear(suma(p.productos || [], (l) => l.subtotal ?? l.cantidad * l.precio_unitario));
+      const totalInsumos = redondear(suma(p.insumos || [], (l) => l.subtotal ?? l.cantidad * l.precio_unitario));
+      const total = redondear(totalProductos + totalInsumos);
       const abonos = abonosPorPedido.get(p.id) || [];
       const abonado = redondear(suma(abonos, (a) => a.monto));
       return {
@@ -314,7 +343,11 @@ export function DataProvider({ children }) {
         calc_pct: total ? Math.round((abonado / total) * 100) : 0,
         calc_abonos: abonos.length,
         calc_abono_inicial: abonos.length ? 'Registrado' : 'Pendiente',
-        calc_lineas: (p.insumos || []).length,
+        calc_total_productos: totalProductos,
+        calc_total_insumos: totalInsumos,
+        calc_lineas: (p.insumos || []).length + (p.productos || []).length,
+        calc_prendas: suma(p.productos || [], (l) => l.cantidad),
+        calc_productos_txt: (p.productos || []).map((l) => productosM.get(l.id_producto)?.nombre || '').join(' · '),
       };
     });
     const pedidosM = porId(pedidos);
@@ -340,6 +373,9 @@ export function DataProvider({ children }) {
     const usuariosPorRol = cuenta(raw.usuarios, 'id_rol');
     const comprasPorProveedor = cuenta(raw.compras, 'id_proveedor');
     const pedidosPorCliente = cuenta(raw.pedidos, 'id_cliente');
+    const productosPorCategoria = cuenta(raw.productos, 'id_categoria_producto');
+    const pedidosPorProducto = new Map();
+    raw.pedidos.forEach((p) => (p.productos || []).forEach((l) => pedidosPorProducto.set(l.id_producto, (pedidosPorProducto.get(l.id_producto) || 0) + 1)));
 
     /* Nombre con que se muestra el registro afectado de un movimiento. */
     const registroMovimiento = (m) => {
@@ -356,6 +392,14 @@ export function DataProvider({ children }) {
       privilegios: raw.privilegios,
       tipos_insumo: raw.tipos_insumo,
       unidades_medida: raw.unidades_medida,
+      tallas: raw.tallas,
+
+      categorias_producto: raw.categorias_producto.map((c) => ({
+        ...c,
+        calc_productos: productosPorCategoria.get(c.id) || 0,
+      })),
+
+      productos: productos.map((pr) => ({ ...pr, calc_pedidos: pedidosPorProducto.get(pr.id) || 0 })),
 
       roles: raw.roles.map((r) => ({
         ...r,
@@ -429,7 +473,7 @@ export function DataProvider({ children }) {
    * lo suyo vuelve a contar como disponible para el mismo registro.
    */
   const faltantes = useCallback((lineas, anterior) => {
-    const yaDescontado = anterior && consumeInventario(anterior.estado) ? anterior.insumos || [] : [];
+    const yaDescontado = anterior && consumeInventario(anterior.estado) ? consumoPedido(anterior) : [];
     const pide = new Map();
     (lineas || []).forEach((l) => pide.set(l.id_insumo, (pide.get(l.id_insumo) || 0) + Number(l.cantidad || 0)));
     const out = [];
@@ -441,6 +485,21 @@ export function DataProvider({ children }) {
       if (cantidad > hay) out.push({ nombre: fila.nombre, pide: cantidad, hay });
     }
     return out;
+  }, [db]);
+
+  /**
+   * Receta de las lineas de producto de un pedido, agrupada por insumo:
+   * [{ id_insumo, cantidad }]. Es la que se copia al pedido al guardarlo.
+   */
+  const expandirReceta = useCallback((lineasProducto = []) => {
+    const total = new Map();
+    lineasProducto.forEach((l) => {
+      const pr = db.productos.find((x) => String(x.id) === String(l.id_producto));
+      (pr?.receta || []).forEach((r) => {
+        total.set(r.id_insumo, (total.get(r.id_insumo) || 0) + Number(r.cantidad) * Number(l.cantidad || 0));
+      });
+    });
+    return [...total].map(([id_insumo, cantidad]) => ({ id_insumo, cantidad: Math.round(cantidad * 1000) / 1000 }));
   }, [db]);
 
   /* "Hoy" del sistema: fijo, para que crear un registro no desplace los
@@ -596,7 +655,7 @@ export function DataProvider({ children }) {
   return (
     <DataContext.Provider
       value={{
-        db, opciones, create, update, remove, nuevoId, faltantes, stats, getStats, notificaciones,
+        db, opciones, create, update, remove, nuevoId, faltantes, expandirReceta, stats, getStats, notificaciones,
         solicitarRecuperacion, enlaceValido, restablecerClave,
         estadoDatos, errorDatos, cargar, vaciar,
       }}

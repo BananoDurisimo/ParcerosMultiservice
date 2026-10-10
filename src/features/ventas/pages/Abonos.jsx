@@ -5,10 +5,11 @@ import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import Icon from '@shared/components/Icon.jsx';
 import { useDescargas } from '@features/ventas/components/Archivos.jsx';
 import MontoAbono from '@features/ventas/components/MontoAbono.jsx';
-import { useData } from '@shared/context/DataContext.jsx';
+import { useData, consumoPedido } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
 import { abrirArchivo, esImagen, esPdf } from '@shared/data/archivos.js';
+import { agrupar } from '@shared/lib/exportar.js';
 import {
   money, fecha, hoyISO, METODOS_PAGO,
   COTIZACION, EN_PROCESO, FALTA_PAGO, COMPLETADO, ENTREGADO,
@@ -163,7 +164,7 @@ export default function Abonos() {
 
     /* Primer abono de una cotizacion: inicia el pedido si hay existencias. */
     if (p.estado === COTIZACION) {
-      const faltan = faltantes(p.insumos, p);
+      const faltan = faltantes(consumoPedido(p), p);
       if (faltan.length) {
         toast.warning(
           `${p.calc_codigo} sigue como cotización: no hay existencias suficientes de ${faltan.map((f) => `${f.nombre} (se piden ${f.pide} y hay ${f.hay})`).join('; ')}.`,
@@ -180,6 +181,34 @@ export default function Abonos() {
       update('pedidos', p.id, { estado: COMPLETADO, historial_estados: etapa(COMPLETADO) });
       toast.info(`${p.calc_codigo} quedó pagado y pasó a «${COMPLETADO}».`, 'Pedido completado');
     }
+  };
+
+  const suma = (filas, fn) => filas.reduce((s, r) => s + Number(fn(r) || 0), 0);
+  /* El saldo pendiente se cuenta una vez por pedido, no por abono. */
+  const saldoPedidos = (filas) => suma([...new Map(filas.map((a) => [a.id_pedido, a])).values()], (a) => a.calc_saldo);
+  const exportacion = {
+    columnas: [
+      { titulo: 'Abono', valor: (r) => r.calc_codigo, ancho: 60 },
+      { titulo: 'Pedido', valor: (r) => r.calc_pedido, ancho: 64 },
+      { titulo: 'Cliente', valor: (r) => r.calc_cliente, ancho: 150 },
+      { titulo: 'Fecha', valor: (r) => fecha(r.fecha), ancho: 70 },
+      { titulo: 'Método de pago', valor: (r) => r.metodo_pago, ancho: 90 },
+      { titulo: 'Monto', valor: (r) => r.monto, tipo: 'dinero', ancho: 86, total: true },
+      { titulo: 'Total del pedido', valor: (r) => r.calc_total_pedido, tipo: 'dinero', ancho: 90 },
+      { titulo: 'Saldo del pedido', valor: (r) => r.calc_saldo, tipo: 'dinero', ancho: 90 },
+      { titulo: 'Estado del pedido', valor: (r) => r.calc_estado_pedido, ancho: 150 },
+    ],
+    indicadores: (filas) => [
+      { etiqueta: 'Total recaudado', valor: suma(filas, (r) => r.monto), tipo: 'dinero' },
+      { etiqueta: 'Abonos', valor: filas.length, tipo: 'numero', nota: 'pagos registrados' },
+      { etiqueta: 'Pedidos con abono', valor: new Set(filas.map((r) => r.id_pedido)).size, tipo: 'numero' },
+      { etiqueta: 'Saldo pendiente', valor: saldoPedidos(filas), tipo: 'dinero', nota: 'de esos pedidos' },
+    ],
+    grupos: (filas) => [
+      { titulo: 'Por método de pago', columnas: ['Método de pago', 'Abonos', 'Monto'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.metodo_pago, (r) => r.monto) },
+      { titulo: 'Por mes', columnas: ['Mes', 'Abonos', 'Monto'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => (r.fecha || '').slice(0, 7).split('-').reverse().join('/'), (r) => r.monto) },
+      { titulo: 'Por cliente', columnas: ['Cliente', 'Abonos', 'Monto'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.calc_cliente, (r) => r.monto).slice(0, 15) },
+    ],
   };
 
   return (
@@ -199,6 +228,7 @@ export default function Abonos() {
       ]}
       defaults={{ metodo_pago: 'Efectivo', fecha: hoyISO(), url_comprobante: '' }}
       etiquetaRegistro={(r) => r.calc_codigo}
+      exportacion={exportacion}
       validarExtra={validarExtra}
       alGuardar={alGuardar}
       eliminacion={eliminacion}

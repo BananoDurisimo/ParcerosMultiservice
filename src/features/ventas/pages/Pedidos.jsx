@@ -6,11 +6,12 @@ import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import Modal from '@shared/components/ui/Modal.jsx';
 import Icon from '@shared/components/Icon.jsx';
 import DetalleRegistro from '@features/ventas/components/DetalleRegistro.jsx';
-import InsumosPedido, { DesglosePedido } from '@features/ventas/components/InsumosPedido.jsx';
+import LineasPedido, { DesglosePedido, totalLineas } from '@features/ventas/components/LineasPedido.jsx';
 import MontoAbono from '@features/ventas/components/MontoAbono.jsx';
 import { validarLineas } from '@shared/components/ui/Form.jsx';
+import { agrupar } from '@shared/lib/exportar.js';
 import { DisenoModal, ComprobantesModal } from '@features/ventas/components/Archivos.jsx';
-import { useData } from '@shared/context/DataContext.jsx';
+import { useData, consumoPedido } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
 import {
@@ -21,8 +22,11 @@ import {
 
 /**
  * Tabla `pedido` (id_cliente, estado, fecha_creacion, fecha_inicio,
- * fecha_entrega, descripcion, imagen_diseno) con su detalle
- * detalle_pedido_insumo (id_insumo, cantidad, precio_unitario, subtotal).
+ * fecha_entrega, descripcion, imagen_diseno) con sus detalles:
+ *  - detalle_pedido_producto: productos base (cantidad x precio de venta).
+ *  - detalle_pedido_insumo: insumos de personalizacion (con precio) y la
+ *    copia de la receta de los productos (`insumos_receta`, solo inventario).
+ * El total es productos + personalizacion.
  *
  * La cotizacion, el pedido y la venta son este mismo registro: cada pestaña
  * muestra los registros de sus estados.
@@ -37,22 +41,21 @@ import {
  * elaboracion el sistema elige «falta pago» o «completado» segun el saldo; y
  * la entrega se registra desde Ventas.
  *
- * El formulario va en dos columnas: a la izquierda el catalogo de insumos con
- * su buscador y los insumos agregados; a la derecha lo informativo (cliente,
- * fecha, desglose del total, abono inicial, descripcion e imagen del diseño).
+ * El formulario va en dos columnas: a la izquierda el catalogo (productos y
+ * personalizacion) con su buscador y lo agregado; a la derecha lo
+ * informativo (cliente, fecha, desglose del total, abono inicial,
+ * descripcion e imagen del diseño), numerado para guiar el registro.
  */
 
 const VISTAS = [
-  { id: 'cotizaciones', label: 'Cotizaciones', permiso: 'Cotizaciones', icono: 'clipboard' },
-  { id: 'pedidos', label: 'Pedidos', permiso: 'Pedidos', icono: 'package' },
-  { id: 'ventas', label: 'Ventas', permiso: 'Ventas', icono: 'coin' },
+  { id: 'cotizaciones', label: 'Cotizaciones', permiso: 'Cotizaciones', icono: 'clipboard', paso: 'Paso 1', ayuda: 'Aprobadas por el cliente, sin iniciar' },
+  { id: 'pedidos', label: 'Pedidos', permiso: 'Pedidos', icono: 'package', paso: 'Paso 2', ayuda: 'En elaboración hasta quedar listos' },
+  { id: 'ventas', label: 'Ventas', permiso: 'Ventas', icono: 'coin', paso: 'Paso 3', ayuda: 'Terminados: entrega y soportes' },
 ];
 
 const TIPOS_DISENO = ['image/jpeg', 'image/png', 'image/webp'];
 const TIPOS_COMPROBANTE = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
-const subtotalLineas = (lineas = []) =>
-  lineas.reduce((s, l) => s + Number(l.cantidad || 0) * Number(l.precio_unitario || 0), 0);
 const redondear = (n) => Math.round(n * 100) / 100;
 /* Las lineas se editan como texto en el formulario; se guardan como numeros. */
 const conSubtotal = (l) => {
@@ -69,7 +72,7 @@ const opcionesAbonoInicial = (total) => [
 ];
 
 export default function Pedidos() {
-  const { db, opciones, create, update, remove, nuevoId, faltantes } = useData();
+  const { db, opciones, create, update, remove, nuevoId, faltantes, expandirReceta } = useData();
   const { puede, puedeAccion } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
@@ -109,7 +112,7 @@ export default function Pedidos() {
         toast.error('Registre el abono inicial para iniciar el pedido.', 'No fue posible cambiar el estado');
         return;
       }
-      const faltan = faltantes(r.insumos, r);
+      const faltan = faltantes(consumoPedido(r), r);
       if (faltan.length) {
         toast.error(`No hay existencias suficientes: ${listaFaltantes(faltan)}.`, 'No fue posible cambiar el estado');
         return;
@@ -173,16 +176,29 @@ export default function Pedidos() {
   };
 
   /* ---------- Validaciones comunes ---------- */
-  const totalForm = (v) => redondear(subtotalLineas(v.insumos));
-  const validarInsumos = (v) => {
-    if (!(v.insumos || []).length) return { insumos: 'Agregue al menos un insumo desde el catálogo.' };
-    const e = validarLineas(v.insumos, 'id_insumo');
-    return e ? { insumos: e } : null;
+  const totalForm = (v) => totalLineas(v.productos, v.insumos);
+  /** Lo que el pedido gasta del inventario: receta de los productos + personalizacion. */
+  const consumoForm = (v) => [...expandirReceta(v.productos || []), ...(v.insumos || [])];
+  const validarLineasPedido = (v) => {
+    const productos = v.productos || [];
+    const insumos = v.insumos || [];
+    if (!productos.length && !insumos.length) return { lineas: 'Agregue al menos un producto (o un insumo) desde el catálogo.' };
+    const e = validarLineas(productos, 'id_producto') || validarLineas(insumos, 'id_insumo');
+    if (e) return { lineas: e };
+    if (productos.some((l) => !Number.isInteger(Number(l.cantidad)))) return { lineas: 'Las unidades de cada producto deben ser un número entero.' };
+    return null;
   };
   const validarTotalAbonado = (v, actual) =>
     actual && actual.calc_abonado > 0 && totalForm(v) < actual.calc_abonado
-      ? { insumos: `El total no puede quedar por debajo de lo ya abonado (${money(actual.calc_abonado)}).` }
+      ? { lineas: `El total no puede quedar por debajo de lo ya abonado (${money(actual.calc_abonado)}).` }
       : null;
+  /** Lineas listas para guardar, con la receta copiada de los productos. */
+  const lineasGuardar = (d) => {
+    const productos = (d.productos || []).map(conSubtotal);
+    return { productos, insumos: (d.insumos || []).map(conSubtotal), insumos_receta: expandirReceta(productos) };
+  };
+  /** Titulo numerado de cada bloque del formulario: guia el orden de registro. */
+  const paso = (n, texto) => ({ name: `paso${n}`, type: 'custom', full: true, render: () => <div className="form-section"><span className="paso-num">{n}</span> {texto}</div> });
 
   const camposBase = [
     {
@@ -190,14 +206,24 @@ export default function Pedidos() {
       buscarPlaceholder: 'Buscar cliente por nombre o documento…',
     },
     {
-      name: 'insumos', type: 'component', col: 'izq', required: true,
-      render: ({ value, onChange, error, bloqueado }) => <InsumosPedido value={value || []} onChange={onChange} error={error} readOnly={bloqueado} />,
+      /* Un solo componente llena dos columnas: productos e insumos de personalizacion. */
+      name: 'lineas', type: 'component', col: 'izq', columnas: ['productos', 'insumos'],
+      render: ({ values, setVal, error, bloqueado }) => (
+        <LineasPedido
+          productos={values.productos || []}
+          insumos={values.insumos || []}
+          onProductos={(v) => { setVal('lineas', true); setVal('productos', v); }}
+          onInsumos={(v) => { setVal('lineas', true); setVal('insumos', v); }}
+          error={error}
+          readOnly={bloqueado}
+        />
+      ),
     },
-    { name: 'desglose', type: 'custom', full: true, render: (v) => <DesglosePedido lineas={v.insumos || []} /> },
+    { name: 'desglose', type: 'custom', full: true, render: (v) => <DesglosePedido productos={v.productos || []} insumos={v.insumos || []} /> },
     {
       name: 'descripcion', label: 'Descripción de la personalización', type: 'textarea', full: true, required: true, maxLength: 600, minLength: 10,
-      placeholder: 'Ej.: camisetas con escudo sublimado en el pecho, nombre y número en la espalda; 10 talla M y 12 talla L…',
-      hint: 'Lo que se va a elaborar con los insumos: diseño, colores, tallas y cantidades.',
+      placeholder: 'Ej.: escudo sublimado en el pecho, nombre y número en la espalda, colores azul y blanco…',
+      hint: 'Detalles del diseño acordado: colores, escudos, nombres y números de cada prenda.',
     },
     {
       name: 'imagen_diseno', label: 'Imagen del diseño', type: 'archivo', full: true, required: true, tipos: TIPOS_DISENO,
@@ -225,8 +251,59 @@ export default function Pedidos() {
     },
   };
 
+  const cotizaciones = db.pedidos.filter((p) => p.estado === COTIZACION);
+  const pedidos = db.pedidos.filter((p) => [EN_PROCESO, FALTA_PAGO, COMPLETADO].includes(p.estado));
+  const ventas = db.pedidos.filter((p) => [COMPLETADO, ENTREGADO].includes(p.estado));
+  const mesActual = hoyISO().slice(0, 7);
+  const cuantos = { cotizaciones: cotizaciones.length, pedidos: pedidos.length, ventas: ventas.length };
+
+  /* ---------- Exportar y reporte ---------- */
+  const FECHA_VISTA = {
+    cotizaciones: ['fecha_creacion', 'Fecha de creación'],
+    pedidos: ['fecha_inicio', 'Fecha de inicio'],
+    ventas: ['fecha_entrega', 'Fecha de entrega'],
+  };
+  const [campoFecha, tituloFecha] = FECHA_VISTA[vista.id];
+  const suma = (filas, fn) => filas.reduce((s, r) => s + Number(fn(r) || 0), 0);
+  /** Unidades y valor vendidos de cada producto en las filas exportadas. */
+  const porProducto = (filas) => {
+    const m = new Map();
+    filas.forEach((r) => (r.productos || []).forEach((l) => {
+      const nombre = db.productos.find((x) => x.id === l.id_producto)?.nombre || `#${l.id_producto}`;
+      const g = m.get(nombre) || [0, 0];
+      m.set(nombre, [g[0] + Number(l.cantidad), g[1] + Number(l.cantidad) * Number(l.precio_unitario)]);
+    }));
+    return [...m].sort((a, b) => b[1][1] - a[1][1]).map(([k, [u, t]]) => [k, u, t]);
+  };
+  const exportacion = {
+    columnas: [
+      { titulo: 'Código', valor: (r) => r.calc_codigo, ancho: 62 },
+      { titulo: 'Cliente', valor: (r) => r.calc_cliente, ancho: 140 },
+      { titulo: tituloFecha, valor: (r) => fecha(r[campoFecha]), ancho: 74 },
+      { titulo: 'Productos', valor: (r) => r.calc_productos_txt || '—', ancho: 170 },
+      { titulo: 'Prendas', valor: (r) => r.calc_prendas, tipo: 'numero', ancho: 52, total: true },
+      { titulo: 'Total', valor: (r) => r.calc_total, tipo: 'dinero', ancho: 82, total: true },
+      { titulo: 'Abonado', valor: (r) => r.calc_abonado, tipo: 'dinero', ancho: 82, total: true },
+      { titulo: 'Saldo', valor: (r) => r.calc_saldo, tipo: 'dinero', ancho: 82, total: true },
+      { titulo: 'Estado', valor: (r) => r.estado, ancho: 150 },
+    ],
+    indicadores: (filas) => [
+      { etiqueta: vista.label, valor: filas.length, tipo: 'numero', nota: 'registros en el reporte' },
+      { etiqueta: 'Valor total', valor: suma(filas, (r) => r.calc_total), tipo: 'dinero' },
+      { etiqueta: 'Abonado', valor: suma(filas, (r) => r.calc_abonado), tipo: 'dinero' },
+      { etiqueta: 'Saldo por cobrar', valor: suma(filas, (r) => r.calc_saldo), tipo: 'dinero' },
+      { etiqueta: 'Prendas', valor: suma(filas, (r) => r.calc_prendas), tipo: 'numero', nota: 'unidades de producto' },
+    ],
+    grupos: (filas) => [
+      { titulo: 'Por estado', columnas: ['Estado', 'Registros', 'Total'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.estado, (r) => r.calc_total) },
+      { titulo: 'Por cliente', columnas: ['Cliente', 'Registros', 'Total'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.calc_cliente, (r) => r.calc_total).slice(0, 15) },
+      { titulo: 'Productos', columnas: ['Producto', 'Unidades', 'Valor'], tipos: ['texto', 'numero', 'dinero'], filas: porProducto(filas) },
+    ],
+  };
+
   /* ---------- Configuracion de cada pestaña ---------- */
   const comun = {
+    exportacion,
     icono: vista.icono,
     modulo,
     coleccion: 'pedidos',
@@ -248,37 +325,48 @@ export default function Pedidos() {
         )}
       </>
     ),
+    /* Menu de etapas: tarjetas grandes con el paso, el numero de registros y
+       que hay en cada una, para que se vea de un vistazo donde esta cada
+       cosa y en que orden avanza (cotizacion -> pedido -> venta). */
     subnav: visibles.length > 1 && (
-      <div className="tabs">
-        {visibles.map((v) => (
-          <button key={v.id} className={`tab ${v.id === vista.id ? 'active' : ''}`} onClick={() => setParams({ vista: v.id })}>
-            <span className="row" style={{ gap: 7 }}><Icon name={v.icono} size={15} /> {v.label}</span>
+      <nav className="etapas" aria-label="Etapas del registro de venta">
+        {visibles.map((v, i) => (
+          <button
+            key={v.id}
+            type="button"
+            className={`etapa ${v.id === vista.id ? 'is-on' : ''}`}
+            aria-current={v.id === vista.id ? 'page' : undefined}
+            onClick={() => setParams({ vista: v.id })}
+          >
+            <span className="etapa-ico"><Icon name={v.icono} size={20} /></span>
+            <span className="etapa-txt">
+              <span className="etapa-paso">{v.paso}</span>
+              <strong>{v.label}</strong>
+              <span className="caption">{v.ayuda}</span>
+            </span>
+            <span className="etapa-n">{cuantos[v.id]}</span>
+            {i < visibles.length - 1 && <span className="etapa-flecha" aria-hidden="true"><Icon name="chevR" size={16} /></span>}
           </button>
         ))}
-      </div>
+      </nav>
     ),
   };
-
-  const cotizaciones = db.pedidos.filter((p) => p.estado === COTIZACION);
-  const pedidos = db.pedidos.filter((p) => [EN_PROCESO, FALTA_PAGO, COMPLETADO].includes(p.estado));
-  const ventas = db.pedidos.filter((p) => [COMPLETADO, ENTREGADO].includes(p.estado));
-  const mesActual = hoyISO().slice(0, 7);
 
   const config = {
     cotizaciones: {
       ...comun,
       titulo: 'Cotizaciones',
-      subtitulo: 'Cotizaciones aprobadas por el cliente: insumos, precio, descripción y diseño acordados.',
+      subtitulo: 'Cotizaciones aprobadas por el cliente: productos, personalización, precio y diseño acordados.',
       filas: cotizaciones,
       entidad: 'cotizaciones',
       singular: 'cotización',
-      searchKeys: ['calc_cliente', 'fecha_creacion', 'descripcion'],
+      searchKeys: ['calc_codigo', 'calc_cliente', 'calc_productos_txt', 'fecha_creacion', 'descripcion'],
       filtros: [
         { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },
         { key: 'fecha_creacion', label: 'Fecha de creación', type: 'rango' },
         { key: 'calc_abono_inicial', label: 'Abono inicial', options: ['Registrado', 'Pendiente'] },
       ],
-      defaults: { insumos: [], descripcion: '', imagen_diseno: '', fecha_creacion: hoyISO() },
+      defaults: { productos: [], insumos: [], descripcion: '', imagen_diseno: '', fecha_creacion: hoyISO() },
       resumen: [
         <KpiCard key="a" label="Cotizaciones aprobadas" value={cotizaciones.length} icon="clipboard" tono="info" />,
         <KpiCard key="b" label="Valor cotizado" value={cotizaciones.reduce((s, p) => s + p.calc_total, 0)} prefix="C$ " icon="coin" tono="primary" />,
@@ -294,15 +382,18 @@ export default function Pedidos() {
       ],
       campos: [
         campoInsumos,
+        paso(1, 'Cliente y fecha'),
         campoCliente,
         { name: 'fecha_creacion', label: 'Fecha de creación', type: 'date', required: true, maxHoy: true, hint: 'No puede ser posterior a hoy.' },
+        paso(2, 'Revise el precio'),
         campoDesglose,
+        paso(3, 'Personalización y diseño'),
         ...camposInfo,
       ],
-      validarExtra: (v, modo, actual) => ({ ...validarInsumos(v), ...validarTotalAbonado(v, actual) }),
+      validarExtra: (v, modo, actual) => ({ ...validarLineasPedido(v), ...validarTotalAbonado(v, actual) }),
       beforeSave: (d, modo) => ({
         ...d,
-        insumos: (d.insumos || []).map(conSubtotal),
+        ...lineasGuardar(d),
         ...(modo === 'crear'
           ? { estado: COTIZACION, fecha_inicio: '', fecha_entrega: '', historial_estados: [{ estado: COTIZACION, fecha: d.fecha_creacion }] }
           : {}),
@@ -316,13 +407,13 @@ export default function Pedidos() {
       filas: pedidos,
       entidad: 'pedidos',
       singular: 'pedido',
-      searchKeys: ['calc_cliente', 'estado', 'fecha_inicio', 'descripcion'],
+      searchKeys: ['calc_codigo', 'calc_cliente', 'calc_productos_txt', 'estado', 'fecha_inicio', 'descripcion'],
       filtros: [
         { key: 'estado', label: 'Estado', options: [EN_PROCESO, FALTA_PAGO, COMPLETADO] },
         { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },
         { key: 'fecha_inicio', label: 'Fecha de inicio', type: 'rango' },
       ],
-      defaults: { insumos: [], descripcion: '', imagen_diseno: '', fecha_inicio: hoyISO(), abono_pct: '', abono_metodo: 'Efectivo', abono_comprobante: '' },
+      defaults: { productos: [], insumos: [], descripcion: '', imagen_diseno: '', fecha_inicio: hoyISO(), abono_pct: '', abono_metodo: 'Efectivo', abono_comprobante: '' },
       /* La edicion solo aplica mientras el pedido se elabora. */
       puedeEditarFila: (r) => r.estado === EN_PROCESO,
       resumen: [
@@ -348,20 +439,24 @@ export default function Pedidos() {
       ],
       campos: [
         campoInsumos,
+        paso(1, 'Cliente y fecha'),
         campoCliente,
         {
           name: 'fecha_inicio', label: 'Fecha de inicio', type: 'date', required: true, soloCrear: true, maxHoy: true,
           hint: 'Es la fecha del abono inicial; no puede ser posterior a hoy.',
         },
+        paso(2, 'Revise el precio'),
         campoDesglose,
+        paso(3, 'Personalización y diseño'),
         ...camposInfo,
+        { ...paso(4, 'Abono inicial'), ocultarAlEditar: true },
         {
           name: 'abono_pct', type: 'component', required: true, ocultarAlEditar: true,
           render: ({ value, onChange, error, values }) => (
             <MontoAbono
               label="Abono inicial"
               opciones={totalForm(values) > 0 ? opcionesAbonoInicial(totalForm(values)) : []}
-              vacio="Agregue insumos para calcular el abono inicial (50% o 100% del total)."
+              vacio="Agregue productos para calcular el abono inicial (50% o 100% del total)."
               value={value}
               onChange={onChange}
               error={error}
@@ -375,20 +470,20 @@ export default function Pedidos() {
         },
       ],
       validarExtra: (v, modo, actual) => {
-        const lineas = validarInsumos(v);
+        const lineas = validarLineasPedido(v);
         if (lineas) return lineas;
         const errs = {};
         if (modo === 'crear' && v.abono_pct !== '' && ![50, 100].includes(Number(v.abono_pct))) {
           errs.abono_pct = 'El abono inicial debe ser el 50% del total o el pago completo.';
         }
-        const faltan = faltantes(v.insumos, modo === 'editar' ? actual : null);
-        if (faltan.length) return { ...errs, insumos: `No hay existencias suficientes: ${listaFaltantes(faltan)}.` };
+        const faltan = faltantes(consumoForm(v), modo === 'editar' ? actual : null);
+        if (faltan.length) return { ...errs, lineas: `No hay existencias suficientes: ${listaFaltantes(faltan)}.` };
         return { ...errs, ...validarTotalAbonado(v, actual) };
       },
       alGuardar: (d, modo, actual) => {
-        const lineas = (d.insumos || []).map(conSubtotal);
+        const lineas = lineasGuardar(d);
         if (modo === 'editar') {
-          update('pedidos', actual.id, { insumos: lineas, descripcion: d.descripcion, imagen_diseno: d.imagen_diseno });
+          update('pedidos', actual.id, { ...lineas, descripcion: d.descripcion, imagen_diseno: d.imagen_diseno });
           toast.success('El registro de pedido se actualizó correctamente.');
           return;
         }
@@ -404,10 +499,10 @@ export default function Pedidos() {
           fecha_entrega: '',
           descripcion: d.descripcion,
           imagen_diseno: d.imagen_diseno,
-          insumos: lineas,
+          ...lineas,
           historial_estados: [{ estado: COTIZACION, fecha: d.fecha_inicio }, { estado: EN_PROCESO, fecha: d.fecha_inicio }],
         });
-        const total = redondear(subtotalLineas(lineas));
+        const total = totalLineas(lineas.productos, lineas.insumos);
         create('abonos', {
           id_pedido: id, monto: redondear((total * Number(d.abono_pct)) / 100), fecha: d.fecha_inicio,
           metodo_pago: d.abono_metodo, url_comprobante: d.abono_comprobante || '',
@@ -424,7 +519,7 @@ export default function Pedidos() {
       entidad: 'ventas',
       singular: 'venta',
       conCrear: false,
-      searchKeys: ['calc_cliente', 'fecha_entrega', 'descripcion'],
+      searchKeys: ['calc_codigo', 'calc_cliente', 'calc_productos_txt', 'fecha_entrega', 'descripcion'],
       filtros: [
         { key: 'estado', label: 'Estado', options: [{ value: COMPLETADO, label: 'Pendiente de entrega' }, { value: ENTREGADO, label: ENTREGADO }] },
         { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },

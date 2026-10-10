@@ -1,6 +1,8 @@
 /** Menu de macroprocesos (punto 2 y 4 de la guia). `permiso` es el nombre
  *  del permiso (tabla `permiso`) que el rol necesita para ver el modulo; una
- *  lista indica que basta con tener uno de ellos. */
+ *  lista indica que basta con tener uno de ellos. `hijos` son accesos
+ *  directos dentro del modulo (las etapas de Pedidos), para llegar a cada una
+ *  con un solo clic desde el menu. */
 export const NAV = [
   { section: null, items: [{ to: '/app', icon: 'home', label: 'Inicio', end: true }] },
   {
@@ -20,14 +22,27 @@ export const NAV = [
     ],
   },
   {
+    section: 'Productos',
+    items: [
+      { to: '/app/categorias-producto', icon: 'category', label: 'Categorías', permiso: 'Categorías de producto' },
+      { to: '/app/productos', icon: 'shirt', label: 'Productos', permiso: 'Productos' },
+    ],
+  },
+  {
     section: 'Ventas',
     items: [
       { to: '/app/clientes', icon: 'users', label: 'Clientes', permiso: 'Clientes' },
       /* Cotizaciones, pedidos y ventas son el mismo registro: se gestionan
-         desde Pedidos, cada una en su pestaña. */
-      { to: '/app/pedidos', icon: 'clipboard', label: 'Pedidos', permiso: ['Cotizaciones', 'Pedidos', 'Ventas'] },
+         desde Pedidos, cada una en su pestaña, y el menu lleva directo a cada una. */
+      {
+        to: '/app/pedidos', icon: 'clipboard', label: 'Pedidos', permiso: ['Cotizaciones', 'Pedidos', 'Ventas'],
+        hijos: [
+          { vista: 'cotizaciones', label: 'Cotizaciones', permiso: 'Cotizaciones' },
+          { vista: 'pedidos', label: 'Pedidos', permiso: 'Pedidos' },
+          { vista: 'ventas', label: 'Ventas', permiso: 'Ventas' },
+        ],
+      },
       { to: '/app/abonos', icon: 'coin', label: 'Abonos', permiso: 'Abonos' },
-      { to: '/app/reportes', icon: 'chart', label: 'Reportes', permiso: 'Reportes' },
     ],
   },
 ];

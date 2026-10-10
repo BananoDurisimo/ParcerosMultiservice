@@ -398,6 +398,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .sidebar.is-collapsed .nav-item { justify-content: center; padding: 11px 0; border-left-width: 0; border-radius: 0; }
 .sidebar.is-collapsed .nav-item span { display: none; }
 .sidebar.is-collapsed .nav-section, .sidebar.is-collapsed .brand-name { display: none; }
+/* Accesos directos dentro de un modulo (etapas de Pedidos) */
+.nav-hijos { display: flex; flex-direction: column; margin: 0 0 4px 27px; padding-left: 12px; border-left: 1px solid var(--border-soft); }
+.nav-hijo { padding: 6px 10px; border-radius: var(--radius-sm); color: var(--text-sec); font-size: 12.5px; white-space: nowrap; transition: background-color .2s, color .2s; }
+.nav-hijo:hover { background: var(--surface-3); color: var(--text); text-decoration: none; }
+.nav-hijo.active { color: var(--primary); font-weight: 600; background: var(--primary-soft); }
 
 .sidebar-foot { padding: 10px; border-top: 1px solid var(--border-soft); flex: none; }
 [data-theme='dark'] .sidebar-foot { border-color: var(--border); }
@@ -666,6 +671,48 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 /* Desglose del total del pedido */
 .desglose > div.linea { font-size: 12.5px; }
 .desglose .linea .caption { display: block; }
+.desglose > div.linea.sub { background: var(--surface-2); font-weight: 600; color: var(--text); }
+
+/* Receta del producto: insumo, cantidad por unidad, costo */
+.ins-linea.receta { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) minmax(0, .8fr) 34px; }
+
+/* Insumos que salen de la receta de los productos del pedido (solo lectura) */
+.receta-auto { border: 1px dashed var(--border); border-radius: var(--radius); background: var(--surface-2); }
+.receta-auto .linea { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; font-size: 13px; }
+.receta-auto .linea + .linea { border-top: 1px solid var(--border-soft); }
+.receta-auto .falta { color: var(--error-fg); font-weight: 600; font-size: 12.5px; }
+
+/* Numero de paso en los titulos de seccion de un formulario */
+.paso-num { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 99px; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; flex: none; }
+
+/* Menu de etapas de Pedidos: cotizacion -> pedido -> venta */
+.etapas { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.etapa {
+  position: relative; display: flex; align-items: center; gap: 12px; padding: 14px 16px; text-align: left;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text);
+  font: inherit; cursor: pointer; box-shadow: var(--shadow-sm);
+  transition: border-color .2s, background-color .2s, transform .2s var(--ease), box-shadow .2s;
+}
+.etapa:hover { border-color: var(--primary); transform: translateY(-1px); }
+.etapa.is-on { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 1px var(--primary) inset, var(--shadow-sm); }
+.etapa-ico { display: grid; place-items: center; width: 42px; height: 42px; border-radius: var(--radius-sm); background: var(--surface-3); color: var(--text-sec); flex: none; }
+.etapa.is-on .etapa-ico { background: var(--primary); color: #fff; }
+.etapa-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.etapa-txt strong { font-size: 15px; font-weight: 600; }
+.etapa-paso { font-size: 10.5px; letter-spacing: .7px; text-transform: uppercase; color: var(--text-sec); font-weight: 600; }
+.etapa.is-on .etapa-paso, .etapa.is-on strong { color: var(--primary); }
+.etapa-n { min-width: 34px; padding: 3px 10px; border-radius: 99px; background: var(--surface-3); font-weight: 700; font-size: 14px; text-align: center; flex: none; }
+.etapa.is-on .etapa-n { background: var(--primary); color: #fff; }
+.etapa-flecha { position: absolute; right: -13px; top: 50%; transform: translateY(-50%); z-index: 1; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 99px; background: var(--surface); border: 1px solid var(--border); color: var(--text-sec); }
+@media (max-width: 780px) {
+  .etapa-flecha { display: none; }
+  /* En el telefono las tres etapas caben en una fila: solo nombre y numero. */
+  .etapas { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+  .etapa { flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px; }
+  .etapa-ico, .etapa-txt .caption { display: none; }
+  .etapa-txt strong { font-size: 13.5px; }
+  .etapa-n { position: absolute; top: 8px; right: 8px; min-width: 26px; padding: 1px 7px; font-size: 12px; }
+}
 
 /* Opciones de monto del abono (50% / 100% / saldo) --------- */
 .monto-opciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
@@ -1320,22 +1367,16 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
 .carga-datos-card .ico { color: var(--warning); }
 .carga-spinner { width: 34px; height: 34px; border-radius: 99px; border: 3px solid var(--border); border-top-color: var(--primary); animation: spin .8s linear infinite; }
 
-/* --- Reportes: filtros, exportacion --- */
-.rep-filtros { padding: 16px; margin-bottom: 16px; display: grid; gap: 14px; }
+/* --- Control segmentado (catalogo del pedido) --- */
 .seg { display: inline-flex; gap: 2px; padding: 3px; max-width: 100%; overflow-x: auto; justify-self: start; border-radius: var(--radius); background: var(--surface-3); border: 1px solid var(--border-soft); }
 [data-theme='dark'] .seg { border-color: var(--border); }
-.seg button { border: 0; background: transparent; color: var(--text-sec); font: inherit; font-size: 13px; padding: 7px 14px; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; transition: background-color .18s var(--ease), color .18s var(--ease); }
+.seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--text-sec); font: inherit; font-size: 13px; padding: 7px 14px; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; transition: background-color .18s var(--ease), color .18s var(--ease); }
 .seg button:hover { color: var(--text); }
 .seg button.is-on { background: var(--surface); color: var(--primary); font-weight: 600; box-shadow: var(--shadow-sm); }
-.rep-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items: start; }
-.rep-botones { display: flex; gap: 8px; flex-wrap: wrap; align-self: end; }
-.dot-pendiente { width: 7px; height: 7px; border-radius: 99px; background: var(--warning); margin-left: 2px; }
-.rep-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.rep-fecha { display: inline-flex; flex-direction: column; white-space: nowrap; font-size: 12.5px; }
-@media (max-width: 1180px) { .rep-kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); } }
-.rep-export { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 14px 16px; margin-top: 16px; }
-@media (max-width: 640px) {
-  .rep-botones .btn { flex: 1; justify-content: center; }
-  .rep-export .row, .rep-export .btn { width: 100%; }
-  .rep-export .btn { justify-content: center; }
-}
+
+/* --- Accesos rapidos del inicio --- */
+.accesos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.acceso { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 13.5px; font-weight: 500; box-shadow: var(--shadow-sm); transition: border-color .2s, transform .2s var(--ease); }
+.acceso > span:nth-child(2) { flex: 1; }
+.acceso:hover { border-color: var(--primary); color: var(--primary); text-decoration: none; transform: translateY(-1px); }
+.acceso-ico { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--primary-soft); color: var(--primary); flex: none; }

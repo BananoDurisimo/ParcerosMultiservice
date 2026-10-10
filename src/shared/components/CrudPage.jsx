@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Icon from './Icon.jsx';
 import DataTable from './ui/DataTable.jsx';
 import Modal from './ui/Modal.jsx';
 import ConfirmDialog from './ui/ConfirmDialog.jsx';
 import { Field, ItemsEditor, normOpciones, validar } from './ui/Form.jsx';
+import { exportarPdf, exportarExcel, generarReporte } from '@shared/lib/exportar.js';
 import { useData } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
-import { etiquetaFila, AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ANULAR, ELIMINAR } from '@shared/data/mock.js';
+import { etiquetaFila, AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ANULAR, ELIMINAR, EXPORTAR } from '@shared/data/mock.js';
 
 /**
  * Pagina CRUD reutilizable: cabecera, resumen, tabla, formulario y detalle.
@@ -29,7 +31,13 @@ import { etiquetaFila, AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ANULAR, ELI
  * y el desglose, la descripcion y el diseño al otro).
  *
  * `abrirCon`: valores con que abrir de una vez el formulario de agregar (p. ej.
- * el abono de una cotizacion, desde el listado de cotizaciones).
+ * el abono de una cotizacion, desde el listado de cotizaciones). Con
+ * `?nuevo=1` en la direccion (accesos rapidos del inicio) se abre el
+ * formulario de agregar vacio.
+ *
+ * `exportacion` (privilegio «Exportar»): agrega a la tabla «Exportar» (PDF o
+ * Excel) y «Reporte». { columnas, indicadores(filas), grupos(filas) } con el
+ * formato de shared/lib/exportar.js; las filas son las que muestra la tabla.
  */
 export default function CrudPage({
   titulo,
@@ -68,6 +76,7 @@ export default function CrudPage({
   eliminacion = {}, // { validar(reg), mensaje(reg), alEliminar(reg) }
   abrirCon = null,
   alAbrirCon,
+  exportacion = null,
 }) {
   const { db, create, update, remove } = useData();
   const { puedeAccion } = useAuth();
@@ -79,6 +88,7 @@ export default function CrudPage({
   const puedeVer = conDetalle && puedeAccion(modulo, VER_DETALLE);
   const puedeEstado = puedeAccion(modulo, CAMBIAR_ESTADO);
   const puedeEliminar = puedeAccion(modulo, ELIMINAR);
+  const puedeExportar = !!exportacion && puedeAccion(modulo, EXPORTAR);
 
   const [modo, setModo] = useState(null); // 'crear' | 'editar' | 'ver'
   const [actual, setActual] = useState(null);
@@ -140,6 +150,16 @@ export default function CrudPage({
     alAbrirCon?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abrirCon]);
+
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    if (params.get('nuevo') !== '1') return;
+    if (puedeCrear) abrirCrear();
+    const resto = new URLSearchParams(params);
+    resto.delete('nuevo');
+    setParams(resto, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   /** Campos `unique`: el valor no puede repetirse en otra fila (sin distinguir mayusculas). */
   const repetidos = (vals) => {
@@ -293,6 +313,29 @@ export default function CrudPage({
   };
   const editable = (r) => puedeEditar && puedeEditarFila(r);
 
+  const exportar = (formato, filasTabla, filtrosTabla) => {
+    if (!filasTabla.length) {
+      toast.warning(`No hay ${entidad} para exportar con la búsqueda y los filtros actuales.`, 'Nada que exportar');
+      return;
+    }
+    const doc = {
+      titulo,
+      archivo: entidad,
+      filtros: filtrosTabla,
+      columnas: exportacion.columnas,
+      filas: filasTabla,
+      ...(formato === 'pdf' ? {} : {
+        indicadores: exportacion.indicadores?.(filasTabla) || [],
+        grupos: exportacion.grupos?.(filasTabla) || [],
+      }),
+    };
+    if (formato === 'pdf') exportarPdf(doc);
+    else if (formato === 'excel') exportarExcel(doc);
+    else generarReporte(doc);
+    const que = { pdf: 'el PDF', excel: 'el Excel', reporte: 'el reporte' }[formato];
+    toast.success(`Se generó ${que} con ${filasTabla.length} ${entidad}.`, formato === 'reporte' ? 'Reporte generado' : 'Exportación lista');
+  };
+
   return (
     <div className="anim-page">
       <div className="page-head">
@@ -329,6 +372,7 @@ export default function CrudPage({
         puedeEditarFila={puedeEditarFila}
         onDelete={puedeEliminar ? pedirEliminar : undefined}
         accionesExtra={accionesExtra}
+        onExportar={puedeExportar ? exportar : undefined}
         emptyText={emptyText}
       />
 

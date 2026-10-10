@@ -26,6 +26,17 @@ const ETIQUETA_PERIODO = {
 const PERMISOS_VENTAS = ['Cotizaciones', 'Pedidos', 'Ventas', 'Abonos'];
 const PERMISOS_COMPRAS = ['Compras', 'Insumos', 'Proveedores'];
 
+/* Accesos rapidos: abren el formulario de registro del modulo en un clic
+   (`?nuevo=1`). Solo aparecen los que el rol puede usar. */
+const ACCESOS = [
+  { to: '/app/pedidos?vista=cotizaciones&nuevo=1', icon: 'clipboard', label: 'Nueva cotización', modulo: 'Cotizaciones' },
+  { to: '/app/pedidos?vista=pedidos&nuevo=1', icon: 'package', label: 'Nuevo pedido', modulo: 'Pedidos' },
+  { to: '/app/abonos?nuevo=1', icon: 'dollar', label: 'Registrar abono', modulo: 'Abonos' },
+  { to: '/app/compras?nuevo=1', icon: 'cart', label: 'Nueva compra', modulo: 'Compras' },
+  { to: '/app/productos?nuevo=1', icon: 'shirt', label: 'Nuevo producto', modulo: 'Productos' },
+  { to: '/app/clientes?nuevo=1', icon: 'users', label: 'Nuevo cliente', modulo: 'Clientes' },
+];
+
 /** Cabecera comun de cada tarjeta de grafico: titulo + tipo de grafico. */
 function CabeceraGrafico({ titulo, tipo, tono = 'neutral' }) {
   return (
@@ -45,7 +56,8 @@ function Fila({ children, clase = 'grid-2-eq' }) {
 
 export default function Dashboard() {
   const { db, getStats } = useData();
-  const { user, puede } = useAuth();
+  const { user, puede, puedeAccion } = useAuth();
+  const accesos = ACCESOS.filter((a) => puedeAccion(a.modulo, 'Agregar'));
   const [periodo, setPeriodo] = useState('Mes');
 
   const verVentas = puede(PERMISOS_VENTAS);
@@ -90,6 +102,18 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      {accesos.length > 0 && (
+        <div className="accesos" aria-label="Accesos rápidos">
+          {accesos.map((a) => (
+            <Link key={a.to} className="acceso" to={a.to}>
+              <span className="acceso-ico"><Icon name={a.icon} size={18} /></span>
+              <span>{a.label}</span>
+              <Icon name="plus" size={15} />
+            </Link>
+          ))}
+        </div>
+      )}
 
       {verCompras && stats.bajoStock.length > 0 && (
         <div className="alert alert-warning anim-in" style={{ marginBottom: 16 }}>

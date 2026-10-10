@@ -46,10 +46,21 @@ const CONSULTAS = {
                 FROM detalle_compra_insumo d WHERE d.id_compra = c.id_compra), '[]') AS detalles
     FROM compra c ORDER BY c.id_compra DESC`,
 
+  tallas: 'SELECT * FROM talla ORDER BY orden',
+  categorias_producto: 'SELECT * FROM categoria_producto ORDER BY id_categoria_producto DESC',
+
+  productos: `
+    SELECT pr.*,
+      COALESCE((SELECT json_agg(json_build_object('id_insumo', r.id_insumo, 'cantidad', r.cantidad) ORDER BY r.id_insumo)
+                FROM receta_producto r WHERE r.id_producto = pr.id_producto), '[]') AS receta
+    FROM producto pr ORDER BY pr.id_producto DESC`,
+
   pedidos: `
     SELECT p.*,
-      COALESCE((SELECT json_agg(json_build_object('id_insumo', d.id_insumo, 'cantidad', d.cantidad, 'precio_unitario', d.precio_unitario) ORDER BY d.id_insumo)
+      COALESCE((SELECT json_agg(json_build_object('id_insumo', d.id_insumo, 'cantidad', d.cantidad, 'precio_unitario', d.precio_unitario, 'de_receta', d.de_receta) ORDER BY d.id_insumo)
                 FROM detalle_pedido_insumo d WHERE d.id_pedido = p.id_pedido), '[]') AS insumos,
+      COALESCE((SELECT json_agg(json_build_object('id_producto', d.id_producto, 'cantidad', d.cantidad, 'precio_unitario', d.precio_unitario) ORDER BY d.id_producto)
+                FROM detalle_pedido_producto d WHERE d.id_pedido = p.id_pedido), '[]') AS productos,
       COALESCE((SELECT json_agg(json_build_object('id_estado_pedido', h.id_estado_pedido, 'fecha', h.fecha::date) ORDER BY h.fecha, h.id_historial)
                 FROM historial_estado_pedido h WHERE h.id_pedido = p.id_pedido), '[]') AS historial
     FROM pedido p ORDER BY p.id_pedido DESC`,

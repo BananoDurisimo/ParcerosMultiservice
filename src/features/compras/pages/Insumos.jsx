@@ -4,8 +4,9 @@ import Badge from '@shared/components/ui/Badge.jsx';
 import EstadoCell from '@shared/components/ui/EstadoCell.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import MiniTabla from '@shared/components/ui/MiniTabla.jsx';
-import { useData, consumeInventario } from '@shared/context/DataContext.jsx';
+import { useData, consumeInventario, consumoPedido } from '@shared/context/DataContext.jsx';
 import { money, fecha, UMBRAL_STOCK_BAJO, ESTADOS_REGISTRO } from '@shared/data/mock.js';
+import { agrupar } from '@shared/lib/exportar.js';
 
 /** Tabla `insumo`: nombre, id_tipo_insumo, id_unidad_medida, stock,
  *  stock_minimo, precio_unitario, estado.
@@ -41,7 +42,7 @@ export default function Insumos() {
       )
     );
     db.pedidos.filter((p) => consumeInventario(p.estado)).forEach((p) =>
-      (p.insumos || []).filter((l) => l.id_insumo === i.id).forEach((l) =>
+      consumoPedido(p).filter((l) => l.id_insumo === i.id).forEach((l) =>
         out.push({ fecha: p.fecha_inicio, tipo: 'Salida', origen: `Pedido ${p.calc_codigo}`, cantidad: -l.cantidad })
       )
     );
@@ -52,6 +53,35 @@ export default function Insumos() {
         out.push({ fecha: m.calc_fecha, tipo: 'Ajuste manual', origen: m.calc_usuario, cantidad: n });
       });
     return out.sort((a, b) => b.fecha.localeCompare(a.fecha)).map((x, k) => ({ ...x, id: k }));
+  };
+
+  const suma = (filas, fn) => filas.reduce((s, r) => s + Number(fn(r) || 0), 0);
+  const exportacion = {
+    columnas: [
+      { titulo: 'Insumo', valor: (r) => r.nombre, ancho: 160 },
+      { titulo: 'Tipo', valor: (r) => r.calc_tipo, ancho: 80 },
+      { titulo: 'Unidad', valor: (r) => `${r.calc_unidad} (${r.calc_abreviatura})`, ancho: 80 },
+      { titulo: 'Existencias', valor: (r) => r.stock, tipo: 'numero', ancho: 70 },
+      { titulo: 'Mínimo', valor: (r) => r.calc_minimo, tipo: 'numero', ancho: 60 },
+      { titulo: 'Precio unit.', valor: (r) => r.precio_unitario, tipo: 'dinero', ancho: 80 },
+      { titulo: 'Valor en stock', valor: (r) => r.calc_valor, tipo: 'dinero', ancho: 90, total: true },
+      { titulo: 'Disponibilidad', valor: (r) => nivel(r).label, ancho: 90 },
+      { titulo: 'Estado', valor: (r) => r.estado, ancho: 60 },
+    ],
+    indicadores: (filas) => [
+      { etiqueta: 'Insumos', valor: filas.length, tipo: 'numero', nota: 'en el reporte' },
+      { etiqueta: 'Valor del inventario', valor: suma(filas, (r) => r.calc_valor), tipo: 'dinero' },
+      { etiqueta: 'Bajo su mínimo', valor: filas.filter((r) => r.stock > 0 && r.stock <= r.calc_minimo).length, tipo: 'numero', nota: 'reponer pronto' },
+      { etiqueta: 'Agotados', valor: filas.filter((r) => r.stock === 0).length, tipo: 'numero', nota: 'sin existencias' },
+    ],
+    grupos: (filas) => [
+      { titulo: 'Valor del inventario por tipo', columnas: ['Tipo de insumo', 'Insumos', 'Valor en stock'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.calc_tipo, (r) => r.calc_valor) },
+      { titulo: 'Disponibilidad', columnas: ['Disponibilidad', 'Insumos', 'Valor en stock'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => nivel(r).label, (r) => r.calc_valor) },
+      {
+        titulo: 'Insumos para reponer', columnas: ['Insumo', 'Existencias', 'Mínimo'], tipos: ['texto', 'numero', 'numero'],
+        filas: filas.filter((r) => r.stock <= r.calc_minimo).sort((a, b) => a.stock - b.stock).map((r) => [r.nombre, r.stock, r.calc_minimo]),
+      },
+    ],
   };
 
   const detalle = (r) => {
@@ -117,15 +147,17 @@ export default function Insumos() {
       modulo="Insumos"
       coleccion="insumos"
       renderDetalle={detalle}
+      exportacion={exportacion}
       entidad="insumos"
       singular="insumo"
       searchKeys={['nombre', 'calc_tipo', 'calc_unidad']}
       eliminacion={{
         validar: (r) => {
           const compras = db.compras.filter((c) => (c.detalle_insumos || []).some((l) => l.id_insumo === r.id)).length;
-          const pedidos = db.pedidos.filter((p) => (p.insumos || []).some((l) => l.id_insumo === r.id)).length;
-          if (!compras && !pedidos) return null;
-          return `${r.nombre} figura en ${[compras && `${compras} compra(s)`, pedidos && `${pedidos} cotización(es) o pedido(s)`].filter(Boolean).join(' y ')}. Para conservar ese historial, desactívelo en lugar de eliminarlo.`;
+          const pedidos = db.pedidos.filter((p) => consumoPedido(p).some((l) => l.id_insumo === r.id)).length;
+          const productos = db.productos.filter((p) => p.calc_insumos.includes(r.id) || p.id_insumo_tela === r.id).length;
+          if (!compras && !pedidos && !productos) return null;
+          return `${r.nombre} figura en ${[compras && `${compras} compra(s)`, pedidos && `${pedidos} cotización(es) o pedido(s)`, productos && `la receta de ${productos} producto(s)`].filter(Boolean).join(', ')}. Para conservar ese historial, desactívelo en lugar de eliminarlo.`;
         },
       }}
       filtros={[

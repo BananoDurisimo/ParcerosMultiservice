@@ -1,6 +1,7 @@
 import Icon from '@shared/components/Icon.jsx';
 import Badge from '@shared/components/ui/Badge.jsx';
 import HistorialRegistro from '@shared/components/ui/HistorialRegistro.jsx';
+import MiniTabla from '@shared/components/ui/MiniTabla.jsx';
 import { ItemsView } from '@shared/components/ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { TablaAbonos, useDescargas } from './Archivos.jsx';
@@ -15,6 +16,7 @@ export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
   const { db, opciones } = useData();
   const { descargarDiseno } = useDescargas();
   const insumos = opciones('insumos');
+  const productos = opciones('productos');
   const unidad = (id) => db.insumos.find((i) => i.id === id)?.calc_abreviatura || '';
   const idx = ESTADOS_PEDIDO.indexOf(r.estado);
   const fechaEtapa = (e) => (r.historial_estados || []).find((h) => h.estado === e)?.fecha;
@@ -33,8 +35,28 @@ export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
       <h3 className="det-section">Descripción de la personalización</h3>
       <div className="pedido-desc">{r.descripcion || '—'}</div>
 
-      <h3 className="det-section">Insumos</h3>
-      <ItemsView lineas={r.insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" totalLabel="Total" vacio="No se registraron insumos." unidad={unidad} />
+      <h3 className="det-section">Productos</h3>
+      <ItemsView lineas={r.productos || []} opciones={productos} itemKey="id_producto" itemLabel="Producto" totalLabel="Subtotal productos" vacio="No se registraron productos." unidad={() => 'und'} />
+
+      <h3 className="det-section">Insumos de personalización</h3>
+      <ItemsView lineas={r.insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" totalLabel="Subtotal personalización" vacio="Sin insumos de personalización." unidad={unidad} />
+      <div className="pedido-total" style={{ marginTop: 10 }}>
+        <div className="is-total"><span>Total del registro</span><strong className="money">{money(r.calc_total)}</strong></div>
+      </div>
+
+      {(r.insumos_receta || []).length > 0 && (
+        <>
+          <h3 className="det-section">Insumos de los productos (receta)</h3>
+          <MiniTabla
+            filas={r.insumos_receta}
+            columnas={[
+              { label: 'Insumo', render: (l) => db.insumos.find((i) => i.id === l.id_insumo)?.nombre || '—' },
+              { label: 'Cantidad', align: 'right', render: (l) => `${l.cantidad} ${unidad(l.id_insumo)}` },
+            ]}
+          />
+          <p className="caption" style={{ marginTop: 6 }}>Copia de la receta al guardar el registro: descuenta inventario y no se cobra aparte.</p>
+        </>
+      )}
 
       <h3 className="det-section">Diseño aprobado por el cliente</h3>
       {r.imagen_diseno ? (

@@ -44,6 +44,14 @@ const COLECCIONES = {
     tabla: 'abono', pk: 'id_abono', modulos: ['Abonos', 'Cotizaciones', 'Pedidos', 'Ventas'],
     campos: ['id_pedido', 'id_metodo_pago', 'monto', 'fecha', 'ruta_comprobante'],
   },
+  categorias_producto: {
+    tabla: 'categoria_producto', pk: 'id_categoria_producto', modulos: ['Categorías de producto'],
+    campos: ['nombre', 'descripcion', 'activo'],
+  },
+  productos: {
+    tabla: 'producto', pk: 'id_producto', modulos: ['Productos'],
+    campos: ['id_categoria_producto', 'id_talla', 'id_insumo_tela', 'nombre', 'precio_venta', 'activo'],
+  },
 };
 
 const AGREGAR = ['Agregar'];
@@ -78,14 +86,21 @@ const actualizar = async (db, cfg, id, data) => {
   return rows[0];
 };
 
-/** Reemplaza las lineas de detalle de un documento. */
-const reemplazarLineas = async (db, tabla, fk, id, lineas, columnas) => {
+/** Reemplaza las lineas de detalle de un documento. `fijos` son columnas con
+ *  el mismo valor en todas las lineas, que ademas acotan cuales se borran
+ *  (p. ej. solo las lineas de receta de un pedido). */
+const reemplazarLineas = async (db, tabla, fk, id, lineas, columnas, fijos = {}) => {
   if (!Array.isArray(lineas)) return;
-  await db.query(`DELETE FROM ${tabla} WHERE ${fk}=$1`, [id]);
+  const extra = Object.keys(fijos);
+  await db.query(
+    `DELETE FROM ${tabla} WHERE ${fk}=$1${extra.map((c, i) => ` AND ${c}=$${i + 2}`).join('')}`,
+    [id, ...Object.values(fijos)]
+  );
+  const todas = [...columnas, ...extra];
   for (const l of lineas) {
     await db.query(
-      `INSERT INTO ${tabla} (${fk},${columnas.join(',')}) VALUES ($1,${columnas.map((_, i) => '$' + (i + 2)).join(',')})`,
-      [id, ...columnas.map((c) => l[c])]
+      `INSERT INTO ${tabla} (${fk},${todas.join(',')}) VALUES ($1,${todas.map((_, i) => '$' + (i + 2)).join(',')})`,
+      [id, ...columnas.map((c) => l[c]), ...Object.values(fijos)]
     );
   }
 };
@@ -118,8 +133,21 @@ const DESPUES = {
   },
   compras: (db, fila, body) =>
     reemplazarLineas(db, 'detalle_compra_insumo', 'id_compra', fila.id_compra, body.detalles, ['id_insumo', 'cantidad', 'precio_unitario']),
-  pedidos: (db, fila, body) =>
-    reemplazarLineas(db, 'detalle_pedido_insumo', 'id_pedido', fila.id_pedido, body.insumos, ['id_insumo', 'cantidad', 'precio_unitario']),
+  /* El pedido guarda tres detalles: los productos que se cobran, los insumos
+     de personalizacion (con precio) y la copia de la receta de los productos
+     (`de_receta`, precio 0): esta ultima solo descuenta inventario. La receta
+     se copia al guardar para que editarla despues no cambie pedidos viejos. */
+  pedidos: async (db, fila, body) => {
+    await reemplazarLineas(db, 'detalle_pedido_producto', 'id_pedido', fila.id_pedido, body.productos, ['id_producto', 'cantidad', 'precio_unitario']);
+    await reemplazarLineas(db, 'detalle_pedido_insumo', 'id_pedido', fila.id_pedido, body.insumos, ['id_insumo', 'cantidad', 'precio_unitario'], { de_receta: false });
+    await reemplazarLineas(
+      db, 'detalle_pedido_insumo', 'id_pedido', fila.id_pedido,
+      Array.isArray(body.insumos_receta) ? body.insumos_receta.map((l) => ({ ...l, precio_unitario: 0 })) : undefined,
+      ['id_insumo', 'cantidad', 'precio_unitario'], { de_receta: true }
+    );
+  },
+  productos: (db, fila, body) =>
+    reemplazarLineas(db, 'receta_producto', 'id_producto', fila.id_producto, body.receta, ['id_insumo', 'cantidad']),
 };
 
 /* Antes de eliminar un documento se devuelve su efecto en el inventario. */

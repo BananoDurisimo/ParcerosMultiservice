@@ -18,13 +18,15 @@ const PK = {
   permisos: 'id_permiso', privilegios: 'id_privilegio', tipos_insumo: 'id_tipo_insumo',
   unidades_medida: 'id_unidad_medida', roles: 'id_rol', usuarios: 'id_usuario', insumos: 'id_insumo',
   proveedores: 'id_proveedor', compras: 'id_compra', clientes: 'id_cliente', pedidos: 'id_pedido',
-  abonos: 'id_abono', movimientos: 'id',
+  abonos: 'id_abono', movimientos: 'id', tallas: 'id_talla', categorias_producto: 'id_categoria_producto',
+  productos: 'id_producto',
 };
 
 /** Tabla de la base de datos -> coleccion del frontend (para el historial). */
 const COLECCION_DE_TABLA = {
   rol: 'roles', usuario: 'usuarios', insumo: 'insumos', proveedor: 'proveedores',
   compra: 'compras', cliente: 'clientes', pedido: 'pedidos', abono: 'abonos',
+  categoria_producto: 'categorias_producto', producto: 'productos',
 };
 
 const estado = (activo) => (activo === false ? 'Inactivo' : 'Activo');
@@ -66,24 +68,42 @@ function aFrontend(col, f, cat) {
         estado: nombrePorId(cat.estados_compra, 'id_estado_compra', f.id_estado_compra),
         detalle_insumos: (f.detalles || []).map((l) => ({ id_insumo: l.id_insumo, cantidad: Number(l.cantidad), precio_unitario: Number(l.precio_unitario) })),
       };
-    case 'pedidos':
+    case 'pedidos': {
+      /* detalle_pedido_insumo trae juntas la personalizacion (se cobra) y la
+         copia de la receta de los productos (`de_receta`, solo inventario). */
+      const linea = (l) => {
+        const cantidad = Number(l.cantidad);
+        const precio = Number(l.precio_unitario);
+        return { id_insumo: l.id_insumo, cantidad, precio_unitario: precio, subtotal: Math.round(cantidad * precio * 100) / 100 };
+      };
       return {
         ...base, id_cliente: f.id_cliente, estado: nombrePorId(cat.estados_pedido, 'id_estado_pedido', f.id_estado_pedido),
         fecha_creacion: texto(f.fecha_creacion), fecha_inicio: texto(f.fecha_inicio), fecha_entrega: texto(f.fecha_entrega),
         descripcion: texto(f.descripcion), imagen_diseno: texto(f.ruta_imagen_diseno),
-        insumos: (f.insumos || []).map((l) => {
+        productos: (f.productos || []).map((l) => {
           const cantidad = Number(l.cantidad);
           const precio = Number(l.precio_unitario);
-          return { id_insumo: l.id_insumo, cantidad, precio_unitario: precio, subtotal: Math.round(cantidad * precio * 100) / 100 };
+          return { id_producto: l.id_producto, cantidad, precio_unitario: precio, subtotal: Math.round(cantidad * precio * 100) / 100 };
         }),
+        insumos: (f.insumos || []).filter((l) => !l.de_receta).map(linea),
+        insumos_receta: (f.insumos || []).filter((l) => l.de_receta).map((l) => ({ id_insumo: l.id_insumo, cantidad: Number(l.cantidad) })),
         historial_estados: (f.historial || []).map((h) => ({
           estado: nombrePorId(cat.estados_pedido, 'id_estado_pedido', h.id_estado_pedido), fecha: texto(h.fecha),
         })),
       };
+    }
     case 'abonos':
       return {
         ...base, id_pedido: f.id_pedido, monto: Number(f.monto), fecha: texto(f.fecha),
         metodo_pago: nombrePorId(cat.metodos_pago, 'id_metodo_pago', f.id_metodo_pago), url_comprobante: texto(f.ruta_comprobante),
+      };
+    case 'categorias_producto':
+      return { ...base, nombre: f.nombre, descripcion: texto(f.descripcion), estado: estado(f.activo) };
+    case 'productos':
+      return {
+        ...base, nombre: f.nombre, id_categoria_producto: f.id_categoria_producto, id_talla: f.id_talla,
+        id_insumo_tela: f.id_insumo_tela, precio_venta: Number(f.precio_venta), estado: estado(f.activo),
+        receta: (f.receta || []).map((l) => ({ id_insumo: l.id_insumo, cantidad: Number(l.cantidad) })),
       };
     default:
       return { ...f, ...base };
@@ -119,6 +139,9 @@ export function deServidor(d) {
     clientes: lista('clientes'),
     pedidos: lista('pedidos'),
     abonos: lista('abonos'),
+    tallas: lista('tallas'),
+    categorias_producto: lista('categorias_producto'),
+    productos: lista('productos'),
     /* Cambios y accesos vienen de dos tablas: se numeran por fecha para que
        el codigo MOV-0001… sea correlativo. */
     movimientos: [...(d.movimientos || [])].reverse().map((m, i) => ({
@@ -172,12 +195,22 @@ export function aServidor(col, r, cat, sid) {
         id_cliente: sid('clientes', r.id_cliente), id_estado_pedido: idPorNombre(cat.estados_pedido, 'id_estado_pedido', r.estado),
         fecha_creacion: r.fecha_creacion, fecha_inicio: r.fecha_inicio, fecha_entrega: r.fecha_entrega,
         descripcion: r.descripcion, ruta_imagen_diseno: r.imagen_diseno,
+        productos: (r.productos || []).map((l) => ({ id_producto: sid('productos', l.id_producto), cantidad: l.cantidad, precio_unitario: l.precio_unitario })),
         insumos: (r.insumos || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad, precio_unitario: l.precio_unitario })),
+        insumos_receta: (r.insumos_receta || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad })),
       };
     case 'abonos':
       return {
         id_pedido: sid('pedidos', r.id_pedido), id_metodo_pago: idPorNombre(cat.metodos_pago, 'id_metodo_pago', r.metodo_pago),
         monto: r.monto, fecha: r.fecha, ruta_comprobante: r.url_comprobante,
+      };
+    case 'categorias_producto':
+      return { nombre: r.nombre, descripcion: r.descripcion, activo };
+    case 'productos':
+      return {
+        id_categoria_producto: sid('categorias_producto', r.id_categoria_producto), id_talla: r.id_talla,
+        id_insumo_tela: sid('insumos', r.id_insumo_tela), nombre: r.nombre, precio_venta: r.precio_venta, activo,
+        receta: (r.receta || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad })),
       };
     default:
       return null;
@@ -189,4 +222,5 @@ export const VACIO = {
   catalogos: { tipos_documento: [], estados_pedido: [], estados_compra: [], metodos_pago: [] },
   permisos: [], privilegios: [], tipos_insumo: [], unidades_medida: [], roles: [], usuarios: [],
   insumos: [], proveedores: [], compras: [], clientes: [], pedidos: [], abonos: [], movimientos: [],
+  tallas: [], categorias_producto: [], productos: [],
 };

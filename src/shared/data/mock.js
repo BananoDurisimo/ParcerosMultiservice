@@ -143,6 +143,8 @@ export const MODULOS_AUDITADOS = {
   compra: 'Compras',
   pedido: 'Pedidos',
   abono: 'Abonos',
+  categoria_producto: 'Categorías de producto',
+  producto: 'Productos',
   acceso: 'Accesos',
 };
 
@@ -186,7 +188,15 @@ export const ETIQUETA_CAMPO = {
   id_unidad_medida: 'Unidad de medida',
   permisos: 'Permisos',
   privilegios: 'Privilegios',
-  insumos: 'Insumos',
+  insumos: 'Insumos de personalización',
+  insumos_receta: 'Insumos de receta',
+  productos: 'Productos',
+  receta: 'Receta',
+  precio_venta: 'Precio de venta',
+  id_talla: 'Talla',
+  id_insumo_tela: 'Tela',
+  id_categoria_producto: 'Categoría',
+  id_producto: 'Producto',
   detalle_insumos: 'Insumos adquiridos',
   resultado: 'Resultado',
 };

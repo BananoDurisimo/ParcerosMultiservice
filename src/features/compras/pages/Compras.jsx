@@ -1,10 +1,12 @@
 import CrudPage from '@shared/components/CrudPage.jsx';
+import Icon from '@shared/components/Icon.jsx';
 import EstadoCell from '@shared/components/ui/EstadoCell.jsx';
 import Badge from '@shared/components/ui/Badge.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import { ItemsView } from '@shared/components/ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { money, fecha, hoyISO, ESTADOS_COMPRA, ESTADOS_COMPRA_ACTIVOS, COMPRA_ANULADA } from '@shared/data/mock.js';
+import { agrupar } from '@shared/lib/exportar.js';
 
 const unidadDe = (i) => i?.calc_abreviatura || i?.calc_unidad || '';
 
@@ -28,6 +30,42 @@ export default function Compras() {
 
   const precioInsumo = (id) => db.insumos.find((i) => i.id === id)?.precio_unitario;
   const codigo = (r) => r.calc_codigo || '';
+
+  /* Las anuladas se listan, pero no suman en los totales del reporte. */
+  const vigentes = (filas) => filas.filter((c) => c.estado !== COMPRA_ANULADA);
+  const suma = (filas, fn) => filas.reduce((s, r) => s + Number(fn(r) || 0), 0);
+  const porInsumo = (filas) => {
+    const m = new Map();
+    vigentes(filas).forEach((c) => (c.detalle_insumos || []).forEach((l) => {
+      const i = db.insumos.find((x) => x.id === l.id_insumo);
+      const k = i ? `${i.nombre} (${unidadDe(i)})` : `#${l.id_insumo}`;
+      const g = m.get(k) || [0, 0];
+      m.set(k, [g[0] + Number(l.cantidad), g[1] + Number(l.cantidad) * Number(l.precio_unitario)]);
+    }));
+    return [...m].sort((a, b) => b[1][1] - a[1][1]).map(([k, [c, t]]) => [k, c, t]);
+  };
+  const exportacion = {
+    columnas: [
+      { titulo: 'Compra', valor: (r) => codigo(r), ancho: 62 },
+      { titulo: 'Proveedor', valor: (r) => r.calc_proveedor, ancho: 140 },
+      { titulo: 'Fecha de realización', valor: (r) => fecha(r.fecha), ancho: 80 },
+      { titulo: 'Fecha de entrega', valor: (r) => fecha(r.fecha_entrega), ancho: 80 },
+      { titulo: 'Insumos', valor: (r) => r.calc_insumos_txt || '—', ancho: 200 },
+      { titulo: 'Total', valor: (r) => (r.estado === COMPRA_ANULADA ? 0 : r.calc_total), tipo: 'dinero', ancho: 90, total: true },
+      { titulo: 'Estado', valor: (r) => r.estado, ancho: 70 },
+    ],
+    indicadores: (filas) => [
+      { etiqueta: 'Compras', valor: filas.length, tipo: 'numero', nota: `${filas.length - vigentes(filas).length} anulada(s)` },
+      { etiqueta: 'Total comprado', valor: suma(vigentes(filas), (r) => r.calc_total), tipo: 'dinero', nota: 'sin las anuladas' },
+      { etiqueta: 'Recibidas', valor: filas.filter((r) => r.estado === 'Recibida').length, tipo: 'numero' },
+      { etiqueta: 'En tránsito', valor: filas.filter((r) => r.estado === 'En tránsito').length, tipo: 'numero', nota: 'pendientes de llegar' },
+    ],
+    grupos: (filas) => [
+      { titulo: 'Por proveedor', columnas: ['Proveedor', 'Compras', 'Total'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(vigentes(filas), (r) => r.calc_proveedor, (r) => r.calc_total) },
+      { titulo: 'Por estado', columnas: ['Estado', 'Compras', 'Total'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.estado, (r) => (r.estado === COMPRA_ANULADA ? 0 : r.calc_total)) },
+      { titulo: 'Insumos comprados', columnas: ['Insumo', 'Cantidad', 'Total'], tipos: ['texto', 'numero', 'dinero'], filas: porInsumo(filas) },
+    ],
+  };
 
   const detalle = (r) => (
     <div>
@@ -87,6 +125,7 @@ export default function Compras() {
         <KpiCard key="c" label="En tránsito" value={db.compras.filter((c) => c.estado === 'En tránsito').length} icon="truck" tono="warning" />,
       ]}
       renderDetalle={detalle}
+      exportacion={exportacion}
       columnas={[
         { key: 'id', label: 'Compra', mobile: 'title', render: (r) => <span className="cell-main">{codigo(r)}</span> },
         { key: 'calc_proveedor', label: 'Proveedor', mobile: 'meta', render: (r) => r.calc_proveedor },
@@ -113,15 +152,19 @@ export default function Compras() {
         },
       ]}
       campos={[
-        { name: 'id_proveedor', label: 'Proveedor', type: 'select', options: proveedores, required: true, buscarPlaceholder: 'Buscar proveedor…' },
+        { name: 'sec_datos', type: 'custom', full: true, render: () => <div className="form-section"><Icon name="clipboard" size={15} /> Datos de la compra</div> },
+        { name: 'id_proveedor', label: 'Proveedor', type: 'select', options: proveedores, required: true, full: true, buscarPlaceholder: 'Buscar proveedor…' },
         {
-          name: 'estado', label: 'Estado', type: 'select', options: ESTADOS_COMPRA_ACTIVOS, required: true,
+          name: 'estado', label: 'Estado', type: 'select', options: ESTADOS_COMPRA_ACTIVOS, required: true, full: true,
           hint: 'Al marcarla como recibida, sus insumos ingresan a las existencias.',
         },
         { name: 'fecha', label: 'Fecha de realización', type: 'date', required: true, maxHoy: true },
-        { name: 'fecha_entrega', label: 'Fecha de entrega', type: 'date', required: true },
         {
-          name: 'detalle_insumos', label: 'Insumos adquiridos', type: 'items', required: true,
+          name: 'fecha_entrega', label: 'Fecha de entrega', type: 'date',
+          hint: 'Opcional: complétela cuando el pedido llegue.',
+        },
+        {
+          name: 'detalle_insumos', label: 'Insumos que se compran', type: 'items', required: true, col: 'izq',
           itemKey: 'id_insumo', itemLabel: 'Insumo', options: insumos, decimales: true,
           precioSugerido: precioInsumo, unidad, totalLabel: 'Total de la compra',
           hint: 'Indique la cantidad y el precio de compra de cada insumo. Al elegirlo se sugiere su precio unitario; puede ajustarlo.',

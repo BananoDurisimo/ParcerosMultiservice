@@ -99,10 +99,11 @@ y usuarios se crean desde Configuración → Roles y Usuarios.
 | `/app/insumos` | Insumos y control de existencias |
 | `/app/proveedores` | Proveedores |
 | `/app/compras` | Compras de insumos a proveedores |
+| `/app/categorias-producto` | Categorías de producto (tipo de prenda) |
+| `/app/productos` | Productos base (prenda + talla + tela) con precio de venta y receta de insumos |
 | `/app/clientes` | Clientes |
 | `/app/pedidos` | Cotizaciones · Pedidos · Ventas (pestañas sobre el mismo registro) |
 | `/app/abonos` | Abonos y saldos |
-| `/app/reportes` | Reportes de ingresos recibidos (filtros, resumen, movimientos y exportación a PDF, Excel y CSV) |
 | `/app/cuenta` | Mi cuenta (perfil, seguridad, preferencias, actividad) |
 
 **Mobile** — el layout es responsive; por debajo de 900px el sidebar se convierte en
@@ -163,13 +164,16 @@ Inicio, Compras, Abonos, Pedidos y Cuenta. Las tablas se transforman en listas.
 - **Animaciones**: entrada de páginas y tarjetas escalonada, contador animado en los KPI,
   trazado progresivo de las líneas del gráfico, transiciones de modales, drawer, toasts,
   hover en filas y botones. Todo respeta `prefers-reduced-motion`.
-- **Reportes de ingresos** (Ventas → Reportes): el dinero realmente recibido, calculado desde
-  cada abono por su fecha de pago. Filtros por día, semana, mes, año o rango personalizado,
-  tipo (abono / pago completo) y método de pago, con indicadores, tabla con detalle de cada
-  movimiento y exportación a PDF, Excel (.xlsx) y CSV que respeta los filtros activos. El
-  pendiente de cobro se muestra aparte y nunca suma a los ingresos. Los archivos se generan
-  en el navegador, sin librerías (`features/reportes/lib/exportar.js`); la lógica de cálculo
-  tiene su prueba: `node --test src/features/reportes/lib/ingresos.test.js`.
+- **Productos base y recetas**: un producto es una prenda en una talla y una tela
+  (p. ej. «Jersey XL Drift») con su precio de venta y la receta de insumos de una unidad.
+  En la cotización o el pedido se agregan productos (se cobra su precio) y el sistema
+  calcula solo los insumos de la receta, que descuentan inventario sin cobrarse aparte;
+  la personalización (estampados, colores…) se agrega como insumos con su precio.
+- **Exportar y reporte por módulo** (cotizaciones, pedidos, ventas, abonos, insumos y
+  compras; privilegio «Exportar»): «Exportar» descarga la tabla a PDF o Excel y «Reporte»
+  genera un PDF con indicadores, resumen agrupado y detalle. Ambos usan lo que muestra la
+  tabla (búsqueda y filtros aplicados) y se generan en el navegador, sin librerías
+  (`shared/lib/exportar.js`).
 - **Trazabilidad del pedido** en línea de tiempo con los cinco estados de la ficha.
 
 ---
@@ -197,11 +201,8 @@ src/
 │  │  ├─ pages/                Una vista por módulo
 │  │  └─ components/           MovimientoDetalle (comparativo antes / después)
 │  ├─ compras/                 Insumos · Proveedores · Compras
-│  ├─ ventas/                  Clientes · Pedidos (cotizaciones, pedidos, ventas) · Abonos
-│  └─ reportes/                Reportes de ingresos
-│     ├─ pages/                Reportes.jsx (pantalla)
-│     ├─ lib/                  ingresos.js (cálculo) · exportar.js (PDF/Excel/CSV)
-│     └─ index.js              Barril: qué expone la funcionalidad hacia afuera
+│  ├─ productos/               Categorías de producto · Productos (con su receta)
+│  └─ ventas/                  Clientes · Pedidos (cotizaciones, pedidos, ventas) · Abonos
 │
 ├─ shared/                     Transversal a todas las funcionalidades
 │  ├─ components/

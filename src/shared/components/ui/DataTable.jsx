@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Icon from '@shared/components/Icon.jsx';
 import Pagination from './Pagination.jsx';
-import { normOpciones } from './Form.jsx';
+import { normOpciones, normTexto } from './Form.jsx';
 
 /**
  * Tabla estandar del sistema: busqueda, filtros, orden, paginacion,
@@ -11,6 +11,11 @@ import { normOpciones } from './Form.jsx';
  *
  * Un filtro es un desplegable `{ key, label, options }` o un rango de fechas
  * `{ key, label, type: 'rango' }` (desde / hasta).
+ *
+ * `onExportar(formato, filas, filtros)`: muestra «Exportar» (PDF o Excel) y
+ * «Reporte». Recibe las filas que la tabla tiene en ese momento -con la
+ * busqueda, los filtros y el orden aplicados, de todas las paginas- y la
+ * descripcion de lo aplicado ([['Estado', 'Recibida'], …]).
  */
 export default function DataTable({
   columns,
@@ -30,6 +35,7 @@ export default function DataTable({
   puedeEditarFila = () => true,
   /* Botones propios del modulo junto a "Ver detalle" y "Editar". */
   accionesExtra,
+  onExportar,
   emptyText = 'No hay registros que coincidan con la búsqueda.',
 }) {
   const [q, setQ] = useState('');
@@ -37,6 +43,16 @@ export default function DataTable({
   const [sort, setSort] = useState({ key: null, dir: 'asc' });
   const [page, setPage] = useState(1);
   const [openFilters, setOpenFilters] = useState(false);
+  const [menuExportar, setMenuExportar] = useState(false);
+  const refExportar = useRef(null);
+
+  /* Un clic fuera cierra el menu de exportacion. */
+  useEffect(() => {
+    if (!menuExportar) return undefined;
+    const fuera = (e) => { if (!refExportar.current?.contains(e.target)) setMenuExportar(false); };
+    document.addEventListener('mousedown', fuera);
+    return () => document.removeEventListener('mousedown', fuera);
+  }, [menuExportar]);
 
   /* Un rango con la fecha final antes de la inicial no se aplica. */
   const rangoInvalido = (v) => !!v?.desde && !!v?.hasta && v.hasta < v.desde;
@@ -44,9 +60,10 @@ export default function DataTable({
   const filtered = useMemo(() => {
     let out = rows;
     if (q.trim()) {
-      const t = q.toLowerCase();
+      /* Sin distinguir mayusculas ni tildes: «cotizacion» encuentra «Cotización». */
+      const t = normTexto(q.trim());
       out = out.filter((r) =>
-        (searchKeys.length ? searchKeys : Object.keys(r)).some((k) => String(r[k] ?? '').toLowerCase().includes(t))
+        (searchKeys.length ? searchKeys : Object.keys(r)).some((k) => normTexto(r[k]).includes(t))
       );
     }
     filters.forEach((f) => {
@@ -82,6 +99,25 @@ export default function DataTable({
 
   const activos = Object.values(fv).filter((v) => (typeof v === 'object' ? v.desde || v.hasta : v)).length;
 
+  /** Lo aplicado en la tabla, en palabras, para el encabezado de lo exportado. */
+  const descripcionFiltros = () => {
+    const out = [];
+    if (q.trim()) out.push(['Búsqueda', `«${q.trim()}»`]);
+    filters.forEach((f) => {
+      const v = fv[f.key];
+      if (!v) return;
+      if (f.type === 'rango') {
+        if (rangoInvalido(v) || (!v.desde && !v.hasta)) return;
+        const d = (iso) => iso.split('-').reverse().join('/');
+        out.push([f.label, v.desde && v.hasta ? `${d(v.desde)} a ${d(v.hasta)}` : v.desde ? `desde ${d(v.desde)}` : `hasta ${d(v.hasta)}`]);
+        return;
+      }
+      out.push([f.label, normOpciones(f.options).find((o) => String(o.value) === v)?.label ?? v]);
+    });
+    return out;
+  };
+  const exportar = (formato) => { setMenuExportar(false); onExportar(formato, filtered, descripcionFiltros()); };
+
   const toggleSort = (key) =>
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
 
@@ -114,6 +150,28 @@ export default function DataTable({
         )}
 
         <div className="grow" />
+
+        {onExportar && (
+          <>
+            <div className="dropdown" ref={refExportar}>
+              <button className="btn btn-sm" onClick={() => setMenuExportar((v) => !v)} aria-haspopup="menu" aria-expanded={menuExportar} title="Descargar lo que muestra la tabla">
+                <Icon name="download" size={15} /> Exportar <Icon name="chevD" size={13} />
+              </button>
+              {menuExportar && (
+                <div className="dropdown-menu" role="menu">
+                  <div className="caption" style={{ padding: '6px 11px 8px' }}>
+                    {filtered.length} {entidad}{activos || q.trim() ? ' (con los filtros aplicados)' : ''}
+                  </div>
+                  <button className="dropdown-item" role="menuitem" onClick={() => exportar('pdf')}><Icon name="receipt" size={16} /> Exportar a PDF</button>
+                  <button className="dropdown-item" role="menuitem" onClick={() => exportar('excel')}><Icon name="chart" size={16} /> Exportar a Excel</button>
+                </div>
+              )}
+            </div>
+            <button className="btn btn-sm btn-info" onClick={() => exportar('reporte')} title="Reporte en PDF con indicadores, resumen y detalle">
+              <Icon name="chart" size={15} /> Reporte
+            </button>
+          </>
+        )}
 
         {onCreate && (
           <button className="btn btn-primary btn-sm" onClick={onCreate}>
@@ -161,8 +219,20 @@ export default function DataTable({
       {slice.length === 0 ? (
         <div className="empty">
           <div className="ico-wrap"><Icon name="search" size={22} /></div>
-          <div style={{ fontWeight: 500, color: 'var(--text)' }}>Sin resultados</div>
-          <p className="caption" style={{ marginTop: 4 }}>{emptyText}</p>
+          <div style={{ fontWeight: 500, color: 'var(--text)' }}>{rows.length ? 'Sin resultados' : `Aún no hay ${entidad}`}</div>
+          <p className="caption" style={{ marginTop: 4 }}>
+            {rows.length ? emptyText : onCreate ? `Registre el primero con el botón «${createLabel}».` : 'Cuando se registren aparecerán aquí.'}
+          </p>
+          {!rows.length && onCreate && (
+            <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={onCreate}>
+              <Icon name="plus" size={16} /> {createLabel}
+            </button>
+          )}
+          {rows.length > 0 && (q.trim() || activos > 0) && (
+            <button className="btn btn-sm btn-ghost" style={{ marginTop: 12 }} onClick={() => { setQ(''); setFv({}); }}>
+              <Icon name="refresh" size={15} /> Limpiar búsqueda y filtros
+            </button>
+          )}
         </div>
       ) : (
         <>

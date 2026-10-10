@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import Icon from '@shared/components/Icon.jsx';
 import Logo from '@shared/components/Logo.jsx';
 import { NAV } from '@shared/data/nav.js';
@@ -6,6 +6,16 @@ import { useAuth } from '@shared/context/AuthContext.jsx';
 
 export default function Sidebar({ collapsed, open, onToggleCollapse, onClose }) {
   const { puede } = useAuth();
+  const loc = useLocation();
+
+  /* Etapa abierta de Pedidos: la de la direccion o, sin ella, la primera
+     que el rol puede ver (la misma que abre la pagina). */
+  const hijoActivo = (it) => {
+    if (loc.pathname !== it.to) return null;
+    const visibles = it.hijos.filter((h) => puede(h.permiso));
+    const vista = new URLSearchParams(loc.search).get('vista');
+    return (visibles.find((h) => h.vista === vista) || visibles[0])?.vista;
+  };
 
   return (
     <aside className={`sidebar ${collapsed ? 'is-collapsed' : ''} ${open ? 'is-open' : ''}`}>
@@ -30,17 +40,32 @@ export default function Sidebar({ collapsed, open, onToggleCollapse, onClose }) 
             <div key={gi}>
               {grupo.section && <div className="nav-section">{grupo.section}</div>}
               {items.map((it) => (
-                <NavLink
-                  key={it.to}
-                  to={it.to}
-                  end={it.end}
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                  onClick={onClose}
-                  title={it.label}
-                >
-                  <Icon name={it.icon} size={18} />
-                  <span>{it.label}</span>
-                </NavLink>
+                <div key={it.to}>
+                  <NavLink
+                    to={it.to}
+                    end={it.end}
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={it.label}
+                  >
+                    <Icon name={it.icon} size={18} />
+                    <span>{it.label}</span>
+                  </NavLink>
+                  {it.hijos && !collapsed && (
+                    <div className="nav-hijos">
+                      {it.hijos.filter((h) => puede(h.permiso)).map((h) => (
+                        <NavLink
+                          key={h.vista}
+                          to={`${it.to}?vista=${h.vista}`}
+                          className={() => `nav-hijo ${hijoActivo(it) === h.vista ? 'active' : ''}`}
+                          onClick={onClose}
+                        >
+                          {h.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           );

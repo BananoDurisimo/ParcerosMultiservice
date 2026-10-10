@@ -90,8 +90,8 @@ function ArchivoField({ f, value, error, onChange, readOnly, label }) {
 /* --------------------------------------------------------------
    Desplegable con buscador
 
-   Reemplaza al <select> nativo en las llaves foraneas (cliente, proveedor,
-   insumo, rol, pedido…): al abrirlo se escribe para filtrar por nombre, sin
+   Reemplaza al <select> nativo en todas las listas de los formularios
+   (cliente, proveedor, insumo, rol, pedido, estado…): al abrirlo se escribe para filtrar por nombre, sin
    distinguir mayusculas ni tildes, y se elige con el mouse o con las flechas
    y Enter. Las filas dadas de baja se ven pero no se pueden elegir.
    -------------------------------------------------------------- */
@@ -210,9 +210,11 @@ export function SearchSelect({ id, options, value, onChange, disabled, error, pl
   );
 }
 
-/** Las llaves foraneas (opciones `{ value, label }`) usan el buscador; las
- *  listas fijas de texto (estado, metodo de pago…) siguen siendo un select. */
-const esForanea = (f) => f.buscable ?? (f.options || []).some((o) => o && typeof o === 'object');
+/** Todas las listas de los formularios usan el desplegable con buscador, sean
+ *  llaves foraneas o listas fijas (estado, metodo de pago…): el usuario
+ *  siempre encuentra la opcion escribiendo. `buscable: false` vuelve al
+ *  select nativo. */
+const esForanea = (f) => f.buscable ?? true;
 
 /* --------------------------------------------------------------
    Validaciones (punto 7: notificacion de validacion de campos)

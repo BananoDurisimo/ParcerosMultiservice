@@ -9,7 +9,7 @@ import { Dashboard } from '@features/dashboard';
 import { Roles, Usuarios, Movimientos } from '@features/configuracion';
 import { Insumos, Proveedores, Compras } from '@features/compras';
 import { Clientes, Pedidos, Abonos } from '@features/ventas';
-import { Reportes } from '@features/reportes';
+import { CategoriasProducto, Productos } from '@features/productos';
 
 /**
  * Mapa de rutas. Cada bloque corresponde a un macroproceso (feature) y el
@@ -38,11 +38,14 @@ export default function AppRoutes() {
           <Route path="proveedores" element={<Proveedores />} />
           <Route path="compras" element={<Compras />} />
 
+          {/* Productos */}
+          <Route path="categorias-producto" element={<CategoriasProducto />} />
+          <Route path="productos" element={<Productos />} />
+
           {/* Ventas */}
           <Route path="clientes" element={<Clientes />} />
           <Route path="pedidos" element={<Pedidos />} />
           <Route path="abonos" element={<Abonos />} />
-          <Route path="reportes" element={<Reportes />} />
 
           <Route path="cuenta" element={<Cuenta />} />
         </Route>

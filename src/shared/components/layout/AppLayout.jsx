@@ -18,10 +18,11 @@ const TITULOS = {
   '/app/insumos': 'Insumos',
   '/app/proveedores': 'Proveedores',
   '/app/compras': 'Compras',
+  '/app/categorias-producto': 'Categorías de producto',
+  '/app/productos': 'Productos',
   '/app/clientes': 'Clientes',
   '/app/pedidos': 'Pedidos',
   '/app/abonos': 'Abonos',
-  '/app/reportes': 'Reportes',
   '/app/cuenta': 'Mi cuenta',
 };
 

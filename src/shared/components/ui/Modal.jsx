@@ -1,19 +1,33 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from '@shared/components/Icon.jsx';
 
+/* Modales abiertos, del primero al ultimo. Un modal puede abrirse encima de
+   otro (el comprobante de un abono sobre el detalle del pedido): Escape y el
+   clic en el fondo cierran solo el de arriba, y la pagina vuelve a desplazarse
+   cuando se cierra el ultimo. */
+const abiertos = [];
+
 export default function Modal({ open, onClose, title, subtitle, size = '', children, footer }) {
+  const id = useRef(Symbol('modal'));
+  const cerrar = useRef(onClose);
+  cerrar.current = onClose;
+
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => e.key === 'Escape' && onClose?.();
+    if (!open) return undefined;
+    const yo = id.current;
+    abiertos.push(yo);
+    const onKey = (e) => {
+      if (e.key === 'Escape' && abiertos[abiertos.length - 1] === yo) cerrar.current?.();
+    };
     document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    if (abiertos.length === 1) document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
+      abiertos.splice(abiertos.indexOf(yo), 1);
+      if (!abiertos.length) document.body.style.overflow = '';
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

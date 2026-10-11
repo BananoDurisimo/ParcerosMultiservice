@@ -1,9 +1,10 @@
+import { useEffect, useState } from 'react';
 import Icon from '@shared/components/Icon.jsx';
 import Modal from '@shared/components/ui/Modal.jsx';
 import MiniTabla from '@shared/components/ui/MiniTabla.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
-import { abrirArchivo, descargarArchivo } from '@shared/data/archivos.js';
+import { descargarArchivo, esImagen, esPdf } from '@shared/data/archivos.js';
 import { money, fecha } from '@shared/data/mock.js';
 
 /** Descargas con su aviso de error. El nombre del archivo lleva el codigo
@@ -56,14 +57,76 @@ export function DisenoModal({ registro: r, onClose, puedeDescargar }) {
   );
 }
 
+/**
+ * Comprobante de pago de un abono, dentro de la misma pantalla: la imagen (o
+ * el PDF) con los datos del abono y, si el rol puede, el boton para
+ * descargarlo. Puede abrirse encima de otro modal (el detalle del pedido):
+ * al cerrarlo se vuelve a el.
+ */
+export function ComprobanteModal({ abono: a, onClose, puedeDescargar }) {
+  const { descargarComprobante } = useDescargas();
+  const archivo = a?.url_comprobante || '';
+  /* Los navegadores no muestran un PDF guardado como data URL dentro de la
+     pagina: se convierte en blob mientras el modal esta abierto. */
+  const [pdf, setPdf] = useState('');
+  useEffect(() => {
+    if (!esPdf(archivo)) return undefined;
+    let url = '';
+    let vigente = true;
+    fetch(archivo).then((r) => r.blob()).then((b) => {
+      if (!vigente) return;
+      url = URL.createObjectURL(b);
+      setPdf(url);
+    });
+    return () => { vigente = false; setPdf(''); if (url) URL.revokeObjectURL(url); };
+  }, [archivo]);
+
+  return (
+    <Modal
+      open={!!a}
+      onClose={onClose}
+      size="lg"
+      title={a ? `Comprobante ${a.calc_codigo}` : ''}
+      subtitle={a ? `${a.calc_pedido} · ${a.calc_cliente}` : ''}
+      footer={
+        <>
+          <button className="btn" onClick={onClose}>Cerrar</button>
+          {puedeDescargar && archivo && (
+            <button className="btn btn-primary" onClick={() => descargarComprobante(a)}>
+              <Icon name="download" size={16} /> Descargar comprobante
+            </button>
+          )}
+        </>
+      }
+    >
+      {a && (
+        <div className="stack" style={{ gap: 16 }}>
+          <div className="comprobante-datos">
+            <div><span className="caption">Fecha del pago</span><strong>{fecha(a.fecha)}</strong></div>
+            <div><span className="caption">Método de pago</span><strong>{a.metodo_pago}</strong></div>
+            <div><span className="caption">Monto abonado</span><strong className="money">{money(a.monto)}</strong></div>
+          </div>
+          {esImagen(archivo) && <img className="diseno-full" src={archivo} alt={`Comprobante del abono ${a.calc_codigo}`} />}
+          {esPdf(archivo) && (pdf
+            ? <iframe className="comprobante-pdf" src={pdf} title={`Comprobante del abono ${a.calc_codigo}`} />
+            : <p className="caption">Cargando el documento…</p>)}
+          {!archivo && <p className="caption">El abono no tiene comprobante adjunto.</p>}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 /** Abonos de un registro con las opciones de ver y descargar su comprobante. */
 export function TablaAbonos({ idPedido, puedeVer, puedeDescargar }) {
   const { db } = useData();
   const { descargarComprobante } = useDescargas();
+  const [ver, setVer] = useState(null);
   const abonos = db.abonos.filter((a) => a.id_pedido === idPedido).sort((a, b) => a.fecha.localeCompare(b.fecha));
   const conComprobante = puedeVer || puedeDescargar;
 
   return (
+    <>
     <MiniTabla
       filas={abonos}
       vacio="Todavía no hay abonos registrados."
@@ -77,7 +140,7 @@ export function TablaAbonos({ idPedido, puedeVer, puedeDescargar }) {
           render: (a) => !a.url_comprobante ? <span className="caption">—</span> : (
             <span className="row" style={{ gap: 10 }}>
               {puedeVer && (
-                <button type="button" className="link-btn row" style={{ gap: 4 }} onClick={() => abrirArchivo(a.url_comprobante)}>
+                <button type="button" className="link-btn row" style={{ gap: 4 }} onClick={() => setVer(a)}>
                   <Icon name="eye" size={14} /> Ver
                 </button>
               )}
@@ -91,6 +154,8 @@ export function TablaAbonos({ idPedido, puedeVer, puedeDescargar }) {
         }] : []),
       ]}
     />
+    <ComprobanteModal abono={ver} onClose={() => setVer(null)} puedeDescargar={puedeDescargar} />
+    </>
   );
 }
 

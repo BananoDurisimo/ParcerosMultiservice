@@ -21,15 +21,6 @@ const EXTENSION = {
 export const esImagen = (v) => typeof v === 'string' && v.startsWith('data:image/');
 export const esPdf = (v) => typeof v === 'string' && v.startsWith('data:application/pdf');
 
-/** Abre el archivo en una pestaña nueva. Los navegadores no abren data URLs
-    directamente, por eso se convierte primero en blob. */
-export async function abrirArchivo(v) {
-  if (!v) return;
-  if (!v.startsWith('data:')) { window.open(v, '_blank', 'noopener'); return; }
-  const blob = await (await fetch(v)).blob();
-  window.open(URL.createObjectURL(blob), '_blank', 'noopener');
-}
-
 /**
  * Descarga el archivo al equipo en su formato original, con `nombre` como
  * nombre de archivo (la extension sale del tipo del archivo). Devuelve false si

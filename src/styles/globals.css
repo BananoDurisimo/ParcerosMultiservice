@@ -1386,3 +1386,8 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
 .sync-dot { width: 7px; height: 7px; border-radius: 99px; background: var(--primary); animation: pulso 1s ease-in-out infinite; }
 @keyframes pulso { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .sync-dot { animation: none; } }
+
+/* --- Comprobante de pago en modal --- */
+.comprobante-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.comprobante-datos > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--border-soft); border-radius: var(--radius-sm); background: var(--surface-2); }
+.comprobante-pdf { display: block; width: 100%; height: 62vh; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }

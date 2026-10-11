@@ -1,14 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import CrudPage from '@shared/components/CrudPage.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import Icon from '@shared/components/Icon.jsx';
-import { useDescargas } from '@features/ventas/components/Archivos.jsx';
+import { useDescargas, ComprobanteModal } from '@features/ventas/components/Archivos.jsx';
 import MontoAbono from '@features/ventas/components/MontoAbono.jsx';
 import { useData, consumoPedido } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
-import { abrirArchivo, esImagen, esPdf } from '@shared/data/archivos.js';
+import { esImagen, esPdf } from '@shared/data/archivos.js';
 import { agrupar } from '@shared/lib/exportar.js';
 import {
   money, fecha, hoyISO, METODOS_PAGO,
@@ -43,6 +43,8 @@ export default function Abonos() {
 
   const verComp = puedeAccion('Abonos', VER_COMPROBANTE);
   const descComp = puedeAccion('Abonos', DESCARGAR_COMPROBANTE);
+  /* Abono cuyo comprobante se esta viendo (modal, sin salir de la pantalla). */
+  const [verComprobante, setVerComprobante] = useState(null);
 
   /* Se pueden abonar las cotizaciones y los pedidos con saldo; los pagados
      en su totalidad y los ya entregados se listan, pero no se pueden elegir. */
@@ -94,7 +96,7 @@ export default function Abonos() {
   const BotonesComprobante = ({ r }) => (
     <span className="row" style={{ gap: 10 }}>
       {verComp && (
-        <button type="button" className="link-btn row" style={{ gap: 4, fontSize: 12.5 }} onClick={() => abrirArchivo(r.url_comprobante)}>
+        <button type="button" className="link-btn row" style={{ gap: 4, fontSize: 12.5 }} onClick={() => setVerComprobante(r)}>
           <Icon name="eye" size={14} /> Ver
         </button>
       )}
@@ -212,6 +214,7 @@ export default function Abonos() {
   };
 
   return (
+    <>
     <CrudPage
       titulo="Abonos"
       subtitulo="Pagos de los clientes, saldos pendientes y seguimiento financiero de cada pedido."
@@ -317,5 +320,7 @@ export default function Abonos() {
         </div>
       )}
     />
+    <ComprobanteModal abono={verComprobante} onClose={() => setVerComprobante(null)} puedeDescargar={descComp} />
+    </>
   );
 }

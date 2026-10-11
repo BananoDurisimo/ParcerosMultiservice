@@ -9,3 +9,4 @@ documentacion
 .env
 backend/.env
 __pycache__/
+.cloud

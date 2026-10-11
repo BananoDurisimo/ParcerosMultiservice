@@ -1,6 +1,7 @@
 #!/bin/sh
 #
-# Publica el sitio en `gh-pages` cada vez que se empuja `main`.
+# Publica el sitio en `gh-pages` cada vez que se empuja `develop`, la rama de
+# despliegue del proyecto (Render tambien despliega la API desde `develop`).
 #
 # Existe porque el workflow de Actions no corre en esta cuenta (ver el
 # encabezado de .github/workflows/deploy.yml): el despliegue automatico se hace
@@ -21,24 +22,24 @@ fi
 
 # Git entrega por la entrada estandar una linea por referencia empujada:
 #   <ref local> <sha local> <ref remota> <sha remoto>
-empuja_main=0
+empuja_develop=0
 while read -r _ref_local sha_local ref_remota _sha_remoto; do
-  if [ "$ref_remota" = "refs/heads/main" ]; then
+  if [ "$ref_remota" = "refs/heads/develop" ]; then
     # Un sha de puros ceros significa que la rama se esta borrando.
     case "$sha_local" in
-      *[!0]*) empuja_main=1 ;;
+      *[!0]*) empuja_develop=1 ;;
     esac
   fi
 done
 
-[ "$empuja_main" = "1" ] || exit 0
+[ "$empuja_develop" = "1" ] || exit 0
 
 echo ""
 echo "→ Publicando el sitio en gh-pages…"
 if PARCEROS_DEPLOY=1 npm run deploy; then
   echo "→ Sitio publicado."
 else
-  echo "⚠ El sitio NO se publico, pero el push de main sigue su curso." >&2
+  echo "⚠ El sitio NO se publico, pero el push de develop sigue su curso." >&2
   echo "  Corrige el problema y vuelve a ejecutar: npm run deploy" >&2
 fi
 

@@ -32,6 +32,7 @@ primer inicio de sesión (Mi cuenta > Seguridad).
 
 `npm start` ejecuta las migraciones pendientes antes de iniciar el servidor,
 así que en Render basta con desplegar. Son idempotentes: no se repiten.
+Render despliega solo cada commit que llega a la rama `develop` (carpeta `backend/`).
 
 ## Rutas
 

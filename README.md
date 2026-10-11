@@ -42,6 +42,20 @@ ejecutan con `npm test` dentro de `backend/`.
 
 ## Despliegue
 
+**La rama de despliegue es `develop`**: todo lo que llega a `develop` se publica
+solo, el frontend en GitHub Pages y la API en Render. `develop` es además la rama
+por defecto del repositorio, así que los Pull Request apuntan a ella.
+
+| Parte | Dónde vive | Cómo se publica desde `develop` |
+|---|---|---|
+| Frontend | GitHub Pages (rama `gh-pages`) | Hook `scripts/hooks/pre-push` en cada push a `develop` |
+| API | Render, servicio `parceros-multiservice-api` | Auto-deploy de Render al llegar un commit a `develop` (carpeta `backend/`); `npm start` aplica las migraciones pendientes |
+
+Flujo de trabajo: crear una rama desde `develop`, abrir el PR hacia `develop` y
+hacer merge. Si el merge se hace en GitHub (no desde el equipo), el hook no corre:
+la API se despliega igual, pero el sitio hay que publicarlo con `git pull` y
+`npm run deploy` desde `develop`.
+
 El sitio vive en GitHub Pages y se sirve desde el subdirectorio
 `/ParcerosMultiservice/`, por eso `vite.config.js` fija `base` en la compilación
 y el router usa ese mismo valor como `basename`. Como Pages no reescribe rutas,
@@ -52,13 +66,13 @@ Hay tres caminos, todos ya configurados:
 
 | | Cuándo se usa | Qué hace |
 |---|---|---|
-| `scripts/hooks/pre-push` | Automático, en cada push a `main` | Publica desde tu equipo, enganchado al mismo push |
+| `scripts/hooks/pre-push` | Automático, en cada push a `develop` | Publica desde tu equipo, enganchado al mismo push |
 | `npm run deploy` | Manual, desde tu equipo | Compila y empuja `dist/` a la rama `gh-pages` |
 | `.github/workflows/deploy.yml` | Manual, desde la pestaña Actions | Compila y publica con GitHub Actions |
 
 El despliegue automático es un hook de Git, no un workflow: `npm install` apunta
 `core.hooksPath` a `scripts/hooks/` (script `prepare`), y desde ahí cada push a
-`main` compila y publica el sitio. Si la publicación falla, el push de `main`
+`develop` compila y publica el sitio. Si la publicación falla, el push de `develop`
 sigue su curso y basta con ejecutar `npm run deploy` después. Para saltarse el
 hook en un push puntual: `git push --no-verify`.
 

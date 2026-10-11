@@ -4,7 +4,7 @@
  *   npm run deploy
  *
  * Es el camino de publicacion en uso: el hook scripts/hooks/pre-push lo ejecuta
- * en cada push a main. El workflow .github/workflows/deploy.yml quedo en
+ * en cada push a develop. El workflow .github/workflows/deploy.yml quedo en
  * disparo manual porque Actions esta bloqueado por facturacion en la cuenta.
  */
 import { execFileSync } from 'node:child_process';
@@ -30,7 +30,7 @@ rmSync(TMP, { recursive: true, force: true });
 mkdirSync(TMP, { recursive: true });
 
 /* La rama se recrea SIEMPRE a partir de lo ya publicado en el remoto. Si se
-   partiera de main, el commit nuevo no descenderia del anterior y el push
+   partiera de develop, el commit nuevo no descenderia del anterior y el push
    quedaria rechazado por no ser fast-forward. */
 git('fetch', '-q', 'origin');
 const yaPublicada = gitOut('ls-remote', '--heads', 'origin', RAMA) !== '';

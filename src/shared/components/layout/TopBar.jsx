@@ -12,7 +12,8 @@ const TONO_ICO = { error: 'xC', warning: 'alert', info: 'info', success: 'checkC
 export default function TopBar({ titulo, onOpenMenu }) {
   const { user, logout, puede } = useAuth();
   /* Solo los avisos de los modulos a los que el rol tiene permiso. */
-  const notificaciones = useData().notificaciones.filter((n) => puede(n.permiso));
+  const { notificaciones: avisos, sincronizando } = useData();
+  const notificaciones = avisos.filter((n) => puede(n.permiso));
   const toast = useToast();
   const nav = useNavigate();
   const [openBell, setOpenBell] = useState(false);
@@ -55,6 +56,14 @@ export default function TopBar({ titulo, onOpenMenu }) {
         <Icon name="home" size={19} />
       </Link>
       <span className="title" style={{ marginLeft: 4 }}>{titulo}</span>
+
+      {/* Los cambios ya se ven en pantalla; esto solo indica que se estan
+          guardando en el servidor, sin bloquear el trabajo. */}
+      {sincronizando && (
+        <span className="sync-pill" role="status" aria-live="polite">
+          <span className="sync-dot" aria-hidden="true" /> Guardando…
+        </span>
+      )}
 
       <div className="grow" />
 

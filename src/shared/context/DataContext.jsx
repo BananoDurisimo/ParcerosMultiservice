@@ -139,55 +139,80 @@ export function DataProvider({ children }) {
      leer todo, para tomar lo que calcula la base de datos (ids definitivos,
      existencias, historial). Si el servidor rechaza un cambio, se avisa y se
      recargan los datos, con lo que la pantalla vuelve a lo guardado.
+
+     Solo la primera carga (al iniciar sesion o al abrir la pagina) muestra
+     la pantalla de «Conectando con el servidor…». Las recargas que siguen a
+     un cambio van en segundo plano: el usuario sigue trabajando mientras
+     tanto y `sincronizando` alimenta el aviso discreto de la barra superior.
      -------------------------------------------------------------- */
   const [estadoDatos, setEstadoDatos] = useState(() => (leerToken() ? 'cargando' : 'inactivo'));
   const [errorDatos, setErrorDatos] = useState('');
-
-  const cargar = useCallback(async () => {
-    setEstadoDatos('cargando');
-    setErrorDatos('');
-    try {
-      const d = deServidor(await api('GET', '/datos'));
-      rawRef.current = d;
-      setRaw(d);
-      setEstadoDatos('listo');
-    } catch (e) {
-      setErrorDatos(e.message);
-      setEstadoDatos(e.status === 401 ? 'inactivo' : 'error');
-    }
-  }, []);
-
-  const vaciar = useCallback(() => {
-    rawRef.current = VACIO;
-    setRaw(VACIO);
-    setEstadoDatos('inactivo');
-  }, []);
-
-  useEffect(() => { if (leerToken()) cargar(); }, [cargar]);
+  const [sincronizando, setSincronizando] = useState(false);
 
   /* Ids creados en el navegador -> id que asigno el servidor. */
   const idsServidor = useRef({});
   const sid = useCallback((col, id) => idsServidor.current[col]?.get(id) ?? id, []);
   const cola = useRef(Promise.resolve());
   const pendientes = useRef(0);
+  /* Cada recarga lleva un numero: solo se aplica la respuesta de la ultima. */
+  const recarga = useRef(0);
+
+  /** `segundoPlano`: recarga sin bloquear la pantalla (despues de un cambio). */
+  const cargar = useCallback(async ({ segundoPlano = false } = {}) => {
+    const n = ++recarga.current;
+    if (!segundoPlano) {
+      setEstadoDatos('cargando');
+      setErrorDatos('');
+    }
+    try {
+      const d = deServidor(await api('GET', '/datos'));
+      /* Si mientras llegaba la respuesta se hizo otro cambio (o salio otra
+         recarga), estos datos ya estan viejos: pisarian lo que el usuario
+         acaba de hacer. Se descartan; la cola vuelve a recargar al vaciarse. */
+      if (n !== recarga.current || (segundoPlano && pendientes.current > 0)) return;
+      rawRef.current = d;
+      setRaw(d);
+      /* Con los datos del servidor en pantalla ya no quedan ids del navegador. */
+      idsServidor.current = {};
+      setEstadoDatos('listo');
+      setSincronizando(false);
+    } catch (e) {
+      if (n !== recarga.current) return;
+      setSincronizando(false);
+      if (segundoPlano && e.status !== 401) {
+        /* Los datos en pantalla siguen siendo validos: se avisa sin sacar al
+           usuario de lo que esta haciendo. */
+        toast.warning('No se pudieron actualizar los datos desde el servidor. Se reintentará con el próximo cambio.', 'Sin conexión');
+        return;
+      }
+      setErrorDatos(e.message);
+      setEstadoDatos(e.status === 401 ? 'inactivo' : 'error');
+    }
+  }, [toast]);
+
+  const vaciar = useCallback(() => {
+    recarga.current += 1;
+    rawRef.current = VACIO;
+    setRaw(VACIO);
+    setEstadoDatos('inactivo');
+    setSincronizando(false);
+  }, []);
+
+  useEffect(() => { if (leerToken()) cargar(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sincronizar = useCallback((tarea) => {
     pendientes.current += 1;
+    setSincronizando(true);
     cola.current = cola.current
       .then(tarea)
       .catch((e) => {
+        /* La recarga del final devuelve la pantalla a lo que quedo guardado. */
         toast.error(e.message, 'No se guardó el cambio');
-        pendientes.current = 0;
-        cola.current = Promise.resolve();
-        idsServidor.current = {};
-        return cargar();
       })
       .finally(() => {
         pendientes.current = Math.max(0, pendientes.current - 1);
-        if (pendientes.current === 0) {
-          idsServidor.current = {};
-          cargar();
-        }
+        if (pendientes.current === 0) cargar({ segundoPlano: true });
       });
   }, [cargar, toast]);
 
@@ -657,7 +682,7 @@ export function DataProvider({ children }) {
       value={{
         db, opciones, create, update, remove, nuevoId, faltantes, expandirReceta, stats, getStats, notificaciones,
         solicitarRecuperacion, enlaceValido, restablecerClave,
-        estadoDatos, errorDatos, cargar, vaciar,
+        estadoDatos, errorDatos, cargar, vaciar, sincronizando,
       }}
     >
       {children}

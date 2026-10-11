@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useMemo } from 'react';
 import Icon from '@shared/components/Icon.jsx';
 
 const ToastContext = createContext(null);
@@ -22,13 +22,15 @@ export function ToastProvider({ children }) {
     return id;
   }, [remove]);
 
-  const api = {
+  /* Objeto estable: si cambiara con cada aviso, todo lo que depende de el
+     (la cola de guardado de DataContext, por ejemplo) se volveria a crear. */
+  const api = useMemo(() => ({
     push,
     success: (m, t) => push('success', m, t),
     error:   (m, t) => push('error', m, t),
     warning: (m, t) => push('warning', m, t),
     info:    (m, t) => push('info', m, t),
-  };
+  }), [push]);
 
   return (
     <ToastContext.Provider value={api}>

@@ -51,6 +51,7 @@ export default function Cuenta() {
     else if (form.nombre.trim().length > 80) n.nombre = 'Máximo 80 caracteres.';
     if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(form.correo)) n.correo = 'Ingrese un correo electrónico válido.';
     else if (otros.some((u) => igual(u.correo_empresarial, form.correo))) n.correo = 'Ya existe otro usuario con este correo.';
+    else if (igual(perfil?.correo_empresarial, 'admin@parceros.ni') && !igual(form.correo, 'admin@parceros.ni')) n.correo = 'El correo del usuario admin no se puede cambiar.';
     if (!/^[\d\s()+-]{7,}$/.test(form.telefono)) n.telefono = 'Ingrese un teléfono válido.';
     setErrs(n);
     if (Object.keys(n).length) { toast.error('Revise los campos marcados.', 'Validación de campos'); return; }

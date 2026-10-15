@@ -6,6 +6,8 @@ import { useData } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
 import { fecha, hoyISO, ESTADOS_REGISTRO, TIPOS_DOCUMENTO } from '@shared/data/mock.js';
 
+const CORREO_ADMIN = 'admin@parceros.ni';
+
 /** Titulo de cada bloque del formulario. */
 const seccion = (n, icono, texto) => ({
   name: `sec${n}`, type: 'custom', full: true,
@@ -23,6 +25,18 @@ export default function Usuarios() {
   const { db, opciones } = useData();
   const { user } = useAuth();
   const roles = opciones('roles');
+  const idAdministrador = db.roles.find((r) => r.nombre === 'Administrador')?.id;
+
+  /* El usuario admin siempre es Administrador y su correo no cambia: con
+     otro rol o correo el sistema podria quedar sin quien lo administre (la
+     base de datos tambien lo impide, 009). */
+  const validarExtra = (v, modo, actual) => {
+    if (actual?.correo_empresarial !== CORREO_ADMIN) return null;
+    const errs = {};
+    if (String(v.id_rol) !== String(idAdministrador)) errs.id_rol = 'El usuario admin siempre tiene el rol Administrador: no se le puede cambiar.';
+    if (String(v.correo_empresarial).trim().toLowerCase() !== CORREO_ADMIN) errs.correo_empresarial = 'El correo del usuario admin no se puede cambiar.';
+    return errs;
+  };
 
   /* Los movimientos guardan quien los hizo: un usuario con acciones en el
      historial se desactiva, para no perder la trazabilidad. */
@@ -46,6 +60,7 @@ export default function Usuarios() {
       searchKeys={['nombre_empleado', 'correo_empresarial', 'documento', 'cargo', 'calc_rol']}
       tablaCompacta
       eliminacion={{ validar: validarEliminar }}
+      validarExtra={validarExtra}
       filtros={[
         { key: 'id_rol', label: 'Rol', options: roles },
         { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
@@ -72,7 +87,7 @@ export default function Usuarios() {
         { key: 'cargo', label: 'Cargo', mobile: 'meta', render: (r) => <span className="muted">{r.cargo || '—'}</span> },
         { key: 'calc_rol', label: 'Rol', mobile: 'meta', render: (r) => <span className="badge badge-primary">{r.calc_rol}</span> },
         { key: 'fecha_ingreso', label: 'Fecha de ingreso', render: (r) => <span className="caption">{fecha(r.fecha_ingreso)}</span> },
-        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="usuarios" modulo="Usuarios" options={ESTADOS_REGISTRO} disabled={r.correo_empresarial === 'admin@parceros.ni'} /> },
+        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="usuarios" modulo="Usuarios" options={ESTADOS_REGISTRO} disabled={r.correo_empresarial === CORREO_ADMIN} /> },
       ]}
       campos={[
         seccion(1, 'user', 'Datos personales'),

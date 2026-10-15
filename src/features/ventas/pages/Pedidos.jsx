@@ -102,7 +102,8 @@ export default function Pedidos() {
     descargarDiseno: puedeAccion(modulo, DESCARGAR_DISENO),
     verComprobante: puedeAccion(modulo, VER_COMPROBANTE),
     descargarComprobante: puedeAccion(modulo, DESCARGAR_COMPROBANTE),
-    descargarCotizacion: vista.id === 'cotizaciones' && puedeAccion('Cotizaciones', DESCARGAR_COTIZACION),
+    /* La cotizacion se descarga desde Cotizaciones y desde Pedidos (cada una con su privilegio). */
+    descargarCotizacion: ['cotizaciones', 'pedidos'].includes(vista.id) && puedeAccion(modulo, DESCARGAR_COTIZACION),
   };
 
   /* PDF de la cotizacion para entregar al cliente. */

@@ -19,7 +19,7 @@ const fechaTxt = (iso) => (iso ? iso.split('-').reverse().join('/') : '—');
 const cant = (n) => Number(n || 0).toLocaleString('es-NI', { maximumFractionDigits: 3 });
 
 /**
- * `c`: { codigo, fecha, estado, cliente: { nombre, documento, telefono, correo },
+ * `c`: { codigo, fecha, abonado, cliente: { nombre, documento, telefono, correo },
  *        productos: [{ nombre, detalle, cantidad, precio }],
  *        insumos: [{ nombre, unidad, cantidad, precio }],
  *        descripcion, generado (Date) }
@@ -112,7 +112,11 @@ export function pdfCotizacion(c, diseno) {
   const filasTotal = [
     ...(c.productos.length && c.insumos.length ? [['Subtotal productos', dinero(totalProductos)], ['Subtotal personalización', dinero(totalInsumos)]] : []),
     ['TOTAL', dinero(total)],
-    ['Abono inicial (50%)', dinero(Math.round(total * 50) / 100)],
+    /* Un pedido ya tiene abonos: se muestra lo pagado y lo que falta. Una
+       cotizacion todavia no: se muestra el abono inicial que corresponde. */
+    ...(c.abonado > 0
+      ? [['Abonado', dinero(c.abonado)], ['Saldo pendiente', dinero(Math.max(0, total - c.abonado))]]
+      : [['Abono inicial (50%)', dinero(Math.round(total * 50) / 100)]]),
   ];
   espacio(filasTotal.length * 20 + 10);
   const xt = W - M - 250;
@@ -195,6 +199,7 @@ export function datosCotizacion(r, db) {
   return {
     codigo: r.calc_codigo,
     fecha: r.fecha_creacion,
+    abonado: r.calc_abonado || 0,
     cliente: {
       nombre: cli.nombre || r.calc_cliente,
       documento: cli.documento ? `${cli.tipodocumento}: ${cli.documento}` : '',

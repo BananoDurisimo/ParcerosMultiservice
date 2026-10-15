@@ -32,6 +32,7 @@ primer inicio de sesión (Mi cuenta > Seguridad).
 | `007_usuario_documento_y_cotizacion.sql` | Tipo de documento del usuario; `nombre_usuario` pasa a opcional (se inicia sesión con el correo); privilegio `Descargar cotización` |
 | `008_bloquear_rol_administrador.sql` | Devuelve al Administrador todos los módulos y acciones y lo bloquea con triggers: no se puede editar, cambiar de estado, eliminar ni quitarle permisos |
 | `009_usuario_admin_siempre_administrador.sql` | Devuelve el rol Administrador al usuario `admin@parceros.ni` y lo bloquea: no se le puede cambiar el rol ni el correo |
+| `010_descargar_cotizacion_en_pedidos.sql` | Privilegio `Descargar cotización` también en el módulo Pedidos |
 
 `npm start` ejecuta las migraciones pendientes antes de iniciar el servidor,
 así que en Render basta con desplegar. Son idempotentes: no se repiten.

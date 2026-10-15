@@ -4,8 +4,15 @@ import Badge from '@shared/components/ui/Badge.jsx';
 import MiniTabla from '@shared/components/ui/MiniTabla.jsx';
 import HistorialRegistro from '@shared/components/ui/HistorialRegistro.jsx';
 import PermisosField from '@features/configuracion/components/PermisosField.jsx';
+import Icon from '@shared/components/Icon.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { ESTADOS_REGISTRO } from '@shared/data/mock.js';
+
+/** El rol Administrador tiene siempre todos los accesos y esta bloqueado: no
+ *  se edita, no cambia de estado, no se elimina (la API y la base de datos
+ *  tambien lo impiden). */
+const esAdministrador = (r) => r?.nombre === 'Administrador';
+const MENSAJE_PROTEGIDO = 'El rol Administrador está protegido: tiene todos los permisos y no se puede modificar ni eliminar.';
 
 /** Tabla `rol` (id_rol, nombre, estado) + tablas puente `rolxpermiso`
  *  (modulos a los que entra) y `rolxprivilegio` (acciones dentro de cada modulo). */
@@ -19,6 +26,12 @@ export default function Roles() {
 
   const detalle = (r) => (
     <div>
+      {esAdministrador(r) && (
+        <div className="alert alert-info" style={{ marginBottom: 16 }}>
+          <Icon name="lock" size={18} />
+          <div>{MENSAJE_PROTEGIDO}</div>
+        </div>
+      )}
       <div className="detail-grid">
         <div className="detail-item"><div className="dl">Rol</div><div className="dv">{r.nombre}</div></div>
         <div className="detail-item"><div className="dl">Estado</div><div className="dv"><Badge>{r.estado}</Badge></div></div>
@@ -74,18 +87,27 @@ export default function Roles() {
       defaults={{ permisos: [], privilegios: [], estado: 'Activo' }}
       validarExtra={validarExtra}
       renderDetalle={detalle}
+      puedeEditarFila={(r) => !esAdministrador(r)}
       eliminacion={{
-        validar: (r) => (r.calc_usuarios > 0
+        validar: (r) => (esAdministrador(r) ? MENSAJE_PROTEGIDO : r.calc_usuarios > 0
           ? `El rol ${r.nombre} está asignado a ${r.calc_usuarios} usuario(s). Asígneles otro rol antes de eliminarlo.`
           : null),
       }}
       columnas={[
-        { key: 'nombre', label: 'Rol', mobile: 'title', render: (r) => <span className="cell-main">{r.nombre}</span> },
+        {
+          key: 'nombre', label: 'Rol', mobile: 'title',
+          render: (r) => (
+            <span className="row" style={{ gap: 8 }}>
+              <span className="cell-main">{r.nombre}</span>
+              {esAdministrador(r) && <span className="badge badge-info" title={MENSAJE_PROTEGIDO}><Icon name="lock" size={11} /> Protegido</span>}
+            </span>
+          ),
+        },
         { key: 'calc_permisos', label: 'Permisos', sortable: false, render: (r) => <span className="caption">{r.calc_permisos.join(' · ') || '—'}</span> },
         { key: 'calc_total_permisos', label: 'Total permisos', align: 'center', mobile: 'meta', sortable: false, render: (r) => <span className="badge badge-primary">{r.calc_total_permisos}</span> },
         { key: 'calc_total_privilegios', label: 'Privilegios', align: 'center', render: (r) => <span className="badge badge-neutral">{r.calc_total_privilegios}</span> },
         { key: 'calc_usuarios', label: 'Usuarios', align: 'center', mobile: 'meta', render: (r) => <strong>{r.calc_usuarios}</strong> },
-        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="roles" modulo="Roles" options={ESTADOS_REGISTRO} disabled={r.nombre === 'Administrador'} /> },
+        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="roles" modulo="Roles" options={ESTADOS_REGISTRO} disabled={esAdministrador(r)} /> },
       ]}
       campos={[
         { name: 'nombre', label: 'Nombre del rol', type: 'text', required: true, noSpecial: true, unique: true, maxLength: 40, full: true },

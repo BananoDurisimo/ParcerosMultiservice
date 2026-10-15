@@ -158,6 +158,15 @@ const ANTES_DE_ELIMINAR = {
 
 const router = Router();
 
+/* El rol Administrador esta bloqueado: no se edita, no cambia de estado, no
+   se elimina ni pierde permisos (la base de datos tambien lo impide, 008). */
+const ROL_PROTEGIDO = 'El rol Administrador está protegido: no se puede modificar ni eliminar.';
+const esRolAdministrador = async (coleccion, id) => {
+  if (coleccion !== 'roles') return false;
+  const { rows: [rol] } = await query('SELECT nombre FROM rol WHERE id_rol=$1', [id]);
+  return rol?.nombre === 'Administrador';
+};
+
 const configDe = (req, res) => {
   const cfg = COLECCIONES[req.params.coleccion];
   if (!cfg) res.status(404).json({ message: 'Ruta no encontrada.' });
@@ -195,13 +204,10 @@ router.put('/:coleccion/:id', async (req, res, next) => {
     campos = PERFIL;
   }
   try {
-    /* El rol Administrador (y el rol de quien hace la peticion) no se puede inactivar:
-       dejaria el sistema sin nadie que pueda entrar a reactivarlo. */
-    if (req.params.coleccion === 'roles' && req.body.activo === false) {
-      const { rows: [rol] } = await query('SELECT nombre FROM rol WHERE id_rol=$1', [id]);
-      if (rol?.nombre === 'Administrador' || id === req.user.id_rol) {
-        return res.status(400).json({ message: 'El rol Administrador no se puede inactivar.' });
-      }
+    if (await esRolAdministrador(req.params.coleccion, id)) return res.status(400).json({ message: ROL_PROTEGIDO });
+    /* El rol de quien hace la peticion no se puede inactivar: se quedaria sin acceso. */
+    if (req.params.coleccion === 'roles' && req.body.activo === false && id === req.user.id_rol) {
+      return res.status(400).json({ message: 'No puede inactivar el rol con el que inició sesión.' });
     }
     const fila = await conUsuario(req.user.id_usuario, async (db) => {
       const actual = await actualizar(db, cfg, id, limpiar(campos, req.body));
@@ -222,6 +228,7 @@ router.delete('/:coleccion/:id', async (req, res, next) => {
     return res.status(400).json({ message: 'No puede eliminar su propio usuario.' });
   }
   try {
+    if (await esRolAdministrador(req.params.coleccion, id)) return res.status(400).json({ message: ROL_PROTEGIDO });
     const borradas = await conUsuario(req.user.id_usuario, async (db) => {
       await ANTES_DE_ELIMINAR[req.params.coleccion]?.(db, id);
       return (await db.query(`DELETE FROM ${cfg.tabla} WHERE ${cfg.pk}=$1`, [id])).rowCount;

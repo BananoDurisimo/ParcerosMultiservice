@@ -30,6 +30,7 @@ primer inicio de sesión (Mi cuenta > Seguridad).
 | `005_modulo_reportes.sql` | Permiso `Reportes` (retirado en la 006) |
 | `006_productos_y_exportacion.sql` | Retira el módulo Reportes; tallas; categorías de producto, productos base con su receta y `detalle_pedido_producto`; la receta del pedido se copia a `detalle_pedido_insumo` con `de_receta`; total del pedido = productos + personalización; consumo de inventario agrupado por insumo; privilegio `Exportar` en abonos, cotizaciones, pedidos, ventas, insumos y compras |
 | `007_usuario_documento_y_cotizacion.sql` | Tipo de documento del usuario; `nombre_usuario` pasa a opcional (se inicia sesión con el correo); privilegio `Descargar cotización` |
+| `008_bloquear_rol_administrador.sql` | Devuelve al Administrador todos los módulos y acciones y lo bloquea con triggers: no se puede editar, cambiar de estado, eliminar ni quitarle permisos |
 
 `npm start` ejecuta las migraciones pendientes antes de iniciar el servidor,
 así que en Render basta con desplegar. Son idempotentes: no se repiten.

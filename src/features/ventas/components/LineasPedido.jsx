@@ -32,21 +32,24 @@ function Buscador({ value, onChange, placeholder }) {
 }
 
 /**
- * Columna izquierda del formulario de cotizacion / pedido.
+ * Columna izquierda del formulario de cotizacion / pedido, en tres pestañas.
+ * Cada una muestra solo lo suyo, para no mezclar catalogos ni listas:
  *
- * 1. Productos (detalle_pedido_producto): el producto base -p. ej. «Jersey
- *    XL Drift»- se cobra a su precio de venta. Su receta se calcula sola:
- *    10 jerseys descuentan 10 veces la tela de uno. Esa receta se ve, pero no
- *    se edita, y no se cobra aparte.
- * 2. Personalizacion (detalle_pedido_insumo): estampado, colores, diseño…
- *    cada insumo con su cantidad y su precio, que si se cobran.
+ * 1. Productos (detalle_pedido_producto): catalogo de productos base -p. ej.
+ *    «Jersey XL Drift»-, los agregados con sus unidades y precio, y los
+ *    insumos que su receta descuenta (se calculan solos: no se editan ni se
+ *    cobran aparte).
+ * 2. Personalización (detalle_pedido_insumo): catalogo de insumos y los
+ *    agregados (estampado, colores, diseño…) con cantidad y precio.
+ * 3. Resumen: el desglose completo del total y lo que se descontara del
+ *    inventario, para revisar antes de guardar.
  *
- * Un solo catalogo con buscador y dos pestañas (Productos / Personalización)
- * para no recorrer dos listas largas; debajo, lo agregado al pedido.
+ * Cada pestaña muestra cuanto lleva (lineas o total), asi se ve el avance sin
+ * abrirlas. El error de las lineas se muestra arriba, visible en cualquiera.
  */
 export default function LineasPedido({ productos = [], insumos = [], onProductos, onInsumos, error, readOnly }) {
   const { db, expandirReceta } = useData();
-  const [catalogo, setCatalogo] = useState('productos');
+  const [pestana, setPestana] = useState('productos');
   const [q, setQ] = useState('');
   const texto = normTexto(q.trim());
 
@@ -62,30 +65,63 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
   const quitar = (lineas, set) => (idx) => set(lineas.filter((_, j) => j !== idx));
 
   const receta = expandirReceta(productos.filter((l) => cantidadValida(l, true)));
+  const total = totalLineas(productos, insumos);
+  const abrir = (p) => { setPestana(p); setQ(''); };
+
+  const PESTANAS = [
+    { id: 'productos', icono: 'shirt', label: 'Productos', nota: productos.length },
+    { id: 'insumos', icono: 'sparkle', label: 'Personalización', nota: insumos.length },
+    { id: 'resumen', icono: 'receipt', label: 'Resumen', nota: money(total) },
+  ];
+
+  /* Insumos que la receta descuenta del inventario (solo lectura). */
+  const recetaAuto = receta.length > 0 && (
+    <div className="field">
+      <label><Icon name="lock" size={13} /> Insumos de los productos (automático)</label>
+      <div className="receta-auto">
+        {receta.map((r) => {
+          const i = insumo(r.id_insumo);
+          const falta = i && r.cantidad > Number(i.stock);
+          return (
+            <div className="linea" key={r.id_insumo}>
+              <span>{i?.nombre || `#${r.id_insumo}`}</span>
+              <span className={falta ? 'falta' : 'caption'}>
+                {r.cantidad} {unidadDe(i)}{falta ? ` · hay ${i.stock}` : ''}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <span className="caption">Sale de la receta de cada producto por las unidades pedidas. Descuenta inventario; no se cobra aparte.</span>
+    </div>
+  );
 
   return (
     <div className="stack" style={{ gap: 14 }}>
-      {!readOnly && (
-        <div className="field">
-          <div className="between" style={{ gap: 10, flexWrap: 'wrap' }}>
-            <label>Catálogo</label>
-            <div className="seg" role="tablist" aria-label="Catálogo a mostrar">
-              <button type="button" role="tab" aria-selected={catalogo === 'productos'} className={catalogo === 'productos' ? 'is-on' : ''} onClick={() => setCatalogo('productos')}>
-                <Icon name="shirt" size={14} /> Productos
-              </button>
-              <button type="button" role="tab" aria-selected={catalogo === 'insumos'} className={catalogo === 'insumos' ? 'is-on' : ''} onClick={() => setCatalogo('insumos')}>
-                <Icon name="sparkle" size={14} /> Personalización
-              </button>
-            </div>
-          </div>
-          <div className="ins-catalogo">
-            <Buscador
-              value={q} onChange={setQ}
-              placeholder={catalogo === 'productos' ? 'Buscar producto por nombre, prenda, talla o tela…' : 'Buscar insumo por nombre, tipo o unidad…'}
-            />
-            <div className="ins-lista">
-              {catalogo === 'productos' ? (
-                <>
+      <div className="lp-tabs" role="tablist" aria-label="Contenido del registro">
+        {PESTANAS.map((p) => (
+          <button
+            key={p.id} type="button" role="tab" aria-selected={pestana === p.id}
+            className={`lp-tab ${pestana === p.id ? 'is-on' : ''}`} onClick={() => abrir(p.id)}
+          >
+            <Icon name={p.icono} size={15} />
+            <span>{p.label}</span>
+            <span className="lp-nota">{p.nota}</span>
+          </button>
+        ))}
+      </div>
+
+      {error && <div className="field-error"><Icon name="alert" size={12} /> {error}</div>}
+
+      {/* ---------------- Productos ---------------- */}
+      {pestana === 'productos' && (
+        <>
+          {!readOnly && (
+            <div className="field">
+              <label>Catálogo de productos</label>
+              <div className="ins-catalogo">
+                <Buscador value={q} onChange={setQ} placeholder="Buscar producto por nombre, prenda, talla o tela…" />
+                <div className="ins-lista">
                   {listaProductos.map((p) => {
                     const baja = p.estado !== 'Activo';
                     const ya = productos.some((l) => String(l.id_producto) === String(p.id));
@@ -109,9 +145,70 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
                       {db.productos.length ? `No hay productos que coincidan con «${q.trim()}».` : 'Todavía no hay productos: regístrelos en el módulo Productos.'}
                     </div>
                   )}
-                </>
-              ) : (
-                <>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="field">
+            <label>Productos agregados</label>
+            <div className="ins-agregados">
+              <div className="ins-linea head">
+                <span>Producto</span><span>Unidades</span><span>Precio unit. (C$)</span><span />
+              </div>
+              {productos.length === 0 && (
+                <div className="caption" style={{ padding: '14px 12px' }}>Todavía no hay productos: agréguelos desde el catálogo.</div>
+              )}
+              {productos.map((l, idx) => {
+                const p = producto(l.id_producto);
+                return (
+                  <div className="ins-linea" key={l.id_producto}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{p?.nombre || `#${l.id_producto}`}</div>
+                      <div className="caption">{p?.calc_categoria} · Talla {p?.calc_talla} · {money(subtotal(l))}</div>
+                    </div>
+                    <input
+                      className={`input ${cantidadValida(l, true) ? '' : 'has-error'}`}
+                      type="number" min="1" step="1" aria-label={`Unidades de ${p?.nombre}`}
+                      value={l.cantidad} readOnly={readOnly}
+                      onChange={(e) => cambiar(productos, onProductos)(idx, 'cantidad', e.target.value)}
+                    />
+                    <input
+                      className={`input ${precioValido(l) ? '' : 'has-error'}`}
+                      type="number" min="0" step="0.01" aria-label={`Precio unitario de ${p?.nombre}`}
+                      value={l.precio_unitario} readOnly={readOnly}
+                      onChange={(e) => cambiar(productos, onProductos)(idx, 'precio_unitario', e.target.value)}
+                    />
+                    {!readOnly ? (
+                      <button type="button" className="icon-btn is-delete" onClick={() => quitar(productos, onProductos)(idx)} aria-label={`Quitar ${p?.nombre}`} title="Quitar">
+                        <Icon name="trash" size={15} />
+                      </button>
+                    ) : <span />}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {recetaAuto}
+
+          {!readOnly && (
+            <button type="button" className="btn btn-sm lp-siguiente" onClick={() => abrir('insumos')}>
+              Siguiente: personalización <Icon name="chevR" size={14} />
+            </button>
+          )}
+        </>
+      )}
+
+      {/* ---------------- Personalizacion ---------------- */}
+      {pestana === 'insumos' && (
+        <>
+          {!readOnly && (
+            <div className="field">
+              <label>Catálogo de insumos de personalización</label>
+              <div className="ins-catalogo">
+                <Buscador value={q} onChange={setQ} placeholder="Buscar insumo por nombre, tipo o unidad…" />
+                <div className="ins-lista">
                   {listaInsumos.map((i) => {
                     const baja = i.estado !== 'Activo';
                     const ya = insumos.some((l) => String(l.id_insumo) === String(i.id));
@@ -136,122 +233,82 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
                     );
                   })}
                   {listaInsumos.length === 0 && <div className="caption" style={{ padding: 14 }}>No hay insumos que coincidan con «{q.trim()}».</div>}
-                </>
-              )}
+                </div>
+              </div>
             </div>
+          )}
+
+          <div className="field">
+            <label>Insumos de personalización agregados</label>
+            <div className="ins-agregados">
+              <div className="ins-linea head">
+                <span>Insumo</span><span>Cantidad</span><span>Precio unit. (C$)</span><span />
+              </div>
+              {insumos.length === 0 && (
+                <div className="caption" style={{ padding: '14px 12px' }}>Opcional: estampados, colores o accesorios desde el catálogo.</div>
+              )}
+              {insumos.map((l, idx) => {
+                const i = insumo(l.id_insumo);
+                return (
+                  <div className="ins-linea" key={l.id_insumo}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{i?.nombre || `#${l.id_insumo}`}</div>
+                      <div className="caption">Unidad: {i?.calc_unidad} ({unidadDe(i)}) · {money(subtotal(l))}</div>
+                    </div>
+                    <div className="input-unidad">
+                      <input
+                        className={`input ${cantidadValida(l) ? '' : 'has-error'}`}
+                        type="number" min="0" step="any" aria-label={`Cantidad de ${i?.nombre}`}
+                        value={l.cantidad} readOnly={readOnly}
+                        onChange={(e) => cambiar(insumos, onInsumos)(idx, 'cantidad', e.target.value)}
+                      />
+                      <span className="unidad">{unidadDe(i)}</span>
+                    </div>
+                    <input
+                      className={`input ${precioValido(l) ? '' : 'has-error'}`}
+                      type="number" min="0" step="0.01" aria-label={`Precio unitario de ${i?.nombre}`}
+                      value={l.precio_unitario} readOnly={readOnly}
+                      onChange={(e) => cambiar(insumos, onInsumos)(idx, 'precio_unitario', e.target.value)}
+                    />
+                    {!readOnly ? (
+                      <button type="button" className="icon-btn is-delete" onClick={() => quitar(insumos, onInsumos)(idx)} aria-label={`Quitar ${i?.nombre}`} title="Quitar">
+                        <Icon name="trash" size={15} />
+                      </button>
+                    ) : <span />}
+                  </div>
+                );
+              })}
+            </div>
+            <span className="caption">Edite cantidades y precios directamente en cada línea.</span>
           </div>
-        </div>
+
+          {!readOnly && (
+            <button type="button" className="btn btn-sm lp-siguiente" onClick={() => abrir('resumen')}>
+              Siguiente: resumen <Icon name="chevR" size={14} />
+            </button>
+          )}
+        </>
       )}
 
-      {/* ---- Productos agregados ---- */}
-      <div className="field">
-        <label><Icon name="shirt" size={14} /> Productos del pedido</label>
-        <div className="ins-agregados">
-          <div className="ins-linea head">
-            <span>Producto</span><span>Unidades</span><span>Precio unit. (C$)</span><span />
-          </div>
-          {productos.length === 0 && (
-            <div className="caption" style={{ padding: '14px 12px' }}>Agregue productos desde la pestaña «Productos» del catálogo.</div>
-          )}
-          {productos.map((l, idx) => {
-            const p = producto(l.id_producto);
-            return (
-              <div className="ins-linea" key={l.id_producto}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{p?.nombre || `#${l.id_producto}`}</div>
-                  <div className="caption">{p?.calc_categoria} · Talla {p?.calc_talla} · {money(subtotal(l))}</div>
-                </div>
-                <input
-                  className={`input ${cantidadValida(l, true) ? '' : 'has-error'}`}
-                  type="number" min="1" step="1" aria-label={`Unidades de ${p?.nombre}`}
-                  value={l.cantidad} readOnly={readOnly}
-                  onChange={(e) => cambiar(productos, onProductos)(idx, 'cantidad', e.target.value)}
-                />
-                <input
-                  className={`input ${precioValido(l) ? '' : 'has-error'}`}
-                  type="number" min="0" step="0.01" aria-label={`Precio unitario de ${p?.nombre}`}
-                  value={l.precio_unitario} readOnly={readOnly}
-                  onChange={(e) => cambiar(productos, onProductos)(idx, 'precio_unitario', e.target.value)}
-                />
-                {!readOnly ? (
-                  <button type="button" className="icon-btn is-delete" onClick={() => quitar(productos, onProductos)(idx)} aria-label={`Quitar ${p?.nombre}`} title="Quitar">
-                    <Icon name="trash" size={15} />
-                  </button>
-                ) : <span />}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ---- Receta calculada (solo lectura) ---- */}
-      {receta.length > 0 && (
-        <div className="field">
-          <label><Icon name="lock" size={13} /> Insumos de los productos (automático)</label>
-          <div className="receta-auto">
-            {receta.map((r) => {
-              const i = insumo(r.id_insumo);
-              const falta = i && r.cantidad > Number(i.stock);
-              return (
-                <div className="linea" key={r.id_insumo}>
-                  <span>{i?.nombre || `#${r.id_insumo}`}</span>
-                  <span className={falta ? 'falta' : 'caption'}>
-                    {r.cantidad} {unidadDe(i)}{falta ? ` · hay ${i.stock}` : ''}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <span className="caption">Sale de la receta de cada producto por las unidades pedidas. Descuenta inventario; no se cobra aparte.</span>
-        </div>
+      {/* ---------------- Resumen ---------------- */}
+      {pestana === 'resumen' && (
+        <>
+          <DesglosePedido productos={productos} insumos={insumos} />
+          {recetaAuto}
+        </>
       )}
+    </div>
+  );
+}
 
-      {/* ---- Personalizacion ---- */}
-      <div className="field">
-        <label><Icon name="sparkle" size={14} /> Insumos de personalización</label>
-        <div className="ins-agregados">
-          <div className="ins-linea head">
-            <span>Insumo</span><span>Cantidad</span><span>Precio unit. (C$)</span><span />
-          </div>
-          {insumos.length === 0 && (
-            <div className="caption" style={{ padding: '14px 12px' }}>Opcional: estampados, colores o accesorios desde la pestaña «Personalización».</div>
-          )}
-          {insumos.map((l, idx) => {
-            const i = insumo(l.id_insumo);
-            return (
-              <div className="ins-linea" key={l.id_insumo}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{i?.nombre || `#${l.id_insumo}`}</div>
-                  <div className="caption">Unidad: {i?.calc_unidad} ({unidadDe(i)}) · {money(subtotal(l))}</div>
-                </div>
-                <div className="input-unidad">
-                  <input
-                    className={`input ${cantidadValida(l) ? '' : 'has-error'}`}
-                    type="number" min="0" step="any" aria-label={`Cantidad de ${i?.nombre}`}
-                    value={l.cantidad} readOnly={readOnly}
-                    onChange={(e) => cambiar(insumos, onInsumos)(idx, 'cantidad', e.target.value)}
-                  />
-                  <span className="unidad">{unidadDe(i)}</span>
-                </div>
-                <input
-                  className={`input ${precioValido(l) ? '' : 'has-error'}`}
-                  type="number" min="0" step="0.01" aria-label={`Precio unitario de ${i?.nombre}`}
-                  value={l.precio_unitario} readOnly={readOnly}
-                  onChange={(e) => cambiar(insumos, onInsumos)(idx, 'precio_unitario', e.target.value)}
-                />
-                {!readOnly ? (
-                  <button type="button" className="icon-btn is-delete" onClick={() => quitar(insumos, onInsumos)(idx)} aria-label={`Quitar ${i?.nombre}`} title="Quitar">
-                    <Icon name="trash" size={15} />
-                  </button>
-                ) : <span />}
-              </div>
-            );
-          })}
-        </div>
-        {error
-          ? <span className="field-error"><Icon name="alert" size={12} /> {error}</span>
-          : <span className="caption">Edite cantidades y precios directamente en cada línea.</span>}
-      </div>
+/** Total del registro para la columna derecha; el detalle esta en la pestaña Resumen. */
+export function TotalPedido({ productos = [], insumos = [] }) {
+  const unidades = productos.reduce((s, l) => s + Number(l.cantidad || 0), 0);
+  return (
+    <div className="pedido-total">
+      <div><span>Productos</span><strong>{productos.length} ({unidades} und)</strong></div>
+      <div><span>Insumos de personalización</span><strong>{insumos.length}</strong></div>
+      <div className="is-total"><span>Total</span><strong className="money">{money(totalLineas(productos, insumos))}</strong></div>
     </div>
   );
 }

@@ -43,7 +43,8 @@ function aFrontend(col, f, cat) {
       return { ...base, nombre: f.nombre, permisos: f.permisos || [], privilegios: f.privilegios || [], estado: estado(f.activo) };
     case 'usuarios':
       return {
-        ...base, id_rol: f.id_rol, nombre_usuario: f.nombre_usuario, correo_empresarial: f.correo_empresarial,
+        ...base, id_rol: f.id_rol, correo_empresarial: f.correo_empresarial,
+        tipodocumento: nombrePorId(cat.tipos_documento, 'id_tipo_documento', f.id_tipo_documento),
         nombre_empleado: f.nombre_empleado, documento: texto(f.documento), telefono: texto(f.telefono),
         cargo: texto(f.cargo), fecha_ingreso: texto(f.fecha_ingreso), estado: estado(f.activo),
       };
@@ -165,7 +166,8 @@ export function aServidor(col, r, cat, sid) {
       return { nombre: r.nombre, activo, permisos: r.permisos || [], privilegios: r.privilegios || [] };
     case 'usuarios':
       return {
-        id_rol: sid('roles', r.id_rol), nombre_usuario: r.nombre_usuario, correo_empresarial: r.correo_empresarial,
+        id_rol: sid('roles', r.id_rol), correo_empresarial: r.correo_empresarial,
+        id_tipo_documento: idPorNombre(cat.tipos_documento, 'id_tipo_documento', r.tipodocumento),
         nombre_empleado: r.nombre_empleado, documento: r.documento, telefono: r.telefono, cargo: r.cargo,
         fecha_ingreso: r.fecha_ingreso, activo, ...(r.contrasena ? { contrasena: r.contrasena } : {}),
       };

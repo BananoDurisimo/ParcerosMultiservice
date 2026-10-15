@@ -471,7 +471,7 @@ export function DataProvider({ children }) {
           calc_modulo: MODULOS_AUDITADOS[m.tabla] || m.tabla,
           calc_accion: ETIQUETA_ACCION[m.accion] || m.accion,
           calc_usuario: u?.nombre_empleado || 'Sistema',
-          calc_alias: u?.nombre_usuario || '—',
+          calc_alias: u?.correo_empresarial || '—',
           calc_registro: registroMovimiento(m),
           calc_cambios: cambios,
           calc_total_cambios: cambios.length,

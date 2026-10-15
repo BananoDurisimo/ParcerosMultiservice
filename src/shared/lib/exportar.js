@@ -38,7 +38,7 @@ const nombreArchivo = (doc, tipo, ext) => `${tipo}-${slug(doc.archivo || doc.tit
 /** Totales de las columnas marcadas con `total`. */
 const totales = (doc) => doc.columnas.map((c) => (c.total ? doc.filas.reduce((s, f) => s + Number(c.valor(f) || 0), 0) : null));
 
-function descargar(partes, tipo, nombre) {
+export function descargar(partes, tipo, nombre) {
   const url = URL.createObjectURL(new Blob(partes, { type: tipo }));
   const a = Object.assign(document.createElement('a'), { href: url, download: nombre });
   document.body.appendChild(a);
@@ -234,21 +234,92 @@ const lit = (s) => [...s].map((c) => {
 }).join('');
 const rgb = (hex) => [1, 3, 5].map((i) => (parseInt(hex.slice(i, i + 2), 16) / 255).toFixed(3)).join(' ');
 
-const AZUL = '#2563EB', TEXTO = '#111827', GRIS = '#6B7280', CLARO = '#EFF4FF', ZEBRA = '#F8FAFC', LINEA = '#D1D5DB';
+export const COLORES_PDF = { AZUL: '#2563EB', TEXTO: '#111827', GRIS: '#6B7280', CLARO: '#EFF4FF', ZEBRA: '#F8FAFC', LINEA: '#D1D5DB' };
+const { AZUL, TEXTO, GRIS, CLARO, ZEBRA, LINEA } = COLORES_PDF;
 const W = 842, H = 595, M = 36, ALTO_FILA = 18, LIMITE = H - 46;
 
-/** Hoja A4 horizontal con cursor vertical y salto de pagina automatico. */
-function lienzo(doc, subtitulo) {
+/** Parte un texto en renglones que caben en `max` puntos (respeta los saltos de linea). */
+export const envolver = (s, max, t = 9, neg = false) =>
+  String(s ?? '').split(/\r?\n/).flatMap((parrafo) => {
+    const lineas = [];
+    let actual = '';
+    parrafo.split(/\s+/).filter(Boolean).forEach((palabra) => {
+      const prueba = actual ? `${actual} ${palabra}` : palabra;
+      if (ancho(prueba, t, neg) <= max || !actual) actual = prueba;
+      else { lineas.push(actual); actual = palabra; }
+    });
+    return [...lineas, actual];
+  });
+
+/**
+ * Documento PDF de bajo nivel: paginas, rectangulos, lineas, texto con
+ * Helvetica e imagenes JPEG. Las coordenadas se dan desde la esquina
+ * superior izquierda (y crece hacia abajo), como en pantalla.
+ *
+ *   const d = documentoPdf({ ancho: 595, alto: 842 }); // A4 vertical
+ *   d.nueva(); d.texto('Hola', 40, 60, { t: 14, neg: true });
+ *   const img = d.registrarImagen({ bytes, ancho, alto }); d.imagen(img, 40, 80, 200, 120);
+ *   const pdf = d.armar(); // Uint8Array
+ */
+export function documentoPdf({ ancho: AW = W, alto: AH = H } = {}) {
   const paginas = [];
+  const imagenes = [];
   let ops;
   const nueva = () => { ops = []; paginas.push(ops); };
   const rect = (x, y, w, h, color, borde) =>
-    ops.push(`${rgb(color)} rg ${x} ${H - y - h} ${w} ${h} re f` + (borde ? ` ${rgb(borde)} RG 0.6 w ${x} ${H - y - h} ${w} ${h} re S` : ''));
-  const texto = (s, x, y, { t = 9, neg = false, color = TEXTO, der = false, ancho: max } = {}) => {
+    ops.push(`${rgb(color)} rg ${x} ${AH - y - h} ${w} ${h} re f` + (borde ? ` ${rgb(borde)} RG 0.6 w ${x} ${AH - y - h} ${w} ${h} re S` : ''));
+  const linea = (x1, y1, x2, y2, color = LINEA, grosor = 0.6) =>
+    ops.push(`${rgb(color)} RG ${grosor} w ${x1} ${AH - y1} m ${x2} ${AH - y2} l S`);
+  const texto = (s, x, y, { t = 9, neg = false, color = TEXTO, der = false, centro = false, ancho: max } = {}) => {
     const str = max ? recortar(String(s), max, t, neg) : String(s);
-    const px = der ? x - ancho(str, t, neg) : x;
-    ops.push(`BT /${neg ? 'F2' : 'F1'} ${t} Tf ${rgb(color)} rg ${px.toFixed(2)} ${H - y} Td (${lit(str)}) Tj ET`);
+    const w = ancho(str, t, neg);
+    const px = der ? x - w : centro ? x - w / 2 : x;
+    ops.push(`BT /${neg ? 'F2' : 'F1'} ${t} Tf ${rgb(color)} rg ${px.toFixed(2)} ${AH - y} Td (${lit(str)}) Tj ET`);
   };
+  /** `bytes`: Uint8Array de un JPEG. Devuelve el nombre con que se dibuja. */
+  const registrarImagen = ({ bytes, ancho: iw, alto: ih }) => {
+    imagenes.push({ bytes, iw, ih });
+    return `Im${imagenes.length}`;
+  };
+  const imagen = (nombre, x, y, w, h) => ops.push(`q ${w} 0 0 ${h} ${x} ${AH - y - h} cm /${nombre} Do Q`);
+
+  /** `pie(i, total)` dibuja el pie de cada pagina antes de armar el archivo. */
+  const armar = (pie) => {
+    if (pie) paginas.forEach((p, i) => { ops = p; pie(i, paginas.length); });
+    /* Objetos: 1 catalogo · 2 paginas · 3-4 fuentes · imagenes · luego (pagina, contenido) por cada hoja. */
+    const base = 5 + imagenes.length;
+    const objetos = [
+      '<< /Type /Catalog /Pages 2 0 R >>',
+      `<< /Type /Pages /Count ${paginas.length} /Kids [${paginas.map((_, i) => `${base + 2 * i} 0 R`).join(' ')}] >>`,
+      '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+      '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
+    ];
+    imagenes.forEach(({ bytes, iw, ih }) => {
+      let bin = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      objetos.push(`<< /Type /XObject /Subtype /Image /Width ${iw} /Height ${ih} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n${bin}\nendstream`);
+    });
+    const recursosImg = imagenes.length ? ` /XObject << ${imagenes.map((_, i) => `/Im${i + 1} ${5 + i} 0 R`).join(' ')} >>` : '';
+    paginas.forEach((p, i) => {
+      const flujo = p.join('\n');
+      objetos.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${AW} ${AH}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >>${recursosImg} >> /Contents ${base + 1 + 2 * i} 0 R >>`);
+      objetos.push(`<< /Length ${flujo.length} >>\nstream\n${flujo}\nendstream`);
+    });
+    let pdf = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
+    const offsets = objetos.map((o, i) => { const at = pdf.length; pdf += `${i + 1} 0 obj\n${o}\nendobj\n`; return at; });
+    const xref = pdf.length;
+    pdf += `xref\n0 ${objetos.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}`;
+    pdf += `trailer\n<< /Size ${objetos.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+    return Uint8Array.from(pdf, (c) => c.charCodeAt(0) & 0xff);
+  };
+
+  return { nueva, rect, linea, texto, registrarImagen, imagen, armar, ancho: AW, alto: AH };
+}
+
+/** Hoja A4 horizontal con cursor vertical y salto de pagina automatico. */
+function lienzo(doc, subtitulo) {
+  const d = documentoPdf();
+  const { nueva, rect, texto } = d;
 
   /* Encabezado de la primera pagina: banda azul, titulo y filtros. */
   nueva();
@@ -323,32 +394,11 @@ function lienzo(doc, subtitulo) {
   };
 
   /** Pie de pagina y armado del archivo. */
-  const cerrar = (pieTxt) => {
-    paginas.forEach((p, i) => {
-      ops = p;
-      ops.push(`${rgb(LINEA)} RG 0.6 w ${M} 32 m ${W - M} 32 l S`);
-      texto(`Parceros Multiservice · ${pieTxt}`, M, H - 18, { t: 8, color: GRIS });
-      texto(`Página ${i + 1} de ${paginas.length}`, W - M, H - 18, { t: 8, color: GRIS, der: true });
-    });
-    /* Objetos: 1 catalogo · 2 paginas · 3-4 fuentes · luego (pagina, contenido) por cada hoja. */
-    const objetos = [
-      '<< /Type /Catalog /Pages 2 0 R >>',
-      `<< /Type /Pages /Count ${paginas.length} /Kids [${paginas.map((_, i) => `${5 + 2 * i} 0 R`).join(' ')}] >>`,
-      '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
-      '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
-    ];
-    paginas.forEach((p, i) => {
-      const flujo = p.join('\n');
-      objetos.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${6 + 2 * i} 0 R >>`);
-      objetos.push(`<< /Length ${flujo.length} >>\nstream\n${flujo}\nendstream`);
-    });
-    let pdf = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
-    const offsets = objetos.map((o, i) => { const at = pdf.length; pdf += `${i + 1} 0 obj\n${o}\nendobj\n`; return at; });
-    const xref = pdf.length;
-    pdf += `xref\n0 ${objetos.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}`;
-    pdf += `trailer\n<< /Size ${objetos.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-    return Uint8Array.from(pdf, (c) => c.charCodeAt(0) & 0xff);
-  };
+  const cerrar = (pieTxt) => d.armar((i, total) => {
+    d.linea(M, H - 32, W - M, H - 32);
+    texto(`Parceros Multiservice · ${pieTxt}`, M, H - 18, { t: 8, color: GRIS });
+    texto(`Página ${i + 1} de ${total}`, W - M, H - 18, { t: 8, color: GRIS, der: true });
+  });
 
   return { tabla, tarjetas, cerrar };
 }

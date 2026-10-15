@@ -36,7 +36,6 @@ export function AuthProvider({ children }) {
       id: u.id,
       correo: u.correo_empresarial,
       nombre: u.nombre_empleado,
-      usuario: u.nombre_usuario,
       rol: u.calc_rol,
       id_rol: u.id_rol,
       permisos: rol?.calc_permisos || [],

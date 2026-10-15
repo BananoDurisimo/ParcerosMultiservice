@@ -1391,3 +1391,20 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
 .comprobante-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .comprobante-datos > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--border-soft); border-radius: var(--radius-sm); background: var(--surface-2); }
 .comprobante-pdf { display: block; width: 100%; height: 62vh; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+
+/* --- Pestañas del formulario de cotización / pedido --- */
+.lp-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 4px; border-radius: var(--radius); background: var(--surface-3); border: 1px solid var(--border-soft); }
+[data-theme='dark'] .lp-tabs { border-color: var(--border); }
+/* Nombre arriba y cifra abajo: el nombre nunca se corta, aunque el modal sea angosto. */
+.lp-tab { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 7px; row-gap: 3px; min-width: 0; padding: 8px 10px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-sec); font: inherit; font-size: 13px; text-align: left; cursor: pointer; transition: background-color .18s var(--ease), color .18s var(--ease); }
+.lp-tab > span:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lp-tab:hover { color: var(--text); }
+.lp-tab.is-on { background: var(--surface); color: var(--primary); font-weight: 600; box-shadow: var(--shadow-sm); }
+.lp-nota { grid-column: 2; justify-self: start; padding: 1px 7px; border-radius: 99px; background: var(--surface-2); color: var(--text-sec); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.lp-tab.is-on .lp-nota { background: var(--primary-soft); color: var(--primary); }
+.lp-siguiente { align-self: flex-end; }
+@media (max-width: 560px) {
+  .lp-tab { grid-template-columns: minmax(0, 1fr); justify-items: center; padding: 7px 4px; font-size: 12px; }
+  .lp-tab .ico, .lp-tab > svg { display: none; }
+  .lp-nota { grid-column: 1; justify-self: center; }
+}

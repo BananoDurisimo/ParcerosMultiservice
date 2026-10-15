@@ -47,7 +47,7 @@ export default function MovimientoDetalle({ m }) {
             <span className="avatar">{iniciales(m.calc_usuario)}</span>
             <div>
               <div>{m.calc_usuario}</div>
-              <div className="caption">@{m.calc_alias}</div>
+              <div className="caption">{m.calc_alias}</div>
             </div>
           </div>
         </div>

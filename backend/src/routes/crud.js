@@ -30,7 +30,7 @@ const COLECCIONES = {
   roles: { tabla: 'rol', pk: 'id_rol', modulos: ['Roles'], campos: ['nombre', 'activo'] },
   usuarios: {
     tabla: 'usuario', pk: 'id_usuario', modulos: ['Usuarios'],
-    campos: ['id_rol', 'nombre_usuario', 'correo_empresarial', 'nombre_empleado', 'documento', 'telefono', 'cargo', 'fecha_ingreso', 'activo'],
+    campos: ['id_rol', 'id_tipo_documento', 'correo_empresarial', 'nombre_empleado', 'documento', 'telefono', 'cargo', 'fecha_ingreso', 'activo'],
   },
   compras: {
     tabla: 'compra', pk: 'id_compra', modulos: ['Compras'],
@@ -58,7 +58,7 @@ const AGREGAR = ['Agregar'];
 const MODIFICAR = ['Editar', 'Cambiar estado', 'Anular'];
 const ELIMINAR = ['Eliminar'];
 /* Datos de Mi cuenta que cualquier usuario puede cambiar de si mismo. */
-const PERFIL = ['nombre_empleado', 'nombre_usuario', 'correo_empresarial', 'telefono'];
+const PERFIL = ['nombre_empleado', 'correo_empresarial', 'telefono'];
 
 /** Cadenas vacias como NULL: el formulario envia '' en fechas y opcionales. */
 const limpiar = (campos, body) =>

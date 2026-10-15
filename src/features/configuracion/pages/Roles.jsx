@@ -47,7 +47,7 @@ export default function Roles() {
         vacio="Ningún usuario tiene asignado este rol."
         columnas={[
           { label: 'Empleado', render: (u) => u.nombre_empleado },
-          { label: 'Usuario', render: (u) => <span className="caption">@{u.nombre_usuario}</span> },
+          { label: 'Correo', render: (u) => <span className="caption">{u.correo_empresarial}</span> },
           { label: 'Estado', render: (u) => <Badge>{u.estado}</Badge> },
         ]}
       />

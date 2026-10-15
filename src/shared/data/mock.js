@@ -67,7 +67,7 @@ export const codigoAbono = (id) => `AB-${String(id).padStart(4, '0')}`;
 
 /** Etiqueta legible de una fila, sea cual sea la tabla. */
 export const etiquetaFila = (r) =>
-  r?.nombre || r?.nombre_empleado || r?.nombre_usuario || r?.correo || (r?.id ? `#${r.id}` : '—');
+  r?.nombre || r?.nombre_empleado || r?.correo_empresarial || r?.correo || (r?.id ? `#${r.id}` : '—');
 
 /* --------------------------------------------------------------
    Listas de valores para columnas varchar sin tabla propia
@@ -107,6 +107,7 @@ export const DESCARGAR_DISENO = 'Descargar diseño';
 export const VER_COMPROBANTE = 'Ver comprobante';
 export const DESCARGAR_COMPROBANTE = 'Descargar comprobante';
 export const EXPORTAR = 'Exportar';
+export const DESCARGAR_COTIZACION = 'Descargar cotización';
 
 /* Los modulos (permisos) y sus acciones (privilegios) viven en la base de
    datos: backend/src/db/migrations/002_conexion_frontend.sql. */

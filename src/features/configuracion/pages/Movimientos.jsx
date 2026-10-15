@@ -143,7 +143,7 @@ export default function Movimientos() {
                 <span className="avatar">{iniciales(r.calc_usuario)}</span>
                 <div>
                   <div className="cell-main">{r.calc_usuario}</div>
-                  <div className="caption">@{r.calc_alias}</div>
+                  <div className="caption">{r.calc_alias}</div>
                 </div>
               </div>
             ),

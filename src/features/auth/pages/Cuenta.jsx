@@ -29,7 +29,6 @@ export default function Cuenta() {
   const [form, setForm] = useState({
     nombre: perfil?.nombre_empleado || '',
     correo: perfil?.correo_empresarial || '',
-    usuario: perfil?.nombre_usuario || '',
     telefono: perfil?.telefono || '',
   });
   const [claves, setClaves] = useState({ actual: '', nueva: '', repetir: '' });
@@ -50,10 +49,6 @@ export default function Cuenta() {
     if (!form.nombre.trim()) n.nombre = 'Este campo no puede estar vacío.';
     else if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ .'-]+$/.test(form.nombre.trim())) n.nombre = 'Este campo solo admite letras y espacios.';
     else if (form.nombre.trim().length > 80) n.nombre = 'Máximo 80 caracteres.';
-    if (!form.usuario.trim()) n.usuario = 'Este campo no puede estar vacío.';
-    else if (/\s/.test(form.usuario.trim())) n.usuario = 'Este campo no puede contener espacios.';
-    else if (form.usuario.trim().length < 3) n.usuario = 'Mínimo 3 caracteres.';
-    else if (otros.some((u) => igual(u.nombre_usuario, form.usuario))) n.usuario = 'Ese nombre de usuario ya está en uso.';
     if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(form.correo)) n.correo = 'Ingrese un correo electrónico válido.';
     else if (otros.some((u) => igual(u.correo_empresarial, form.correo))) n.correo = 'Ya existe otro usuario con este correo.';
     if (!/^[\d\s()+-]{7,}$/.test(form.telefono)) n.telefono = 'Ingrese un teléfono válido.';
@@ -61,7 +56,6 @@ export default function Cuenta() {
     if (Object.keys(n).length) { toast.error('Revise los campos marcados.', 'Validación de campos'); return; }
     update('usuarios', user.id, {
       nombre_empleado: form.nombre.trim(),
-      nombre_usuario: form.usuario.trim(),
       correo_empresarial: form.correo.trim(),
       telefono: form.telefono.trim(),
     });
@@ -109,7 +103,6 @@ export default function Cuenta() {
             <div className="row" style={{ gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
               <span className="badge badge-primary"><Icon name="shield" size={12} /> {user?.rol}</span>
               <Badge>{perfil?.estado || '—'}</Badge>
-              <span className="badge badge-neutral">@{user?.usuario}</span>
             </div>
           </div>
           <div className="stack right">
@@ -133,7 +126,6 @@ export default function Cuenta() {
           <div className="form-grid">
             {[
               ['nombre', 'Nombre completo', 'text'],
-              ['usuario', 'Nombre de usuario', 'text'],
               ['correo', 'Correo electrónico', 'email'],
               ['telefono', 'Teléfono', 'tel'],
             ].map(([k, l, t]) => (

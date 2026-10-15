@@ -29,7 +29,7 @@ const CONSULTAS = {
 
   // Sin el hash de la contrasena.
   usuarios: `
-    SELECT id_usuario, id_rol, nombre_usuario, correo_empresarial, nombre_empleado, documento,
+    SELECT id_usuario, id_rol, id_tipo_documento, correo_empresarial, nombre_empleado, documento,
            telefono, cargo, fecha_ingreso, activo
     FROM usuario ORDER BY id_usuario DESC`,
 

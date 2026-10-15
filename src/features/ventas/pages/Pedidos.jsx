@@ -6,10 +6,11 @@ import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import Modal from '@shared/components/ui/Modal.jsx';
 import Icon from '@shared/components/Icon.jsx';
 import DetalleRegistro from '@features/ventas/components/DetalleRegistro.jsx';
-import LineasPedido, { DesglosePedido, totalLineas } from '@features/ventas/components/LineasPedido.jsx';
+import LineasPedido, { TotalPedido, totalLineas } from '@features/ventas/components/LineasPedido.jsx';
 import MontoAbono from '@features/ventas/components/MontoAbono.jsx';
 import { validarLineas } from '@shared/components/ui/Form.jsx';
 import { agrupar } from '@shared/lib/exportar.js';
+import { descargarCotizacion } from '@features/ventas/lib/cotizacionPdf.js';
 import { DisenoModal, ComprobantesModal } from '@features/ventas/components/Archivos.jsx';
 import { useData, consumoPedido } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
@@ -17,7 +18,7 @@ import { useToast } from '@shared/context/ToastContext.jsx';
 import {
   money, fecha, hoyISO, METODOS_PAGO,
   COTIZACION, EN_PROCESO, FALTA_PAGO, COMPLETADO, ENTREGADO,
-  AGREGAR, VER_DISENO, DESCARGAR_DISENO, VER_COMPROBANTE, DESCARGAR_COMPROBANTE,
+  AGREGAR, VER_DISENO, DESCARGAR_DISENO, VER_COMPROBANTE, DESCARGAR_COMPROBANTE, DESCARGAR_COTIZACION,
 } from '@shared/data/mock.js';
 
 /**
@@ -101,6 +102,17 @@ export default function Pedidos() {
     descargarDiseno: puedeAccion(modulo, DESCARGAR_DISENO),
     verComprobante: puedeAccion(modulo, VER_COMPROBANTE),
     descargarComprobante: puedeAccion(modulo, DESCARGAR_COMPROBANTE),
+    descargarCotizacion: vista.id === 'cotizaciones' && puedeAccion('Cotizaciones', DESCARGAR_COTIZACION),
+  };
+
+  /* PDF de la cotizacion para entregar al cliente. */
+  const bajarCotizacion = async (r) => {
+    try {
+      await descargarCotizacion(r, db);
+      toast.success(`Se descargó la cotización ${r.calc_codigo}.`, 'Cotización lista');
+    } catch {
+      toast.error('No fue posible generar el PDF de la cotización. Intente nuevamente.', 'Error de descarga');
+    }
   };
 
   /* ---------- Cambios de estado ---------- */
@@ -219,7 +231,8 @@ export default function Pedidos() {
         />
       ),
     },
-    { name: 'desglose', type: 'custom', full: true, render: (v) => <DesglosePedido productos={v.productos || []} insumos={v.insumos || []} /> },
+    /* El total a la vista; el desglose completo esta en la pestaña Resumen. */
+    { name: 'desglose', type: 'custom', full: true, render: (v) => <TotalPedido productos={v.productos || []} insumos={v.insumos || []} /> },
     {
       name: 'descripcion', label: 'Descripción de la personalización', type: 'textarea', full: true, required: true, maxLength: 600, minLength: 10,
       placeholder: 'Ej.: escudo sublimado en el pecho, nombre y número en la espalda, colores azul y blanco…',
@@ -317,6 +330,11 @@ export default function Pedidos() {
             <Icon name="dollar" size={16} />
           </button>
         )}
+        {acciones.descargarCotizacion && (
+          <button className="icon-btn" style={{ color: 'var(--primary)' }} onClick={() => bajarCotizacion(r)} title="Descargar cotización (PDF)">
+            <Icon name="download" size={16} />
+          </button>
+        )}
         {acciones.verDiseno && (
           <button className="icon-btn" onClick={() => setDiseno(r)} title="Ver diseño"><Icon name="image" size={16} /></button>
         )}
@@ -385,10 +403,10 @@ export default function Pedidos() {
         paso(1, 'Cliente y fecha'),
         campoCliente,
         { name: 'fecha_creacion', label: 'Fecha de creación', type: 'date', required: true, maxHoy: true, hint: 'No puede ser posterior a hoy.' },
-        paso(2, 'Revise el precio'),
-        campoDesglose,
-        paso(3, 'Personalización y diseño'),
+        paso(2, 'Personalización y diseño'),
         ...camposInfo,
+        paso(3, 'Total de la cotización'),
+        campoDesglose,
       ],
       validarExtra: (v, modo, actual) => ({ ...validarLineasPedido(v), ...validarTotalAbonado(v, actual) }),
       beforeSave: (d, modo) => ({
@@ -445,10 +463,10 @@ export default function Pedidos() {
           name: 'fecha_inicio', label: 'Fecha de inicio', type: 'date', required: true, soloCrear: true, maxHoy: true,
           hint: 'Es la fecha del abono inicial; no puede ser posterior a hoy.',
         },
-        paso(2, 'Revise el precio'),
-        campoDesglose,
-        paso(3, 'Personalización y diseño'),
+        paso(2, 'Personalización y diseño'),
         ...camposInfo,
+        paso(3, 'Total del pedido'),
+        campoDesglose,
         { ...paso(4, 'Abono inicial'), ocultarAlEditar: true },
         {
           name: 'abono_pct', type: 'component', required: true, ocultarAlEditar: true,

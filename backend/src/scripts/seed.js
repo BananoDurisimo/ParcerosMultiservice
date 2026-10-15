@@ -26,7 +26,7 @@ const run = async () => {
 
     const hash = await bcrypt.hash('Cambiar123!', 12);
     await client.query(
-      "INSERT INTO usuario(id_rol,nombre_usuario,contrasena_hash,correo_empresarial,nombre_empleado,cargo,fecha_ingreso) VALUES($1,'admin',$2,'admin@parceros.ni','Administrador del sistema','Administrador',CURRENT_DATE) ON CONFLICT(correo_empresarial) DO NOTHING",
+      "INSERT INTO usuario(id_rol,contrasena_hash,correo_empresarial,nombre_empleado,cargo,fecha_ingreso) VALUES($1,$2,'admin@parceros.ni','Administrador del sistema','Administrador',CURRENT_DATE) ON CONFLICT(correo_empresarial) DO NOTHING",
       [admin.id_rol, hash]
     );
 

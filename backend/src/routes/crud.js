@@ -21,11 +21,11 @@ const COLECCIONES = {
   },
   proveedores: {
     tabla: 'proveedor', pk: 'id_proveedor', modulos: ['Proveedores'],
-    campos: ['id_tipo_insumo', 'nombre', 'nombre_persona_contacto', 'nit', 'telefono', 'correo', 'direccion', 'activo'],
+    campos: ['id_tipo_insumo', 'nombre', 'telefono', 'pais', 'activo'],
   },
   insumos: {
     tabla: 'insumo', pk: 'id_insumo', modulos: ['Insumos'],
-    campos: ['id_tipo_insumo', 'id_unidad_medida', 'nombre', 'stock_minimo', 'precio_unitario', 'activo'],
+    campos: ['id_tipo_insumo', 'id_unidad_medida', 'nombre', 'stock_minimo', 'activo'],
   },
   roles: { tabla: 'rol', pk: 'id_rol', modulos: ['Roles'], campos: ['nombre', 'activo'] },
   usuarios: {

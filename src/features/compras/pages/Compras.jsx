@@ -28,7 +28,12 @@ export default function Compras() {
   const compradosIds = new Set(db.compras.flatMap((c) => c.calc_insumos));
   const insumosComprados = insumos.filter((o) => compradosIds.has(o.value));
 
-  const precioInsumo = (id) => db.insumos.find((i) => i.id === id)?.precio_unitario;
+  /* El insumo no tiene precio: se sugiere lo que se pago en su compra mas reciente. */
+  const precioInsumo = (id) => {
+    const ultima = [...db.compras].sort((a, b) => b.fecha.localeCompare(a.fecha))
+      .find((c) => (c.detalle_insumos || []).some((l) => l.id_insumo === id));
+    return ultima?.detalle_insumos.find((l) => l.id_insumo === id)?.precio_unitario;
+  };
   const codigo = (r) => r.calc_codigo || '';
 
   /* Las anuladas se listan, pero no suman en los totales del reporte. */
@@ -167,7 +172,7 @@ export default function Compras() {
           name: 'detalle_insumos', label: 'Insumos que se compran', type: 'items', required: true, col: 'izq',
           itemKey: 'id_insumo', itemLabel: 'Insumo', options: insumos, decimales: true,
           precioSugerido: precioInsumo, unidad, totalLabel: 'Total de la compra',
-          hint: 'Indique la cantidad y el precio de compra de cada insumo. Al elegirlo se sugiere su precio unitario; puede ajustarlo.',
+          hint: 'Indique la cantidad y lo que se pagó por cada insumo. Al elegirlo se sugiere el precio de su última compra; puede ajustarlo.',
         },
       ]}
       validarExtra={(v) => {

@@ -3,12 +3,12 @@
  *
  * Lleva el encabezado de la empresa, los datos del cliente, los productos y
  * la personalizacion con sus precios, el total con el abono inicial (50%),
- * la descripcion acordada y la imagen del diseño. Los insumos de la receta
+ * la descripcion acordada y la imagen del mockup. Los insumos de la receta
  * no aparecen: son internos del taller.
  *
  * `pdfCotizacion` arma el archivo con los datos ya resueltos (se puede probar
  * fuera del navegador); `descargarCotizacion` resuelve los datos, convierte
- * la imagen del diseño a JPEG y lo descarga.
+ * la imagen del mockup a JPEG y lo descarga.
  */
 import { documentoPdf, envolver, descargar, dinero, COLORES_PDF } from '@shared/lib/exportar.js';
 import { TELEFONO, CORREO, DIRECCION } from '@features/home/data/contacto.js';
@@ -102,15 +102,22 @@ export function pdfCotizacion(c, diseno) {
     ], c.productos.map((l) => [l.nombre, l.detalle, cant(l.cantidad), dinero(l.precio), dinero(subtotal(l))]));
   }
   if (c.insumos.length) {
-    tabla('Personalización', [
-      { t: 'Insumo', w: 250 }, { t: 'Cantidad', w: 95, al: 'r' },
-      { t: 'Precio unit.', w: 85, al: 'r' }, { t: 'Subtotal', w: 85, al: 'r' },
-    ], c.insumos.map((l) => [l.nombre, `${cant(l.cantidad)} ${l.unidad}`, dinero(l.precio), dinero(subtotal(l))]));
+    /* Los insumos no se cobran: solo se informa que se usara. Un registro
+       anterior que si los cobraba conserva su columna de precio. */
+    if (totalInsumos > 0) {
+      tabla('Personalización', [
+        { t: 'Insumo', w: 250 }, { t: 'Cantidad', w: 95, al: 'r' },
+        { t: 'Precio unit.', w: 85, al: 'r' }, { t: 'Subtotal', w: 85, al: 'r' },
+      ], c.insumos.map((l) => [l.nombre, `${cant(l.cantidad)} ${l.unidad}`, dinero(l.precio), dinero(subtotal(l))]));
+    } else {
+      tabla('Personalización (incluida en el precio)', [{ t: 'Insumo', w: 345 }, { t: 'Cantidad', w: 170, al: 'r' }],
+        c.insumos.map((l) => [l.nombre, `${cant(l.cantidad)} ${l.unidad}`]));
+    }
   }
 
   /* ---- Totales ---- */
   const filasTotal = [
-    ...(c.productos.length && c.insumos.length ? [['Subtotal productos', dinero(totalProductos)], ['Subtotal personalización', dinero(totalInsumos)]] : []),
+    ...(c.productos.length && totalInsumos > 0 ? [['Subtotal productos', dinero(totalProductos)], ['Subtotal personalización', dinero(totalInsumos)]] : []),
     ['TOTAL', dinero(total)],
     /* Un pedido ya tiene abonos: se muestra lo pagado y lo que falta. Una
        cotizacion todavia no: se muestra el abono inicial que corresponde. */
@@ -153,7 +160,7 @@ export function pdfCotizacion(c, diseno) {
     const k = Math.min(maxW / diseno.ancho, maxH / diseno.alto, 1.5);
     const iw = diseno.ancho * k, ih = diseno.alto * k;
     espacio(ih + 30);
-    texto('Diseño aprobado', M, y + 12, { t: 11.5, neg: true });
+    texto('Mockup', M, y + 12, { t: 11.5, neg: true });
     y += 22;
     d.imagen(nombre, M + (maxW - iw) / 2, y, iw, ih);
     y += ih + 16;

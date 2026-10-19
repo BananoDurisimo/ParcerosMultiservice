@@ -42,7 +42,8 @@ function Buscador({ value, onChange, placeholder }) {
  *    insumos que su receta descuenta (se calculan solos: no se editan ni se
  *    cobran aparte).
  * 2. Personalización (detalle_pedido_insumo): catalogo de insumos y los
- *    agregados (estampado, colores, diseño…) con cantidad y precio.
+ *    agregados (estampado, colores, cinta…) con la cantidad que se gasta:
+ *    los insumos no tienen precio, lo que se cobra son los productos.
  * 3. Resumen: el desglose completo del total y lo que se descontara del
  *    inventario, para revisar antes de guardar.
  *
@@ -66,7 +67,8 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
   const listaInsumos = db.insumos.filter((i) => !texto || normTexto(`${i.nombre} ${i.calc_tipo} ${i.calc_unidad}`).includes(texto));
 
   const agregarProducto = (p) => onProductos([...productos, { id_producto: p.id, cantidad: '1', precio_unitario: String(p.precio_venta) }]);
-  const agregarInsumo = (i) => onInsumos([...insumos, { id_insumo: i.id, cantidad: '1', precio_unitario: String(i.precio_unitario) }]);
+  /* Los insumos no tienen precio: solo se indica cuanto se va a gastar. */
+  const agregarInsumo = (i) => onInsumos([...insumos, { id_insumo: i.id, cantidad: '1', precio_unitario: 0 }]);
   const cambiar = (lineas, set) => (idx, campo, v) => set(lineas.map((l, j) => (j === idx ? { ...l, [campo]: v } : l)));
   const quitar = (lineas, set) => (idx) => set(lineas.filter((_, j) => j !== idx));
 
@@ -256,7 +258,7 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
                         <div className="grow" style={{ minWidth: 0 }}>
                           <div className="ins-nombre">{i.nombre}</div>
                           <div className="caption">
-                            {i.calc_tipo} · {money(i.precio_unitario)} / {unidadDe(i)} ·{' '}
+                            {i.calc_tipo} · {unidadDe(i)} ·{' '}
                             <span style={{ color: i.stock === 0 ? 'var(--error-fg)' : i.stock <= i.calc_minimo ? 'var(--warning-fg, var(--warning))' : undefined }}>
                               {i.stock === 0 ? 'agotado' : `${i.stock} ${unidadDe(i)} disponibles`}
                             </span>
@@ -280,8 +282,8 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
           <div className="field">
             <label>Insumos de personalización agregados</label>
             <div className="ins-agregados">
-              <div className="ins-linea head">
-                <span>Insumo</span><span>Cantidad</span><span>Precio unit. (C$)</span><span />
+              <div className="ins-linea head sin-precio">
+                <span>Insumo</span><span>Cantidad a gastar</span><span />
               </div>
               {insumos.length === 0 && (
                 <div className="caption" style={{ padding: '14px 12px' }}>Opcional: estampados, colores o accesorios desde el catálogo.</div>
@@ -289,10 +291,10 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
               {insumos.map((l, idx) => {
                 const i = insumo(l.id_insumo);
                 return (
-                  <div className="ins-linea" key={l.id_insumo}>
+                  <div className="ins-linea sin-precio" key={l.id_insumo}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{i?.nombre || `#${l.id_insumo}`}</div>
-                      <div className="caption">Unidad: {i?.calc_unidad} ({unidadDe(i)}) · {money(subtotal(l))}</div>
+                      <div className="caption">{i?.calc_tipo} · Unidad: {i?.calc_unidad} ({unidadDe(i)})</div>
                     </div>
                     <div className="input-unidad">
                       <input
@@ -303,12 +305,6 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
                       />
                       <span className="unidad">{unidadDe(i)}</span>
                     </div>
-                    <input
-                      className={`input ${precioValido(l) ? '' : 'has-error'}`}
-                      type="number" min="0" step="0.01" aria-label={`Precio unitario de ${i?.nombre}`}
-                      value={l.precio_unitario} readOnly={readOnly}
-                      onChange={(e) => cambiar(insumos, onInsumos)(idx, 'precio_unitario', e.target.value)}
-                    />
                     {!readOnly ? (
                       <button type="button" className="icon-btn is-delete" onClick={() => quitar(insumos, onInsumos)(idx)} aria-label={`Quitar ${i?.nombre}`} title="Quitar">
                         <Icon name="trash" size={15} />
@@ -318,7 +314,7 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
                 );
               })}
             </div>
-            <span className="caption">Edite cantidades y precios directamente en cada línea.</span>
+            <span className="caption">Indique cuánto se va a gastar de cada insumo: los insumos no se cobran, el precio está en los productos.</span>
           </div>
 
           {!readOnly && (
@@ -380,20 +376,21 @@ export function DesglosePedido({ productos = [], insumos = [], children }) {
         {productos.length > 0 && insumos.length > 0 && (
           <div className="linea sub"><span>Subtotal productos</span><strong className="money">{money(tp)}</strong></div>
         )}
+        {insumos.length > 0 && <div className="linea sub"><span>Insumos de personalización (no se cobran)</span><span /></div>}
         {insumos.map((l) => {
           const i = insumo(l.id_insumo);
           return (
             <div className="linea" key={`i${l.id_insumo}`}>
               <span>
                 {i?.nombre || `#${l.id_insumo}`}
-                <span className="caption">{Number(l.cantidad || 0)} {unidadDe(i)} × {money(l.precio_unitario || 0)}</span>
+                <span className="caption">{Number(l.cantidad || 0)} {unidadDe(i)}</span>
               </span>
-              <strong className="money">{money(subtotal(l))}</strong>
+              {subtotal(l) > 0 ? <strong className="money">{money(subtotal(l))}</strong> : <span className="caption">sin costo</span>}
             </div>
           );
         })}
-        {productos.length > 0 && insumos.length > 0 && (
-          <div className="linea sub"><span>Subtotal personalización</span><strong className="money">{money(ti)}</strong></div>
+        {productos.length > 0 && ti > 0 && (
+          <div className="linea sub"><span>Subtotal personalización (registro anterior)</span><strong className="money">{money(ti)}</strong></div>
         )}
         <div className="is-total"><span>Total</span><strong className="money">{money(tp + ti)}</strong></div>
         {children}

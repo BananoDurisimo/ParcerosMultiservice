@@ -5,32 +5,25 @@ import MiniTabla from '@shared/components/ui/MiniTabla.jsx';
 import Icon from '@shared/components/Icon.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { money, fecha, ESTADOS_REGISTRO } from '@shared/data/mock.js';
+import { PAISES, PAIS_POR_DEFECTO } from '@shared/data/paises.js';
 
-/** Tabla `proveedor`: nombre, id_tipo_insumo, telefono, correo, direccion,
- *  nit, estado, y los datos de la persona de contacto: nombrepersonacontacto,
- *  telefono_contacto y correo_contacto. El telefono y el correo de la empresa
- *  son los generales; los del contacto, los de quien atiende los pedidos. */
+/** Tabla `proveedor`: nombre, telefono, pais, id_tipo_insumo (el tipo de
+ *  insumo que suministra) y estado. Los datos que se pedian antes (NIT,
+ *  correo, direccion, persona de contacto) se conservan en la base de datos,
+ *  pero ya no se piden ni se muestran. */
 export default function Proveedores() {
   const { db, opciones } = useData();
   const tipos = opciones('tipos_insumo');
+  const paisesUsados = [...new Set(db.proveedores.map((p) => p.pais).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
 
   const detalle = (r) => (
     <div>
       <div className="detail-grid">
         <div className="detail-item"><div className="dl">Proveedor</div><div className="dv">{r.nombre}</div></div>
-        <div className="detail-item"><div className="dl">NIT</div><div className="dv">{r.nit || '—'}</div></div>
-        <div className="detail-item"><div className="dl">Categoría de insumo que suministra</div><div className="dv">{r.calc_tipo_insumo}</div></div>
+        <div className="detail-item"><div className="dl">Teléfono</div><div className="dv">{r.telefono || '—'}</div></div>
+        <div className="detail-item"><div className="dl">País</div><div className="dv">{r.pais || '—'}</div></div>
+        <div className="detail-item"><div className="dl">Tipo de insumo que suministra</div><div className="dv">{r.calc_tipo_insumo}</div></div>
         <div className="detail-item"><div className="dl">Estado</div><div className="dv"><Badge>{r.estado}</Badge></div></div>
-        <div className="detail-item"><div className="dl">Teléfono de la empresa</div><div className="dv">{r.telefono || '—'}</div></div>
-        <div className="detail-item"><div className="dl">Correo de la empresa</div><div className="dv">{r.correo || '—'}</div></div>
-        <div className="detail-item full"><div className="dl">Dirección</div><div className="dv">{r.direccion || '—'}</div></div>
-      </div>
-
-      <h3 className="det-section">Persona de contacto</h3>
-      <div className="detail-grid">
-        <div className="detail-item"><div className="dl">Nombre</div><div className="dv">{r.nombrepersonacontacto || '—'}</div></div>
-        <div className="detail-item"><div className="dl">Teléfono</div><div className="dv">{r.telefono_contacto || '—'}</div></div>
-        <div className="detail-item"><div className="dl">Correo electrónico</div><div className="dv">{r.correo_contacto || '—'}</div></div>
       </div>
 
       <h3 className="det-section">Insumos que suministra</h3>
@@ -69,46 +62,31 @@ export default function Proveedores() {
       renderDetalle={detalle}
       entidad="proveedores"
       singular="proveedor"
-      searchKeys={['nombre', 'nombrepersonacontacto', 'correo', 'telefono', 'correo_contacto', 'telefono_contacto', 'nit', 'calc_tipo_insumo']}
+      searchKeys={['nombre', 'telefono', 'pais', 'calc_tipo_insumo']}
       eliminacion={{
         validar: (r) => (r.calc_compras > 0
           ? `${r.nombre} tiene ${r.calc_compras} compra(s) registradas. Para conservar el historial, desactívelo en lugar de eliminarlo.`
           : null),
       }}
       filtros={[
-        { key: 'id_tipo_insumo', label: 'Categoría de insumo', options: tipos },
+        { key: 'id_tipo_insumo', label: 'Tipo de insumo', options: tipos },
+        { key: 'pais', label: 'País', options: paisesUsados },
         { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
       ]}
-      defaults={{ estado: 'Activo' }}
+      defaults={{ estado: 'Activo', pais: PAIS_POR_DEFECTO }}
       columnas={[
-        {
-          key: 'nombre', label: 'Proveedor', mobile: 'title',
-          render: (r) => (
-            <div>
-              <div className="cell-main">{r.nombre}</div>
-              <div className="caption">Contacto: {r.nombrepersonacontacto}{r.telefono_contacto ? ` · ${r.telefono_contacto}` : ''}</div>
-            </div>
-          ),
-        },
-        { key: 'nit', label: 'NIT', mobile: 'meta', render: (r) => <span className="caption">{r.nit || '—'}</span> },
-        { key: 'calc_tipo_insumo', label: 'Categoría de insumo', mobile: 'meta', render: (r) => <span className="badge badge-info">{r.calc_tipo_insumo}</span> },
-        { key: 'telefono', label: 'Teléfono empresa', render: (r) => <span className="muted row" style={{ gap: 6 }}><Icon name="phone" size={14} /> {r.telefono || '—'}</span> },
-        { key: 'correo', label: 'Correo empresa', render: (r) => <span className="muted">{r.correo || '—'}</span> },
+        { key: 'nombre', label: 'Proveedor', mobile: 'title', render: (r) => <span className="cell-main">{r.nombre}</span> },
+        { key: 'telefono', label: 'Teléfono', mobile: 'meta', render: (r) => <span className="muted row" style={{ gap: 6 }}><Icon name="phone" size={14} /> {r.telefono || '—'}</span> },
+        { key: 'pais', label: 'País', mobile: 'meta', render: (r) => <span className="muted row" style={{ gap: 6 }}><Icon name="pin" size={14} /> {r.pais || '—'}</span> },
+        { key: 'calc_tipo_insumo', label: 'Tipo de insumo', mobile: 'meta', render: (r) => <span className="badge badge-info">{r.calc_tipo_insumo}</span> },
         { key: 'calc_compras', label: 'Compras', align: 'center', mobile: 'value', render: (r) => <span className="badge badge-neutral">{r.calc_compras}</span> },
         { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="proveedores" modulo="Proveedores" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[
-        { name: 'sec_empresa', type: 'custom', full: true, render: () => <div className="form-section"><Icon name="truck" size={15} /> Datos de la empresa</div> },
-        { name: 'nombre', label: 'Nombre del proveedor', type: 'text', required: true, noSpecial: true, unique: true, maxLength: 80 },
-        { name: 'nit', label: 'NIT', type: 'text', required: true, alfanumerico: true, unique: true, maxLength: 20, placeholder: 'Ej.: J0310000451' },
-        { name: 'id_tipo_insumo', label: 'Categoría de insumo que suministra', type: 'select', options: tipos, required: true },
-        { name: 'direccion', label: 'Dirección', type: 'text', required: true, maxLength: 150 },
-        { name: 'telefono', label: 'Teléfono de la empresa', type: 'tel', required: true, placeholder: 'Ej.: 2278 4410' },
-        { name: 'correo', label: 'Correo de la empresa', type: 'email', required: true, placeholder: 'ventas@empresa.com' },
-        { name: 'sec_contacto', type: 'custom', full: true, render: () => <div className="form-section"><Icon name="user" size={15} /> Persona de contacto</div> },
-        { name: 'nombrepersonacontacto', label: 'Nombre de la persona de contacto', type: 'text', required: true, soloLetras: true, maxLength: 80, full: true },
-        { name: 'telefono_contacto', label: 'Teléfono de la persona de contacto', type: 'tel', required: true, placeholder: 'Ej.: 8854 1203' },
-        { name: 'correo_contacto', label: 'Correo de la persona de contacto', type: 'email', required: true, placeholder: 'nombre@empresa.com' },
+        { name: 'nombre', label: 'Nombre del proveedor', type: 'text', required: true, noSpecial: true, unique: true, maxLength: 80, full: true },
+        { name: 'telefono', label: 'Teléfono', type: 'tel', required: true, placeholder: 'Ej.: 2278 4410' },
+        { name: 'pais', label: 'País', type: 'select', options: PAISES, required: true, buscarPlaceholder: 'Buscar país…' },
+        { name: 'id_tipo_insumo', label: 'Tipo de insumo', type: 'select', options: tipos, required: true, full: true, hint: 'Lo que suministra este proveedor.' },
         { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Un proveedor inactivo conserva su historial de compras, pero ya no se propone para compras nuevas.' },
       ]}
     />

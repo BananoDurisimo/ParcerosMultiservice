@@ -674,7 +674,11 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 .desglose > div.linea.sub { background: var(--surface-2); font-weight: 600; color: var(--text); }
 
 /* Receta del producto: insumo, cantidad por unidad, costo */
-.ins-linea.receta { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) minmax(0, .8fr) 34px; }
+/* Insumos sin precio (receta del producto y personalizacion): insumo, cantidad y quitar */
+.ins-linea.receta, .ins-linea.sin-precio { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 34px; }
+@media (max-width: 560px) {
+  .ins-linea.receta, .ins-linea.sin-precio { grid-template-columns: 1fr 34px; }
+}
 
 /* Insumos que salen de la receta de los productos del pedido (solo lectura) */
 .receta-auto { border: 1px dashed var(--border); border-radius: var(--radius); background: var(--surface-2); }

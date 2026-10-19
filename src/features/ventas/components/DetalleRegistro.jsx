@@ -49,7 +49,19 @@ export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
       )}
 
       <h3 className="det-section">Insumos de personalización</h3>
-      <ItemsView lineas={r.insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" totalLabel="Subtotal personalización" vacio="Sin insumos de personalización." unidad={unidad} />
+      {/* Los insumos no se cobran: solo cuanto se gasta. Un registro anterior
+          con precio en la personalizacion lo conserva en su total. */}
+      <MiniTabla
+        filas={r.insumos || []}
+        vacio="Sin insumos de personalización."
+        columnas={[
+          { label: 'Insumo', render: (l) => db.insumos.find((i) => i.id === l.id_insumo)?.nombre || '—' },
+          { label: 'Cantidad a gastar', align: 'right', render: (l) => `${l.cantidad} ${unidad(l.id_insumo)}` },
+          ...((r.insumos || []).some((l) => l.precio_unitario > 0)
+            ? [{ label: 'Cobrado (registro anterior)', align: 'right', render: (l) => <span className="money">{money(l.cantidad * l.precio_unitario)}</span> }]
+            : []),
+        ]}
+      />
       <div className="pedido-total" style={{ marginTop: 10 }}>
         <div className="is-total"><span>Total del registro</span><strong className="money">{money(r.calc_total)}</strong></div>
       </div>
@@ -68,20 +80,20 @@ export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
         </>
       )}
 
-      <h3 className="det-section">Diseño aprobado por el cliente</h3>
+      <h3 className="det-section">Mockup</h3>
       {r.imagen_diseno ? (
         <div className="row" style={{ gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <img className="diseno-thumb" src={r.imagen_diseno} alt={`Diseño de ${r.calc_codigo}`} />
           <div className="stack" style={{ gap: 8 }}>
             {acciones.verDiseno && (
-              <button className="btn btn-sm" onClick={() => onVerDiseno(r)}><Icon name="image" size={15} /> Ver diseño</button>
+              <button className="btn btn-sm" onClick={() => onVerDiseno(r)}><Icon name="image" size={15} /> Ver mockup</button>
             )}
             {acciones.descargarDiseno && (
-              <button className="btn btn-sm" onClick={() => descargarDiseno(r)}><Icon name="download" size={15} /> Descargar diseño</button>
+              <button className="btn btn-sm" onClick={() => descargarDiseno(r)}><Icon name="download" size={15} /> Descargar mockup</button>
             )}
           </div>
         </div>
-      ) : <p className="caption">El registro no tiene imagen del diseño.</p>}
+      ) : <p className="caption">El registro no tiene imagen del mockup.</p>}
 
       <h3 className="det-section">Estado financiero</h3>
       <div className="grow" style={{ minWidth: 190, marginBottom: 12 }}>

@@ -2,17 +2,9 @@ import { useState } from 'react';
 import Icon from '@shared/components/Icon.jsx';
 import { normTexto } from '@shared/components/ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { money } from '@shared/data/mock.js';
 
 const unidadDe = (i) => i?.calc_abreviatura || i?.calc_unidad || '';
 const cantidadValida = (l) => l.cantidad !== '' && Number(l.cantidad) > 0;
-
-/** Costo de la receta con el precio actual de cada insumo. */
-export const costoReceta = (receta = [], insumos = []) =>
-  Math.round(receta.reduce((s, l) => {
-    const i = insumos.find((x) => String(x.id) === String(l.id_insumo));
-    return s + Number(l.cantidad || 0) * Number(i?.precio_unitario || 0);
-  }, 0) * 100) / 100;
 
 /**
  * Receta del producto (tabla receta_producto): los insumos que gasta UNA
@@ -57,7 +49,7 @@ export default function RecetaProducto({ value = [], onChange, error, idTela, re
                   <div className={`ins-item ${baja ? 'is-baja' : ''}`} key={i.id}>
                     <div className="grow" style={{ minWidth: 0 }}>
                       <div className="ins-nombre">{i.nombre}</div>
-                      <div className="caption">{i.calc_tipo} · {money(i.precio_unitario)} / {unidadDe(i)}</div>
+                      <div className="caption">{i.calc_tipo} · {unidadDe(i)}</div>
                     </div>
                     <button
                       type="button" className={`btn btn-sm ${ya ? '' : 'btn-primary'}`} disabled={baja || ya} onClick={() => agregar(i)}
@@ -78,7 +70,7 @@ export default function RecetaProducto({ value = [], onChange, error, idTela, re
         <label>Receta: insumos por unidad {!readOnly && <span className="req">*</span>}</label>
         <div className="ins-agregados">
           <div className="ins-linea head receta">
-            <span>Insumo</span><span>Cantidad por unidad</span><span className="right">Costo</span><span />
+            <span>Insumo</span><span>Cantidad por unidad</span><span />
           </div>
           {value.length === 0 && (
             <div className="caption" style={{ padding: '14px 12px' }}>Elija la tela del producto o agregue insumos desde el catálogo.</div>
@@ -92,7 +84,7 @@ export default function RecetaProducto({ value = [], onChange, error, idTela, re
                   <div style={{ fontSize: 13, fontWeight: 500 }}>
                     {i?.nombre || `#${l.id_insumo}`} {esTela && <span className="badge badge-info" style={{ marginLeft: 4 }}>Tela</span>}
                   </div>
-                  <div className="caption">{i?.calc_tipo} · {money(i?.precio_unitario)} / {unidadDe(i)}</div>
+                  <div className="caption">{i?.calc_tipo} · Unidad: {i?.calc_unidad} ({unidadDe(i)})</div>
                 </div>
                 <div className="input-unidad">
                   <input
@@ -103,7 +95,6 @@ export default function RecetaProducto({ value = [], onChange, error, idTela, re
                   />
                   <span className="unidad">{unidadDe(i)}</span>
                 </div>
-                <span className="money right" style={{ fontSize: 13 }}>{money(Number(l.cantidad || 0) * Number(i?.precio_unitario || 0))}</span>
                 {!readOnly && !esTela ? (
                   <button type="button" className="icon-btn is-delete" onClick={() => quitar(idx)} aria-label={`Quitar ${i?.nombre}`} title="Quitar">
                     <Icon name="trash" size={15} />

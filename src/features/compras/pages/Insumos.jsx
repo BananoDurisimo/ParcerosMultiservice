@@ -9,7 +9,8 @@ import { money, fecha, UMBRAL_STOCK_BAJO, ESTADOS_REGISTRO } from '@shared/data/
 import { agrupar } from '@shared/lib/exportar.js';
 
 /** Tabla `insumo`: nombre, id_tipo_insumo, id_unidad_medida, stock,
- *  stock_minimo, precio_unitario, estado.
+ *  stock_minimo, estado. El insumo no tiene precio: lo que se cobra son los
+ *  productos; lo que se pago por el se ve en sus compras.
  *  Cada insumo define sus propias existencias minimas: por debajo de ese
  *  numero la fila se marca en amarillo y entra en la alerta de inventario. */
 export default function Insumos() {
@@ -55,7 +56,6 @@ export default function Insumos() {
     return out.sort((a, b) => b.fecha.localeCompare(a.fecha)).map((x, k) => ({ ...x, id: k }));
   };
 
-  const suma = (filas, fn) => filas.reduce((s, r) => s + Number(fn(r) || 0), 0);
   const exportacion = {
     columnas: [
       { titulo: 'Insumo', valor: (r) => r.nombre, ancho: 160 },
@@ -63,20 +63,18 @@ export default function Insumos() {
       { titulo: 'Unidad', valor: (r) => `${r.calc_unidad} (${r.calc_abreviatura})`, ancho: 80 },
       { titulo: 'Existencias', valor: (r) => r.stock, tipo: 'numero', ancho: 70 },
       { titulo: 'Mínimo', valor: (r) => r.calc_minimo, tipo: 'numero', ancho: 60 },
-      { titulo: 'Precio unit.', valor: (r) => r.precio_unitario, tipo: 'dinero', ancho: 80 },
-      { titulo: 'Valor en stock', valor: (r) => r.calc_valor, tipo: 'dinero', ancho: 90, total: true },
       { titulo: 'Disponibilidad', valor: (r) => nivel(r).label, ancho: 90 },
       { titulo: 'Estado', valor: (r) => r.estado, ancho: 60 },
     ],
     indicadores: (filas) => [
       { etiqueta: 'Insumos', valor: filas.length, tipo: 'numero', nota: 'en el reporte' },
-      { etiqueta: 'Valor del inventario', valor: suma(filas, (r) => r.calc_valor), tipo: 'dinero' },
+      { etiqueta: 'Existencias suficientes', valor: filas.filter((r) => r.stock > r.calc_minimo).length, tipo: 'numero', nota: 'sobre su mínimo' },
       { etiqueta: 'Bajo su mínimo', valor: filas.filter((r) => r.stock > 0 && r.stock <= r.calc_minimo).length, tipo: 'numero', nota: 'reponer pronto' },
       { etiqueta: 'Agotados', valor: filas.filter((r) => r.stock === 0).length, tipo: 'numero', nota: 'sin existencias' },
     ],
     grupos: (filas) => [
-      { titulo: 'Valor del inventario por categoría', columnas: ['Categoría', 'Insumos', 'Valor en stock'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.calc_tipo, (r) => r.calc_valor) },
-      { titulo: 'Disponibilidad', columnas: ['Disponibilidad', 'Insumos', 'Valor en stock'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => nivel(r).label, (r) => r.calc_valor) },
+      { titulo: 'Insumos por categoría', columnas: ['Categoría', 'Insumos'], tipos: ['texto', 'numero'], filas: agrupar(filas, (r) => r.calc_tipo) },
+      { titulo: 'Disponibilidad', columnas: ['Disponibilidad', 'Insumos'], tipos: ['texto', 'numero'], filas: agrupar(filas, (r) => nivel(r).label) },
       {
         titulo: 'Insumos para reponer', columnas: ['Insumo', 'Existencias', 'Mínimo'], tipos: ['texto', 'numero', 'numero'],
         filas: filas.filter((r) => r.stock <= r.calc_minimo).sort((a, b) => a.stock - b.stock).map((r) => [r.nombre, r.stock, r.calc_minimo]),
@@ -94,7 +92,6 @@ export default function Insumos() {
           <div className="detail-item"><div className="dl">Unidad de medida</div><div className="dv">{r.calc_unidad} ({r.calc_abreviatura})</div></div>
           <div className="detail-item"><div className="dl">Existencias</div><div className="dv">{r.stock} {r.calc_abreviatura}</div></div>
           <div className="detail-item"><div className="dl">Existencias mínimas</div><div className="dv">{r.calc_minimo} {r.calc_abreviatura}</div></div>
-          <div className="detail-item"><div className="dl">Precio unitario</div><div className="dv money">{money(r.precio_unitario)}</div></div>
           <div className="detail-item"><div className="dl">Disponibilidad</div><div className="dv"><Badge tono={n.badge}>{n.label}</Badge></div></div>
           <div className="detail-item"><div className="dl">Estado</div><div className="dv"><Badge>{r.estado}</Badge></div></div>
         </div>
@@ -169,7 +166,7 @@ export default function Insumos() {
       resumen={[
         <KpiCard key="a" label="Insumos registrados" value={db.insumos.length} icon="package" tono="primary" />,
         <KpiCard key="b" label="Bajo su mínimo" value={stats.bajoStock.length} icon="alert" tono="warning" />,
-        <KpiCard key="c" label="Valor del inventario" value={stats.valorInventario} prefix="C$ " icon="coin" tono="success" decimals={0} />,
+        <KpiCard key="c" label="Agotados" value={db.insumos.filter((i) => i.stock === 0).length} icon="xC" tono="error" />,
       ]}
       columnas={[
         {
@@ -201,8 +198,6 @@ export default function Insumos() {
             );
           },
         },
-        { key: 'precio_unitario', label: 'Precio unit.', align: 'right', mobile: 'value', render: (r) => <span className="money">{money(r.precio_unitario)}</span> },
-        { key: 'calc_valor', label: 'Valor en stock', align: 'right', render: (r) => <span className="money">{money(r.calc_valor)}</span> },
         { key: 'disponibilidad', label: 'Disponibilidad', sortable: false, render: (r) => <Badge tono={nivel(r).badge}>{nivel(r).label}</Badge> },
         { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="insumos" modulo="Insumos" options={ESTADOS_REGISTRO} /> },
       ]}
@@ -215,7 +210,6 @@ export default function Insumos() {
           name: 'stock_minimo', label: 'Existencias mínimas', type: 'number', required: true, min: 0,
           hint: 'Cuando las existencias bajen hasta este número el insumo entrará en la alerta de inventario.',
         },
-        { name: 'precio_unitario', label: 'Precio unitario (C$)', type: 'money', required: true, min: 0 },
         { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Un insumo inactivo sigue en el catálogo, pero ya no se ofrece para compra.' },
       ]}
     />

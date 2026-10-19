@@ -308,7 +308,6 @@ export function DataProvider({ children }) {
       calc_tipo: tipos.get(i.id_tipo_insumo)?.nombre || '—',
       calc_unidad: unidades.get(i.id_unidad_medida)?.nombre || '—',
       calc_abreviatura: unidades.get(i.id_unidad_medida)?.abreviatura || '',
-      calc_valor: Number(i.stock) * Number(i.precio_unitario),
       calc_minimo: Number(i.stock_minimo ?? UMBRAL_STOCK_BAJO),
     }));
 
@@ -324,18 +323,14 @@ export function DataProvider({ children }) {
       calc_insumos_txt: (c.detalle_insumos || []).map((l) => insumosM.get(l.id_insumo)?.nombre || '').join(' · '),
     }));
 
-    /* Producto base: prenda (categoria) + talla + tela, con su receta. El
-       costo es lo que valen hoy los insumos de una unidad; el margen compara
-       ese costo con el precio de venta. */
+    /* Producto base: prenda (categoria) + talla + tela, con su receta. Lo
+       que se cobra es su precio de venta: los insumos no tienen precio. */
     const productos = raw.productos.map((pr) => {
-      const costo = redondear(suma(pr.receta || [], (l) => l.cantidad * Number(insumosM.get(l.id_insumo)?.precio_unitario || 0)));
       return {
         ...pr,
         calc_categoria: categoriasM.get(pr.id_categoria_producto)?.nombre || '—',
         calc_talla: tallasM.get(pr.id_talla)?.nombre || '—',
         calc_tela: insumosM.get(pr.id_insumo_tela)?.nombre || '—',
-        calc_costo: costo,
-        calc_margen: redondear(Number(pr.precio_venta) - costo),
         calc_lineas_receta: (pr.receta || []).length,
         calc_receta_txt: (pr.receta || []).map((l) => insumosM.get(l.id_insumo)?.nombre || '').join(' · '),
         calc_insumos: (pr.receta || []).map((l) => l.id_insumo),
@@ -549,7 +544,6 @@ export function DataProvider({ children }) {
       bajoStock,
       pedidosActivos: vendidos.filter((p) => p.estado !== ENTREGADO).length,
       totalPedidos: db.pedidos.length,
-      valorInventario: suma(db.insumos, (i) => i.calc_valor),
     };
   }, [db]);
 

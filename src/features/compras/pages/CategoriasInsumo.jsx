@@ -6,7 +6,7 @@ import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import MiniTabla from '@shared/components/ui/MiniTabla.jsx';
 import Icon from '@shared/components/Icon.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { money, ESTADOS_REGISTRO } from '@shared/data/mock.js';
+import { ESTADOS_REGISTRO } from '@shared/data/mock.js';
 
 /** Tabla `tipo_insumo`: la categoria de cada insumo (Tela, Hilo, Estampado,
  *  Accesorio, Cinta…). Agrupa los insumos y dice que suministra cada
@@ -31,7 +31,6 @@ export default function CategoriasInsumo() {
         columnas={[
           { label: 'Insumo', render: (i) => i.nombre },
           { label: 'Existencias', align: 'right', render: (i) => `${i.stock} ${i.calc_abreviatura}` },
-          { label: 'Precio unit.', align: 'right', render: (i) => <span className="money">{money(i.precio_unitario)}</span> },
           { label: 'Estado', render: (i) => <Badge>{i.estado}</Badge> },
         ]}
       />

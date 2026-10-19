@@ -37,6 +37,16 @@ export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
 
       <h3 className="det-section">Productos</h3>
       <ItemsView lineas={r.productos || []} opciones={productos} itemKey="id_producto" itemLabel="Producto" totalLabel="Subtotal productos" vacio="No se registraron productos." unidad={() => 'und'} />
+      {r.calc_defectuosas > 0 && (
+        <div className="alert alert-warning" style={{ marginTop: 10 }}>
+          <Icon name="alert" size={18} />
+          <div>
+            <strong>{r.calc_defectuosas} prenda(s) defectuosa(s):</strong>{' '}
+            {(r.productos || []).filter((l) => l.defectuosas > 0).map((l) => `${db.productos.find((p) => p.id === l.id_producto)?.nombre || `#${l.id_producto}`} (${l.defectuosas})`).join(' · ')}.
+            {' '}Sus insumos se descontaron del inventario; no cambian el total.
+          </div>
+        </div>
+      )}
 
       <h3 className="det-section">Insumos de personalización</h3>
       <ItemsView lineas={r.insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" totalLabel="Subtotal personalización" vacio="Sin insumos de personalización." unidad={unidad} />

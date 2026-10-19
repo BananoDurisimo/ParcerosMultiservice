@@ -372,6 +372,7 @@ export function DataProvider({ children }) {
         calc_total_insumos: totalInsumos,
         calc_lineas: (p.insumos || []).length + (p.productos || []).length,
         calc_prendas: suma(p.productos || [], (l) => l.cantidad),
+        calc_defectuosas: suma(p.productos || [], (l) => l.defectuosas),
         calc_productos_txt: (p.productos || []).map((l) => productosM.get(l.id_producto)?.nombre || '').join(' · '),
       };
     });
@@ -415,7 +416,12 @@ export function DataProvider({ children }) {
       // catálogos
       permisos: raw.permisos,
       privilegios: raw.privilegios,
-      tipos_insumo: raw.tipos_insumo,
+      /* Categorias de insumo: cuantos insumos y proveedores las usan. */
+      tipos_insumo: raw.tipos_insumo.map((t) => ({
+        ...t,
+        calc_insumos: raw.insumos.filter((i) => i.id_tipo_insumo === t.id).length,
+        calc_proveedores: raw.proveedores.filter((p) => p.id_tipo_insumo === t.id).length,
+      })),
       unidades_medida: raw.unidades_medida,
       tallas: raw.tallas,
 

@@ -15,6 +15,7 @@ const TITULOS = {
   '/app/roles': 'Roles',
   '/app/usuarios': 'Usuarios',
   '/app/movimientos': 'Movimientos',
+  '/app/categorias-insumo': 'Categorías de insumo',
   '/app/insumos': 'Insumos',
   '/app/proveedores': 'Proveedores',
   '/app/compras': 'Compras',

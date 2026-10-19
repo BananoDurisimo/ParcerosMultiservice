@@ -59,7 +59,7 @@ const CONSULTAS = {
     SELECT p.*,
       COALESCE((SELECT json_agg(json_build_object('id_insumo', d.id_insumo, 'cantidad', d.cantidad, 'precio_unitario', d.precio_unitario, 'de_receta', d.de_receta) ORDER BY d.id_insumo)
                 FROM detalle_pedido_insumo d WHERE d.id_pedido = p.id_pedido), '[]') AS insumos,
-      COALESCE((SELECT json_agg(json_build_object('id_producto', d.id_producto, 'cantidad', d.cantidad, 'precio_unitario', d.precio_unitario) ORDER BY d.id_producto)
+      COALESCE((SELECT json_agg(json_build_object('id_producto', d.id_producto, 'cantidad', d.cantidad, 'precio_unitario', d.precio_unitario, 'defectuosas', d.defectuosas) ORDER BY d.id_producto)
                 FROM detalle_pedido_producto d WHERE d.id_pedido = p.id_pedido), '[]') AS productos,
       COALESCE((SELECT json_agg(json_build_object('id_estado_pedido', h.id_estado_pedido, 'fecha', h.fecha::date) ORDER BY h.fecha, h.id_historial)
                 FROM historial_estado_pedido h WHERE h.id_pedido = p.id_pedido), '[]') AS historial

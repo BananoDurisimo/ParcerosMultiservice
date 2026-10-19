@@ -16,6 +16,7 @@ export const NAV = [
   {
     section: 'Compras',
     items: [
+      { to: '/app/categorias-insumo', icon: 'category', label: 'Categorías de insumo', permiso: 'Categorías de insumo' },
       { to: '/app/insumos', icon: 'package', label: 'Insumos', permiso: 'Insumos' },
       { to: '/app/proveedores', icon: 'truck', label: 'Proveedores', permiso: 'Proveedores' },
       { to: '/app/compras', icon: 'cart', label: 'Compras', permiso: 'Compras' },
@@ -24,7 +25,7 @@ export const NAV = [
   {
     section: 'Productos',
     items: [
-      { to: '/app/categorias-producto', icon: 'category', label: 'Categorías', permiso: 'Categorías de producto' },
+      { to: '/app/categorias-producto', icon: 'category', label: 'Categorías de producto', permiso: 'Categorías de producto' },
       { to: '/app/productos', icon: 'shirt', label: 'Productos', permiso: 'Productos' },
     ],
   },

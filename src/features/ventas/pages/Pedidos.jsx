@@ -7,7 +7,7 @@ import Modal from '@shared/components/ui/Modal.jsx';
 import Icon from '@shared/components/Icon.jsx';
 import DetalleRegistro from '@features/ventas/components/DetalleRegistro.jsx';
 import LineasPedido, { TotalPedido, totalLineas } from '@features/ventas/components/LineasPedido.jsx';
-import MontoAbono from '@features/ventas/components/MontoAbono.jsx';
+import MontoAbono, { errorMonto } from '@features/ventas/components/MontoAbono.jsx';
 import { validarLineas } from '@shared/components/ui/Form.jsx';
 import { agrupar } from '@shared/lib/exportar.js';
 import { descargarCotizacion } from '@features/ventas/lib/cotizacionPdf.js';
@@ -62,15 +62,9 @@ const redondear = (n) => Math.round(n * 100) / 100;
 const conSubtotal = (l) => {
   const cantidad = Number(l.cantidad);
   const precio = Number(l.precio_unitario);
-  return { ...l, cantidad, precio_unitario: precio, subtotal: redondear(cantidad * precio) };
+  return { ...l, cantidad, precio_unitario: precio, subtotal: redondear(cantidad * precio), ...(l.id_producto !== undefined ? { defectuosas: Number(l.defectuosas) || 0 } : {}) };
 };
 const listaFaltantes = (faltan) => faltan.map((f) => `${f.nombre} (se piden ${f.pide} y hay ${f.hay})`).join('; ');
-
-/** Porcentajes permitidos para el abono inicial de un pedido. */
-const opcionesAbonoInicial = (total) => [
-  { value: 50, titulo: '50% del total', monto: redondear(total / 2) },
-  { value: 100, titulo: '100% (pago completo)', monto: total },
-];
 
 export default function Pedidos() {
   const { db, opciones, create, update, remove, nuevoId, faltantes, expandirReceta } = useData();
@@ -191,7 +185,9 @@ export default function Pedidos() {
   /* ---------- Validaciones comunes ---------- */
   const totalForm = (v) => totalLineas(v.productos, v.insumos);
   /** Lo que el pedido gasta del inventario: receta de los productos + personalizacion. */
-  const consumoForm = (v) => [...expandirReceta(v.productos || []), ...(v.insumos || [])];
+  /* Las prendas defectuosas gastan su receta como cualquier otra unidad. */
+  const conDefectos = (productos = []) => productos.map((l) => ({ ...l, cantidad: Number(l.cantidad || 0) + (Number(l.defectuosas) || 0) }));
+  const consumoForm = (v) => [...expandirReceta(conDefectos(v.productos)), ...(v.insumos || [])];
   const validarLineasPedido = (v) => {
     const productos = v.productos || [];
     const insumos = v.insumos || [];
@@ -199,6 +195,9 @@ export default function Pedidos() {
     const e = validarLineas(productos, 'id_producto') || validarLineas(insumos, 'id_insumo');
     if (e) return { lineas: e };
     if (productos.some((l) => !Number.isInteger(Number(l.cantidad)))) return { lineas: 'Las unidades de cada producto deben ser un número entero.' };
+    if (productos.some((l) => l.defectuosas !== undefined && l.defectuosas !== '' && !(Number.isInteger(Number(l.defectuosas)) && Number(l.defectuosas) >= 0))) {
+      return { lineas: 'Las prendas defectuosas deben ser un número entero de cero en adelante.' };
+    }
     return null;
   };
   const validarTotalAbonado = (v, actual) =>
@@ -208,7 +207,7 @@ export default function Pedidos() {
   /** Lineas listas para guardar, con la receta copiada de los productos. */
   const lineasGuardar = (d) => {
     const productos = (d.productos || []).map(conSubtotal);
-    return { productos, insumos: (d.insumos || []).map(conSubtotal), insumos_receta: expandirReceta(productos) };
+    return { productos, insumos: (d.insumos || []).map(conSubtotal), insumos_receta: expandirReceta(conDefectos(productos)) };
   };
   /** Titulo numerado de cada bloque del formulario: guia el orden de registro. */
   const paso = (n, texto) => ({ name: `paso${n}`, type: 'custom', full: true, render: () => <div className="form-section"><span className="paso-num">{n}</span> {texto}</div> });
@@ -221,8 +220,9 @@ export default function Pedidos() {
     {
       /* Un solo componente llena dos columnas: productos e insumos de personalizacion. */
       name: 'lineas', type: 'component', col: 'izq', columnas: ['productos', 'insumos'],
-      render: ({ values, setVal, error, bloqueado }) => (
+      render: ({ values, setVal, error, bloqueado, modo }) => (
         <LineasPedido
+          conDefectuosas={vista.id === 'pedidos' && modo === 'editar'}
           productos={values.productos || []}
           insumos={values.insumos || []}
           onProductos={(v) => { setVal('lineas', true); setVal('productos', v); }}
@@ -247,7 +247,7 @@ export default function Pedidos() {
   const [campoCliente, campoInsumos, campoDesglose, ...camposInfo] = camposBase;
 
   /* Acceso directo al abono del registro: abre Abonos con el formulario listo. */
-  const puedeAbonar = (r) => acciones.agregarAbono && r.estado !== ENTREGADO && r.calc_saldo > 0 && r.calc_abonos < 2;
+  const puedeAbonar = (r) => acciones.agregarAbono && r.estado !== ENTREGADO && r.calc_saldo > 0;
   const irAAbonar = (r) => navigate(`/app/abonos?pedido=${r.id}`);
 
   /* Eliminar el registro borra tambien sus abonos (dependen de el) y, si ya
@@ -306,7 +306,7 @@ export default function Pedidos() {
       { etiqueta: 'Valor total', valor: suma(filas, (r) => r.calc_total), tipo: 'dinero' },
       { etiqueta: 'Abonado', valor: suma(filas, (r) => r.calc_abonado), tipo: 'dinero' },
       { etiqueta: 'Saldo por cobrar', valor: suma(filas, (r) => r.calc_saldo), tipo: 'dinero' },
-      { etiqueta: 'Prendas', valor: suma(filas, (r) => r.calc_prendas), tipo: 'numero', nota: 'unidades de producto' },
+      { etiqueta: 'Prendas', valor: suma(filas, (r) => r.calc_prendas), tipo: 'numero', nota: `${suma(filas, (r) => r.calc_defectuosas)} defectuosa(s)` },
     ],
     grupos: (filas) => [
       { titulo: 'Por estado', columnas: ['Estado', 'Registros', 'Total'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.estado, (r) => r.calc_total) },
@@ -432,7 +432,7 @@ export default function Pedidos() {
         { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },
         { key: 'fecha_inicio', label: 'Fecha de inicio', type: 'rango' },
       ],
-      defaults: { productos: [], insumos: [], descripcion: '', imagen_diseno: '', fecha_inicio: hoyISO(), abono_pct: '', abono_metodo: 'Efectivo', abono_comprobante: '' },
+      defaults: { productos: [], insumos: [], descripcion: '', imagen_diseno: '', fecha_inicio: hoyISO(), abono_monto: '', abono_metodo: 'Efectivo', abono_comprobante: '' },
       /* La edicion solo aplica mientras el pedido se elabora. */
       puedeEditarFila: (r) => r.estado === EN_PROCESO,
       resumen: [
@@ -470,17 +470,24 @@ export default function Pedidos() {
         campoDesglose,
         { ...paso(4, 'Abono inicial'), ocultarAlEditar: true },
         {
-          name: 'abono_pct', type: 'component', required: true, ocultarAlEditar: true,
-          render: ({ value, onChange, error, values }) => (
-            <MontoAbono
-              label="Abono inicial"
-              opciones={totalForm(values) > 0 ? opcionesAbonoInicial(totalForm(values)) : []}
-              vacio="Agregue productos para calcular el abono inicial (50% o 100% del total)."
-              value={value}
-              onChange={onChange}
-              error={error}
-            />
-          ),
+          /* Monto libre: al menos el 50% del total y como maximo el total. */
+          name: 'abono_monto', type: 'component', required: true, ocultarAlEditar: true,
+          render: ({ value, onChange, error, values }) => {
+            const total = totalForm(values);
+            return (
+              <MontoAbono
+                label="Abono inicial"
+                minimo={total > 0 ? redondear(total / 2) : undefined}
+                maximo={total > 0 ? total : undefined}
+                atajos={total > 0 ? [{ titulo: '50%', monto: redondear(total / 2) }, { titulo: 'Pago completo', monto: total }] : []}
+                nota="mínimo el 50% del total"
+                vacio="Agregue productos para calcular el abono inicial (mínimo el 50% del total)."
+                value={value}
+                onChange={onChange}
+                error={error}
+              />
+            );
+          },
         },
         { name: 'abono_metodo', label: 'Método de pago', type: 'select', options: METODOS_PAGO, required: true, ocultarAlEditar: true },
         {
@@ -492,8 +499,9 @@ export default function Pedidos() {
         const lineas = validarLineasPedido(v);
         if (lineas) return lineas;
         const errs = {};
-        if (modo === 'crear' && v.abono_pct !== '' && ![50, 100].includes(Number(v.abono_pct))) {
-          errs.abono_pct = 'El abono inicial debe ser el 50% del total o el pago completo.';
+        if (modo === 'crear' && totalForm(v) > 0) {
+          const e = errorMonto(v.abono_monto, redondear(totalForm(v) / 2), totalForm(v), { primero: true });
+          if (e) errs.abono_monto = e;
         }
         const faltan = faltantes(consumoForm(v), modo === 'editar' ? actual : null);
         if (faltan.length) return { ...errs, lineas: `No hay existencias suficientes: ${listaFaltantes(faltan)}.` };
@@ -523,7 +531,7 @@ export default function Pedidos() {
         });
         const total = totalLineas(lineas.productos, lineas.insumos);
         create('abonos', {
-          id_pedido: id, monto: redondear((total * Number(d.abono_pct)) / 100), fecha: d.fecha_inicio,
+          id_pedido: id, monto: Math.min(total, redondear(Number(d.abono_monto))), fecha: d.fecha_inicio,
           metodo_pago: d.abono_metodo, url_comprobante: d.abono_comprobante || '',
         });
         toast.success('El registro de pedido se guardó correctamente.');

@@ -7,7 +7,7 @@ import { Home } from '@features/home';
 import { Login, Recuperar, Cuenta } from '@features/auth';
 import { Dashboard } from '@features/dashboard';
 import { Roles, Usuarios, Movimientos } from '@features/configuracion';
-import { Insumos, Proveedores, Compras } from '@features/compras';
+import { CategoriasInsumo, Insumos, Proveedores, Compras } from '@features/compras';
 import { Clientes, Pedidos, Abonos } from '@features/ventas';
 import { CategoriasProducto, Productos } from '@features/productos';
 
@@ -34,6 +34,7 @@ export default function AppRoutes() {
           <Route path="movimientos" element={<Movimientos />} />
 
           {/* Compras */}
+          <Route path="categorias-insumo" element={<CategoriasInsumo />} />
           <Route path="insumos" element={<Insumos />} />
           <Route path="proveedores" element={<Proveedores />} />
           <Route path="compras" element={<Compras />} />

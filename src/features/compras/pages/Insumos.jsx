@@ -75,7 +75,7 @@ export default function Insumos() {
       { etiqueta: 'Agotados', valor: filas.filter((r) => r.stock === 0).length, tipo: 'numero', nota: 'sin existencias' },
     ],
     grupos: (filas) => [
-      { titulo: 'Valor del inventario por tipo', columnas: ['Tipo de insumo', 'Insumos', 'Valor en stock'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.calc_tipo, (r) => r.calc_valor) },
+      { titulo: 'Valor del inventario por categoría', columnas: ['Categoría', 'Insumos', 'Valor en stock'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.calc_tipo, (r) => r.calc_valor) },
       { titulo: 'Disponibilidad', columnas: ['Disponibilidad', 'Insumos', 'Valor en stock'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => nivel(r).label, (r) => r.calc_valor) },
       {
         titulo: 'Insumos para reponer', columnas: ['Insumo', 'Existencias', 'Mínimo'], tipos: ['texto', 'numero', 'numero'],
@@ -90,7 +90,7 @@ export default function Insumos() {
       <div>
         <div className="detail-grid">
           <div className="detail-item"><div className="dl">Insumo</div><div className="dv">{r.nombre}</div></div>
-          <div className="detail-item"><div className="dl">Tipo de insumo</div><div className="dv">{r.calc_tipo}</div></div>
+          <div className="detail-item"><div className="dl">Categoría</div><div className="dv">{r.calc_tipo}</div></div>
           <div className="detail-item"><div className="dl">Unidad de medida</div><div className="dv">{r.calc_unidad} ({r.calc_abreviatura})</div></div>
           <div className="detail-item"><div className="dl">Existencias</div><div className="dv">{r.stock} {r.calc_abreviatura}</div></div>
           <div className="detail-item"><div className="dl">Existencias mínimas</div><div className="dv">{r.calc_minimo} {r.calc_abreviatura}</div></div>
@@ -161,7 +161,7 @@ export default function Insumos() {
         },
       }}
       filtros={[
-        { key: 'id_tipo_insumo', label: 'Tipo de insumo', options: tipos },
+        { key: 'id_tipo_insumo', label: 'Categoría', options: tipos },
         { key: 'id_unidad_medida', label: 'Unidad de medida', options: unidades },
         { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
       ]}
@@ -208,7 +208,7 @@ export default function Insumos() {
       ]}
       campos={[
         { name: 'nombre', label: 'Nombre del insumo', type: 'text', required: true, full: true, noSpecial: true, unique: true, maxLength: 80 },
-        { name: 'id_tipo_insumo', label: 'Tipo de insumo', type: 'select', options: tipos, required: true },
+        { name: 'id_tipo_insumo', label: 'Categoría', type: 'select', options: tipos, required: true },
         { name: 'id_unidad_medida', label: 'Unidad de medida', type: 'select', options: unidades, required: true },
         { name: 'stock', label: 'Existencias', type: 'number', required: true, min: 0 },
         {

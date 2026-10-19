@@ -44,6 +44,10 @@ const COLECCIONES = {
     tabla: 'abono', pk: 'id_abono', modulos: ['Abonos', 'Cotizaciones', 'Pedidos', 'Ventas'],
     campos: ['id_pedido', 'id_metodo_pago', 'monto', 'fecha', 'ruta_comprobante'],
   },
+  tipos_insumo: {
+    tabla: 'tipo_insumo', pk: 'id_tipo_insumo', modulos: ['Categorías de insumo'],
+    campos: ['nombre', 'descripcion', 'activo'],
+  },
   categorias_producto: {
     tabla: 'categoria_producto', pk: 'id_categoria_producto', modulos: ['Categorías de producto'],
     campos: ['nombre', 'descripcion', 'activo'],
@@ -138,7 +142,11 @@ const DESPUES = {
      (`de_receta`, precio 0): esta ultima solo descuenta inventario. La receta
      se copia al guardar para que editarla despues no cambie pedidos viejos. */
   pedidos: async (db, fila, body) => {
-    await reemplazarLineas(db, 'detalle_pedido_producto', 'id_pedido', fila.id_pedido, body.productos, ['id_producto', 'cantidad', 'precio_unitario']);
+    await reemplazarLineas(
+      db, 'detalle_pedido_producto', 'id_pedido', fila.id_pedido,
+      Array.isArray(body.productos) ? body.productos.map((l) => ({ ...l, defectuosas: Number(l.defectuosas) || 0 })) : undefined,
+      ['id_producto', 'cantidad', 'precio_unitario', 'defectuosas']
+    );
     await reemplazarLineas(db, 'detalle_pedido_insumo', 'id_pedido', fila.id_pedido, body.insumos, ['id_insumo', 'cantidad', 'precio_unitario'], { de_receta: false });
     await reemplazarLineas(
       db, 'detalle_pedido_insumo', 'id_pedido', fila.id_pedido,

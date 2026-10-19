@@ -1408,3 +1408,14 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
   .lp-tab .ico, .lp-tab > svg { display: none; }
   .lp-nota { grid-column: 1; justify-self: center; }
 }
+
+/* --- Monto libre del abono (C$ a la izquierda) --- */
+.monto-libre .input { padding-left: 38px; padding-right: 12px; font-size: 15px; font-weight: 600; }
+.monto-libre .unidad.prefijo { left: 12px; right: auto; }
+
+/* --- Prendas defectuosas en los productos del pedido --- */
+.ins-linea.con-defectos { grid-template-columns: minmax(0, 1.5fr) minmax(0, .8fr) minmax(0, 1fr) minmax(0, .8fr) 34px; }
+.receta-auto.defectos { border-color: color-mix(in srgb, var(--warning) 55%, transparent); background: var(--warning-bg); }
+@media (max-width: 560px) {
+  .ins-linea.con-defectos { grid-template-columns: 1fr 1fr 1fr 34px; }
+}

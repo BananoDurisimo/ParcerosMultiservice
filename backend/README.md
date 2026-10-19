@@ -33,6 +33,7 @@ primer inicio de sesión (Mi cuenta > Seguridad).
 | `008_bloquear_rol_administrador.sql` | Devuelve al Administrador todos los módulos y acciones y lo bloquea con triggers: no se puede editar, cambiar de estado, eliminar ni quitarle permisos |
 | `009_usuario_admin_siempre_administrador.sql` | Devuelve el rol Administrador al usuario `admin@parceros.ni` y lo bloquea: no se le puede cambiar el rol ni el correo |
 | `010_descargar_cotizacion_en_pedidos.sql` | Privilegio `Descargar cotización` también en el módulo Pedidos |
+| `011_abonos_libres_defectuosas_categorias.sql` | Método de pago `Mixto`; abonos de monto libre sin límite (el primero de al menos el 50% del total); `defectuosas` por producto del pedido; módulo `Categorías de insumo` sobre `tipo_insumo` (descripción, estado, auditoría y permisos) |
 
 `npm start` ejecuta las migraciones pendientes antes de iniciar el servidor,
 así que en Render basta con desplegar. Son idempotentes: no se repiten.
@@ -56,7 +57,7 @@ Todas, salvo `health` y `login`, requieren `Authorization: Bearer <token>`.
 
 Colecciones: `clientes`, `proveedores`, `insumos`, `roles` (con `permisos` y
 `privilegios`), `usuarios` (con `contrasena` al crear), `compras` (con
-`detalles`), `pedidos` (con `productos`, `insumos` de personalización e
+`detalles`), `tipos_insumo` (categorías de insumo), `pedidos` (con `productos` y sus `defectuosas`, `insumos` de personalización e
 `insumos_receta`), `abonos`, `categorias_producto` y `productos` (con `receta`).
 
 ## Seguridad

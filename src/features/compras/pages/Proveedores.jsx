@@ -19,7 +19,7 @@ export default function Proveedores() {
       <div className="detail-grid">
         <div className="detail-item"><div className="dl">Proveedor</div><div className="dv">{r.nombre}</div></div>
         <div className="detail-item"><div className="dl">NIT</div><div className="dv">{r.nit || '—'}</div></div>
-        <div className="detail-item"><div className="dl">Tipo de insumo que suministra</div><div className="dv">{r.calc_tipo_insumo}</div></div>
+        <div className="detail-item"><div className="dl">Categoría de insumo que suministra</div><div className="dv">{r.calc_tipo_insumo}</div></div>
         <div className="detail-item"><div className="dl">Estado</div><div className="dv"><Badge>{r.estado}</Badge></div></div>
         <div className="detail-item"><div className="dl">Teléfono de la empresa</div><div className="dv">{r.telefono || '—'}</div></div>
         <div className="detail-item"><div className="dl">Correo de la empresa</div><div className="dv">{r.correo || '—'}</div></div>
@@ -76,7 +76,7 @@ export default function Proveedores() {
           : null),
       }}
       filtros={[
-        { key: 'id_tipo_insumo', label: 'Tipo de insumo', options: tipos },
+        { key: 'id_tipo_insumo', label: 'Categoría de insumo', options: tipos },
         { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
       ]}
       defaults={{ estado: 'Activo' }}
@@ -91,7 +91,7 @@ export default function Proveedores() {
           ),
         },
         { key: 'nit', label: 'NIT', mobile: 'meta', render: (r) => <span className="caption">{r.nit || '—'}</span> },
-        { key: 'calc_tipo_insumo', label: 'Tipo de insumo', mobile: 'meta', render: (r) => <span className="badge badge-info">{r.calc_tipo_insumo}</span> },
+        { key: 'calc_tipo_insumo', label: 'Categoría de insumo', mobile: 'meta', render: (r) => <span className="badge badge-info">{r.calc_tipo_insumo}</span> },
         { key: 'telefono', label: 'Teléfono empresa', render: (r) => <span className="muted row" style={{ gap: 6 }}><Icon name="phone" size={14} /> {r.telefono || '—'}</span> },
         { key: 'correo', label: 'Correo empresa', render: (r) => <span className="muted">{r.correo || '—'}</span> },
         { key: 'calc_compras', label: 'Compras', align: 'center', mobile: 'value', render: (r) => <span className="badge badge-neutral">{r.calc_compras}</span> },
@@ -101,7 +101,7 @@ export default function Proveedores() {
         { name: 'sec_empresa', type: 'custom', full: true, render: () => <div className="form-section"><Icon name="truck" size={15} /> Datos de la empresa</div> },
         { name: 'nombre', label: 'Nombre del proveedor', type: 'text', required: true, noSpecial: true, unique: true, maxLength: 80 },
         { name: 'nit', label: 'NIT', type: 'text', required: true, alfanumerico: true, unique: true, maxLength: 20, placeholder: 'Ej.: J0310000451' },
-        { name: 'id_tipo_insumo', label: 'Tipo de insumo que suministra', type: 'select', options: tipos, required: true },
+        { name: 'id_tipo_insumo', label: 'Categoría de insumo que suministra', type: 'select', options: tipos, required: true },
         { name: 'direccion', label: 'Dirección', type: 'text', required: true, maxLength: 150 },
         { name: 'telefono', label: 'Teléfono de la empresa', type: 'tel', required: true, placeholder: 'Ej.: 2278 4410' },
         { name: 'correo', label: 'Correo de la empresa', type: 'email', required: true, placeholder: 'ventas@empresa.com' },

@@ -7,6 +7,8 @@ import { money } from '@shared/data/mock.js';
 const unidadDe = (i) => i?.calc_abreviatura || i?.calc_unidad || '';
 const subtotal = (l) => Number(l.cantidad || 0) * Number(l.precio_unitario || 0);
 const cantidadValida = (l, entero) => l.cantidad !== '' && Number(l.cantidad) > 0 && (!entero || Number.isInteger(Number(l.cantidad)));
+/* Prendas defectuosas: entero de cero en adelante (vacio cuenta como 0). */
+const defectosValidos = (l) => l.defectuosas === undefined || l.defectuosas === '' || (Number.isInteger(Number(l.defectuosas)) && Number(l.defectuosas) >= 0);
 const precioValido = (l) => l.precio_unitario !== '' && !isNaN(Number(l.precio_unitario)) && Number(l.precio_unitario) >= 0;
 const redondear = (n) => Math.round(n * 100) / 100;
 
@@ -46,8 +48,12 @@ function Buscador({ value, onChange, placeholder }) {
  *
  * Cada pestaña muestra cuanto lleva (lineas o total), asi se ve el avance sin
  * abrirlas. El error de las lineas se muestra arriba, visible en cualquiera.
+ *
+ * `conDefectuosas` (al editar un pedido en elaboracion): cada producto tiene
+ * «Defectuosas», las prendas que salieron mal. Su receta se descuenta del
+ * inventario ademas de la del pedido; el precio no cambia.
  */
-export default function LineasPedido({ productos = [], insumos = [], onProductos, onInsumos, error, readOnly }) {
+export default function LineasPedido({ productos = [], insumos = [], onProductos, onInsumos, error, readOnly, conDefectuosas = false }) {
   const { db, expandirReceta } = useData();
   const [pestana, setPestana] = useState('productos');
   const [q, setQ] = useState('');
@@ -65,6 +71,8 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
   const quitar = (lineas, set) => (idx) => set(lineas.filter((_, j) => j !== idx));
 
   const receta = expandirReceta(productos.filter((l) => cantidadValida(l, true)));
+  const conDefecto = productos.filter((l) => defectosValidos(l) && Number(l.defectuosas) > 0);
+  const recetaDefectos = expandirReceta(conDefecto.map((l) => ({ ...l, cantidad: Number(l.defectuosas) })));
   const total = totalLineas(productos, insumos);
   const abrir = (p) => { setPestana(p); setQ(''); };
 
@@ -93,6 +101,27 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
         })}
       </div>
       <span className="caption">Sale de la receta de cada producto por las unidades pedidas. Descuenta inventario; no se cobra aparte.</span>
+    </div>
+  );
+
+  /* Insumos extra que se gastaron en las prendas defectuosas (solo lectura). */
+  const defectosAuto = recetaDefectos.length > 0 && (
+    <div className="field">
+      <label><Icon name="alert" size={13} /> Insumos de las prendas defectuosas (automático)</label>
+      <div className="receta-auto defectos">
+        {recetaDefectos.map((r) => {
+          const i = insumo(r.id_insumo);
+          return (
+            <div className="linea" key={r.id_insumo}>
+              <span>{i?.nombre || `#${r.id_insumo}`}</span>
+              <span className="caption">+{r.cantidad} {unidadDe(i)}</span>
+            </div>
+          );
+        })}
+      </div>
+      <span className="caption">
+        {conDefecto.map((l) => `${producto(l.id_producto)?.nombre}: ${l.defectuosas}`).join(' · ')}. Se descuentan del inventario; el precio no cambia.
+      </span>
     </div>
   );
 
@@ -153,8 +182,8 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
           <div className="field">
             <label>Productos agregados</label>
             <div className="ins-agregados">
-              <div className="ins-linea head">
-                <span>Producto</span><span>Unidades</span><span>Precio unit. (C$)</span><span />
+              <div className={`ins-linea head ${conDefectuosas ? 'con-defectos' : ''}`}>
+                <span>Producto</span><span>Unidades</span><span>Precio unit. (C$)</span>{conDefectuosas && <span>Defectuosas</span>}<span />
               </div>
               {productos.length === 0 && (
                 <div className="caption" style={{ padding: '14px 12px' }}>Todavía no hay productos: agréguelos desde el catálogo.</div>
@@ -162,7 +191,7 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
               {productos.map((l, idx) => {
                 const p = producto(l.id_producto);
                 return (
-                  <div className="ins-linea" key={l.id_producto}>
+                  <div className={`ins-linea ${conDefectuosas ? 'con-defectos' : ''}`} key={l.id_producto}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{p?.nombre || `#${l.id_producto}`}</div>
                       <div className="caption">{p?.calc_categoria} · Talla {p?.calc_talla} · {money(subtotal(l))}</div>
@@ -179,6 +208,15 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
                       value={l.precio_unitario} readOnly={readOnly}
                       onChange={(e) => cambiar(productos, onProductos)(idx, 'precio_unitario', e.target.value)}
                     />
+                    {conDefectuosas && (
+                      <input
+                        className={`input ${defectosValidos(l) ? '' : 'has-error'}`}
+                        type="number" min="0" step="1" placeholder="0" aria-label={`Prendas defectuosas de ${p?.nombre}`}
+                        title="Prendas que salieron mal: su receta se descuenta del inventario"
+                        value={l.defectuosas ?? ''} readOnly={readOnly}
+                        onChange={(e) => cambiar(productos, onProductos)(idx, 'defectuosas', e.target.value)}
+                      />
+                    )}
                     {!readOnly ? (
                       <button type="button" className="icon-btn is-delete" onClick={() => quitar(productos, onProductos)(idx)} aria-label={`Quitar ${p?.nombre}`} title="Quitar">
                         <Icon name="trash" size={15} />
@@ -191,6 +229,7 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
           </div>
 
           {recetaAuto}
+          {defectosAuto}
 
           {!readOnly && (
             <button type="button" className="btn btn-sm lp-siguiente" onClick={() => abrir('insumos')}>
@@ -295,6 +334,7 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
         <>
           <DesglosePedido productos={productos} insumos={insumos} />
           {recetaAuto}
+          {defectosAuto}
         </>
       )}
     </div>

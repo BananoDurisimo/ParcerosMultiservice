@@ -91,7 +91,8 @@ export const COMPRA_ANULADA = 'Anulada';
 export const ESTADOS_COMPRA = [...ESTADOS_COMPRA_ACTIVOS, COMPRA_ANULADA];
 export const ESTADOS_REGISTRO = ['Activo', 'Inactivo'];
 export const TIPOS_DOCUMENTO = ['Cédula', 'RUC', 'Pasaporte', 'Cédula de residencia'];
-export const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque'];
+/** «Mixto»: el cliente pagó el abono combinando varios métodos. */
+export const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque', 'Mixto'];
 
 /* --------------------------------------------------------------
    Permisos (modulos) y privilegios (acciones dentro de cada modulo)
@@ -133,7 +134,7 @@ export const ICONO_ACCION = { INSERT: 'plus', UPDATE: 'edit', DELETE: 'trash', L
 
 /** Columna `tabla`: nombre real de la tabla auditada -> modulo del sistema. */
 export const MODULOS_AUDITADOS = {
-  tipo_insumo: 'Tipos de insumo',
+  tipo_insumo: 'Categorías de insumo',
   unidad_medida: 'Unidades de medida',
   rol: 'Roles',
   permiso: 'Permisos',
@@ -185,7 +186,8 @@ export const ETIQUETA_CAMPO = {
   id_proveedor: 'Proveedor',
   id_pedido: 'Pedido',
   id_insumo: 'Insumo',
-  id_tipo_insumo: 'Tipo de insumo',
+  id_tipo_insumo: 'Categoría de insumo',
+  defectuosas: 'Prendas defectuosas',
   id_unidad_medida: 'Unidad de medida',
   permisos: 'Permisos',
   privilegios: 'Privilegios',
@@ -256,6 +258,7 @@ export const COLOR_METODO_PAGO = {
   Transferencia: 'var(--info)',
   Tarjeta: 'var(--primary)',
   Cheque: 'var(--warning)',
+  Mixto: 'var(--secondary)',
 };
 
 /** Color de la dona del dashboard segun el tipo de insumo comprado. */

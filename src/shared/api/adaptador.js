@@ -51,12 +51,12 @@ function aFrontend(col, f, cat) {
     case 'insumos':
       return {
         ...base, nombre: f.nombre, id_tipo_insumo: f.id_tipo_insumo, id_unidad_medida: f.id_unidad_medida,
-        stock: Number(f.stock ?? 0), stock_minimo: Number(f.stock_minimo), precio_unitario: Number(f.precio_unitario), estado: estado(f.activo),
+        stock: Number(f.stock ?? 0), stock_minimo: Number(f.stock_minimo), estado: estado(f.activo),
       };
     case 'proveedores':
       return {
-        ...base, nombre: f.nombre, nombrepersonacontacto: texto(f.nombre_persona_contacto), id_tipo_insumo: f.id_tipo_insumo,
-        telefono: texto(f.telefono), correo: texto(f.correo), direccion: texto(f.direccion), nit: f.nit, estado: estado(f.activo),
+        ...base, nombre: f.nombre, id_tipo_insumo: f.id_tipo_insumo, telefono: texto(f.telefono),
+        pais: f.pais || 'Nicaragua', estado: estado(f.activo),
       };
     case 'clientes':
       return {
@@ -178,12 +178,11 @@ export function aServidor(col, r, cat, sid) {
     case 'insumos':
       return {
         id_tipo_insumo: r.id_tipo_insumo, id_unidad_medida: r.id_unidad_medida, nombre: r.nombre,
-        stock_minimo: r.stock_minimo, precio_unitario: r.precio_unitario, activo, stock: r.stock,
+        stock_minimo: r.stock_minimo, activo, stock: r.stock,
       };
     case 'proveedores':
       return {
-        id_tipo_insumo: r.id_tipo_insumo, nombre: r.nombre, nombre_persona_contacto: r.nombrepersonacontacto, nit: r.nit,
-        telefono: r.telefono, correo: r.correo, direccion: r.direccion, activo,
+        id_tipo_insumo: r.id_tipo_insumo, nombre: r.nombre, telefono: r.telefono, pais: r.pais, activo,
       };
     case 'clientes':
       return {

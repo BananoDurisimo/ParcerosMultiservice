@@ -45,7 +45,7 @@ import {
  * El formulario va en dos columnas: a la izquierda el catalogo (productos y
  * personalizacion) con su buscador y lo agregado; a la derecha lo
  * informativo (cliente, fecha, desglose del total, abono inicial,
- * descripcion e imagen del diseño), numerado para guiar el registro.
+ * descripcion e imagen del mockup, opcional), numerado para guiar el registro.
  */
 
 const VISTAS = [
@@ -240,8 +240,8 @@ export default function Pedidos() {
       hint: 'Detalles del diseño acordado: colores, escudos, nombres y números de cada prenda.',
     },
     {
-      name: 'imagen_diseno', label: 'Imagen del diseño', type: 'archivo', full: true, required: true, tipos: TIPOS_DISENO,
-      hint: 'Diseño aprobado por el cliente (JPG, PNG o WEBP, máx. 5 MB).',
+      name: 'imagen_diseno', label: 'Imagen del mockup', type: 'archivo', full: true, tipos: TIPOS_DISENO,
+      hint: 'Opcional: mockup del uniforme (JPG, PNG o WEBP, máx. 5 MB).',
     },
   ];
   const [campoCliente, campoInsumos, campoDesglose, ...camposInfo] = camposBase;
@@ -337,7 +337,7 @@ export default function Pedidos() {
           </button>
         )}
         {acciones.verDiseno && (
-          <button className="icon-btn" onClick={() => setDiseno(r)} title="Ver diseño"><Icon name="image" size={16} /></button>
+          <button className="icon-btn" onClick={() => setDiseno(r)} title="Ver mockup"><Icon name="image" size={16} /></button>
         )}
         {vista.id === 'ventas' && acciones.verComprobante && (
           <button className="icon-btn" onClick={() => setComprobantes(r)} title="Ver comprobante"><Icon name="receipt" size={16} /></button>
@@ -404,7 +404,7 @@ export default function Pedidos() {
         paso(1, 'Cliente y fecha'),
         campoCliente,
         { name: 'fecha_creacion', label: 'Fecha de creación', type: 'date', required: true, maxHoy: true, hint: 'No puede ser posterior a hoy.' },
-        paso(2, 'Personalización y diseño'),
+        paso(2, 'Personalización y mockup'),
         ...camposInfo,
         paso(3, 'Total de la cotización'),
         campoDesglose,
@@ -464,7 +464,7 @@ export default function Pedidos() {
           name: 'fecha_inicio', label: 'Fecha de inicio', type: 'date', required: true, soloCrear: true, maxHoy: true,
           hint: 'Es la fecha del abono inicial; no puede ser posterior a hoy.',
         },
-        paso(2, 'Personalización y diseño'),
+        paso(2, 'Personalización y mockup'),
         ...camposInfo,
         paso(3, 'Total del pedido'),
         campoDesglose,

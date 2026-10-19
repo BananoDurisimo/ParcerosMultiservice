@@ -13,8 +13,8 @@ export function useDescargas() {
   const toast = useToast();
   return {
     descargarDiseno: async (r) => {
-      const ok = await descargarArchivo(r.imagen_diseno, `${r.calc_codigo}-diseno`);
-      if (!ok) toast.error('No fue posible descargar el diseño. Intente nuevamente.', 'Error de descarga');
+      const ok = await descargarArchivo(r.imagen_diseno, `${r.calc_codigo}-mockup`);
+      if (!ok) toast.error('No fue posible descargar el mockup. Intente nuevamente.', 'Error de descarga');
     },
     descargarComprobante: async (a) => {
       const ok = await descargarArchivo(a.url_comprobante, `${a.calc_codigo}-comprobante`);
@@ -31,14 +31,14 @@ export function DisenoModal({ registro: r, onClose, puedeDescargar }) {
       open={!!r}
       onClose={onClose}
       size="lg"
-      title={r ? `Diseño ${r.calc_codigo}` : ''}
+      title={r ? `Mockup ${r.calc_codigo}` : ''}
       subtitle={r?.calc_cliente}
       footer={
         <>
           <button className="btn" onClick={onClose}>Cerrar</button>
           {puedeDescargar && r?.imagen_diseno && (
             <button className="btn btn-primary" onClick={() => descargarDiseno(r)}>
-              <Icon name="download" size={16} /> Descargar diseño
+              <Icon name="download" size={16} /> Descargar mockup
             </button>
           )}
         </>
@@ -47,8 +47,8 @@ export function DisenoModal({ registro: r, onClose, puedeDescargar }) {
       {r && (
         <div>
           {r.imagen_diseno
-            ? <img className="diseno-full" src={r.imagen_diseno} alt={`Diseño de ${r.calc_codigo}`} />
-            : <p className="caption">El registro no tiene imagen del diseño.</p>}
+            ? <img className="diseno-full" src={r.imagen_diseno} alt={`Mockup de ${r.calc_codigo}`} />
+            : <p className="caption">El registro no tiene imagen del mockup.</p>}
           <h3 className="det-section">Descripción de la personalización</h3>
           <div className="pedido-desc">{r.descripcion || '—'}</div>
         </div>

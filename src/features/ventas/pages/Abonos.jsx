@@ -4,7 +4,7 @@ import CrudPage from '@shared/components/CrudPage.jsx';
 import KpiCard from '@shared/components/ui/KpiCard.jsx';
 import Icon from '@shared/components/Icon.jsx';
 import { useDescargas, ComprobanteModal } from '@features/ventas/components/Archivos.jsx';
-import MontoAbono from '@features/ventas/components/MontoAbono.jsx';
+import MontoAbono, { errorMonto } from '@features/ventas/components/MontoAbono.jsx';
 import { useData, consumoPedido } from '@shared/context/DataContext.jsx';
 import { useAuth } from '@shared/context/AuthContext.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
@@ -17,19 +17,16 @@ import {
 } from '@shared/data/mock.js';
 
 const TIPOS_COMPROBANTE = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-const MAX_ABONOS = 2;
 
 /** Tabla `abono`: id_pedido, monto, fecha, metodo_pago, url_comprobante.
  *  El cliente y el saldo se obtienen del pedido asociado.
  *
- *  Cada pedido admite como maximo dos abonos: el primero es el 50% del total
- *  o el pago completo, y el segundo el saldo pendiente. El abono mueve el
+ *  El monto es libre y un pedido admite los abonos que hagan falta, con
+ *  cualquier metodo de pago (incluido «Mixto»). El primer abono debe ser de
+ *  al menos el 50% del total; ninguno puede pasar el saldo. El abono mueve el
  *  estado del registro: el primero pasa la cotizacion a «Pedido en proceso»
  *  y el que salda un pedido en «falta pago» lo deja en «Pedido completado».
- *
- *  El monto no se digita: se elige el 50% o el 100% del total (primer abono)
- *  o el saldo restante (segundo abono). La fecha del pago puede ser anterior
- *  a hoy, nunca posterior.
+ *  La fecha del pago puede ser anterior a hoy, nunca posterior.
  *
  *  Con `?pedido=ID` en la direccion (accion «Agregar abono» del listado de
  *  cotizaciones y de pedidos) el formulario se abre con ese pedido elegido. */
@@ -51,32 +48,29 @@ export default function Abonos() {
   const pedidos = opciones(
     'pedidos',
     (p) => `${p.calc_codigo} · ${p.calc_cliente}`,
-    (p) => (p.estado === ENTREGADO ? 'Entregado' : p.calc_saldo <= 0 ? 'Pagado' : p.calc_abonos >= MAX_ABONOS ? 'Con dos abonos' : undefined)
+    (p) => (p.estado === ENTREGADO ? 'Entregado' : p.calc_saldo <= 0 ? 'Pagado' : undefined)
   );
   const pedidoDe = (id) => db.pedidos.find((x) => x.id === Number(id));
 
   const redondear = (n) => Math.round(n * 100) / 100;
 
-  /** Opciones de monto del siguiente abono del pedido. */
-  const opcionesMonto = (p) => {
-    if (!p) return [];
-    if (p.calc_abonos === 0) {
-      return [
-        { value: redondear(p.calc_total / 2), titulo: '50% del total', monto: redondear(p.calc_total / 2) },
-        { value: p.calc_total, titulo: '100% (pago completo)', monto: p.calc_total },
-      ];
-    }
-    return p.calc_saldo > 0 ? [{ value: p.calc_saldo, titulo: 'Saldo restante (100%)', monto: p.calc_saldo }] : [];
+  /** Limites del siguiente abono del pedido: el primero, al menos el 50% del
+   *  total; ninguno, mas que el saldo. Los atajos llenan el monto con un clic. */
+  const limites = (p) => {
+    if (!p) return {};
+    const primero = p.calc_abonos === 0;
+    const minimo = primero ? redondear(p.calc_total / 2) : 0;
+    const atajos = primero
+      ? [{ titulo: '50%', monto: minimo }, { titulo: 'Pago completo', monto: p.calc_saldo }]
+      : [{ titulo: 'Saldo completo', monto: p.calc_saldo }];
+    return { primero, minimo, maximo: p.calc_saldo, atajos: p.calc_saldo > 0 ? atajos : [] };
   };
-  const montosPermitidos = (p) => opcionesMonto(p).map((o) => o.value);
-
-  /* El segundo abono solo tiene un monto posible: se elige solo. */
-  const montoInicial = (p) => (p && p.calc_abonos === 1 && p.calc_saldo > 0 ? p.calc_saldo : '');
+  const montoInicial = () => '';
 
   const idPedidoUrl = params.get('pedido');
   const abrirCon = useMemo(() => {
     const p = idPedidoUrl && db.pedidos.find((x) => x.id === Number(idPedidoUrl));
-    return p ? { id_pedido: p.id, monto: montoInicial(p) } : null;
+    return p ? { id_pedido: p.id, monto: montoInicial() } : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idPedidoUrl]);
 
@@ -116,13 +110,10 @@ export default function Abonos() {
       return { fecha: `La cotización se creó el ${fecha(p.fecha_creacion)}: el abono no puede ser anterior.` };
     }
     if (modo === 'editar') return null;
-    if (p.calc_abonos >= MAX_ABONOS) return { id_pedido: 'Este pedido ya tiene registrados los dos abonos permitidos.' };
     if (p.calc_saldo <= 0) return { id_pedido: 'Este pedido ya está pagado en su totalidad.' };
-    const m = Number(v.monto);
-    if (v.monto !== '' && v.monto !== undefined && !montosPermitidos(p).some((x) => Math.abs(x - m) <= 0.01)) {
-      return { monto: 'Elija una de las opciones: el 50% o el 100% del total, o el saldo restante.' };
-    }
-    return null;
+    const l = limites(p);
+    const e = errorMonto(v.monto, l.minimo, l.maximo, { primero: l.primero });
+    return e ? { monto: e } : null;
   };
 
   /* Un abono se puede eliminar mientras no deje al pedido sin respaldo: los
@@ -158,7 +149,7 @@ export default function Abonos() {
       return;
     }
     const p = pedidoDe(d.id_pedido);
-    create('abonos', { ...d, id_pedido: p.id, url_comprobante: d.url_comprobante || '' });
+    create('abonos', { ...d, id_pedido: p.id, monto: redondear(Number(d.monto)), url_comprobante: d.url_comprobante || '' });
     toast.success('El registro de abono se guardó correctamente.');
 
     const saldo = Math.round((p.calc_saldo - Number(d.monto)) * 100) / 100;
@@ -260,7 +251,7 @@ export default function Abonos() {
           name: 'id_pedido', label: 'Pedido asociado', type: 'select', options: pedidos, required: true, soloCrear: true,
           buscarPlaceholder: 'Buscar por código o cliente…',
           /* Al cambiar de pedido el monto elegido ya no aplica. */
-          alCambiar: (id, setVal) => setVal('monto', montoInicial(pedidoDe(id)), false),
+          alCambiar: (id, setVal) => setVal('monto', montoInicial(), false),
         },
         {
           name: 'fecha', label: 'Fecha del pago', type: 'date', required: true, maxHoy: true,
@@ -271,12 +262,13 @@ export default function Abonos() {
           name: 'monto', type: 'component', required: true, soloCrear: true,
           render: ({ value, onChange, error, values, modo, actual }) => (
             modo === 'editar' ? (
-              <MontoAbono label="Monto abonado" disabled required={false} value={actual?.monto} opciones={[{ value: actual?.monto, titulo: 'Monto registrado', monto: actual?.monto }]} />
+              <MontoAbono label="Monto abonado" disabled required={false} value={actual?.monto} maximo={actual?.monto} />
             ) : (
               <MontoAbono
                 label="Monto abonado"
-                opciones={opcionesMonto(pedidoDe(values.id_pedido))}
-                vacio={values.id_pedido ? 'Este pedido no tiene saldo pendiente.' : 'Seleccione el pedido para ver los montos permitidos.'}
+                {...limites(pedidoDe(values.id_pedido))}
+                nota={limites(pedidoDe(values.id_pedido)).primero ? 'primer abono: mínimo el 50% del total' : undefined}
+                vacio="Seleccione el pedido para ver el monto mínimo y el máximo."
                 value={value}
                 onChange={onChange}
                 error={error}

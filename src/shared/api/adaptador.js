@@ -26,7 +26,7 @@ const PK = {
 const COLECCION_DE_TABLA = {
   rol: 'roles', usuario: 'usuarios', insumo: 'insumos', proveedor: 'proveedores',
   compra: 'compras', cliente: 'clientes', pedido: 'pedidos', abono: 'abonos',
-  categoria_producto: 'categorias_producto', producto: 'productos',
+  categoria_producto: 'categorias_producto', producto: 'productos', tipo_insumo: 'tipos_insumo',
 };
 
 const estado = (activo) => (activo === false ? 'Inactivo' : 'Activo');
@@ -84,7 +84,10 @@ function aFrontend(col, f, cat) {
         productos: (f.productos || []).map((l) => {
           const cantidad = Number(l.cantidad);
           const precio = Number(l.precio_unitario);
-          return { id_producto: l.id_producto, cantidad, precio_unitario: precio, subtotal: Math.round(cantidad * precio * 100) / 100 };
+          return {
+            id_producto: l.id_producto, cantidad, precio_unitario: precio, defectuosas: Number(l.defectuosas || 0),
+            subtotal: Math.round(cantidad * precio * 100) / 100,
+          };
         }),
         insumos: (f.insumos || []).filter((l) => !l.de_receta).map(linea),
         insumos_receta: (f.insumos || []).filter((l) => l.de_receta).map((l) => ({ id_insumo: l.id_insumo, cantidad: Number(l.cantidad) })),
@@ -99,6 +102,7 @@ function aFrontend(col, f, cat) {
         metodo_pago: nombrePorId(cat.metodos_pago, 'id_metodo_pago', f.id_metodo_pago), url_comprobante: texto(f.ruta_comprobante),
       };
     case 'categorias_producto':
+    case 'tipos_insumo':
       return { ...base, nombre: f.nombre, descripcion: texto(f.descripcion), estado: estado(f.activo) };
     case 'productos':
       return {
@@ -197,7 +201,9 @@ export function aServidor(col, r, cat, sid) {
         id_cliente: sid('clientes', r.id_cliente), id_estado_pedido: idPorNombre(cat.estados_pedido, 'id_estado_pedido', r.estado),
         fecha_creacion: r.fecha_creacion, fecha_inicio: r.fecha_inicio, fecha_entrega: r.fecha_entrega,
         descripcion: r.descripcion, ruta_imagen_diseno: r.imagen_diseno,
-        productos: (r.productos || []).map((l) => ({ id_producto: sid('productos', l.id_producto), cantidad: l.cantidad, precio_unitario: l.precio_unitario })),
+        productos: (r.productos || []).map((l) => ({
+          id_producto: sid('productos', l.id_producto), cantidad: l.cantidad, precio_unitario: l.precio_unitario, defectuosas: Number(l.defectuosas) || 0,
+        })),
         insumos: (r.insumos || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad, precio_unitario: l.precio_unitario })),
         insumos_receta: (r.insumos_receta || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad })),
       };
@@ -207,6 +213,7 @@ export function aServidor(col, r, cat, sid) {
         monto: r.monto, fecha: r.fecha, ruta_comprobante: r.url_comprobante,
       };
     case 'categorias_producto':
+    case 'tipos_insumo':
       return { nombre: r.nombre, descripcion: r.descripcion, activo };
     case 'productos':
       return {

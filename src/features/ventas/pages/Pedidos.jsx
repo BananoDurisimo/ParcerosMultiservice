@@ -115,6 +115,10 @@ export default function Pedidos() {
 
   const pedirCambio = (nuevo, r) => {
     if (nuevo === EN_PROCESO) {
+      if (r.calc_vencida) {
+        toast.error(`La cotización ${r.calc_codigo} venció el ${fecha(r.calc_vigencia)}: ya no puede pasar a pedido.`, 'Cotización vencida');
+        return;
+      }
       if (!r.calc_abonos) {
         toast.error('Registre el abono inicial para iniciar el pedido.', 'No fue posible cambiar el estado');
         return;
@@ -247,7 +251,7 @@ export default function Pedidos() {
   const [campoCliente, campoInsumos, campoDesglose, ...camposInfo] = camposBase;
 
   /* Acceso directo al abono del registro: abre Abonos con el formulario listo. */
-  const puedeAbonar = (r) => acciones.agregarAbono && r.estado !== ENTREGADO && r.calc_saldo > 0;
+  const puedeAbonar = (r) => acciones.agregarAbono && r.estado !== ENTREGADO && r.calc_saldo > 0 && !r.calc_vencida;
   const irAAbonar = (r) => navigate(`/app/abonos?pedido=${r.id}`);
 
   /* Eliminar el registro borra tambien sus abonos (dependen de el) y, si ya
@@ -265,7 +269,7 @@ export default function Pedidos() {
     },
   };
 
-  const cotizaciones = db.pedidos.filter((p) => p.estado === COTIZACION);
+  const cotizaciones = db.pedidos.filter((p) => p.estado === COTIZACION).map((p) => ({ ...p, calc_vigente: p.calc_vencida ? 'Vencida' : 'Vigente' }));
   const pedidos = db.pedidos.filter((p) => [EN_PROCESO, FALTA_PAGO, COMPLETADO].includes(p.estado));
   const ventas = db.pedidos.filter((p) => [COMPLETADO, ENTREGADO].includes(p.estado));
   const mesActual = hoyISO().slice(0, 7);
@@ -318,6 +322,8 @@ export default function Pedidos() {
   /* ---------- Configuracion de cada pestaña ---------- */
   const comun = {
     exportacion,
+    /* Datos del registro a la izquierda y productos / personalizacion a la derecha. */
+    columnasInvertidas: true,
     icono: vista.icono,
     modulo,
     coleccion: 'pedidos',
@@ -384,6 +390,7 @@ export default function Pedidos() {
         { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },
         { key: 'fecha_creacion', label: 'Fecha de creación', type: 'rango' },
         { key: 'calc_abono_inicial', label: 'Abono inicial', options: ['Registrado', 'Pendiente'] },
+        { key: 'calc_vigente', label: 'Vigencia', options: ['Vigente', 'Vencida'] },
       ],
       defaults: { productos: [], insumos: [], descripcion: '', imagen_diseno: '', fecha_creacion: hoyISO() },
       resumen: [
@@ -397,6 +404,12 @@ export default function Pedidos() {
         { key: 'fecha_creacion', label: 'Fecha de creación', mobile: 'meta', render: (r) => <span className="caption">{fecha(r.fecha_creacion)}</span> },
         { key: 'calc_total', label: 'Total', align: 'right', mobile: 'value', render: (r) => <span className="money">{money(r.calc_total)}</span> },
         { key: 'calc_abono_inicial', label: 'Abono inicial', render: (r) => <span className={`badge badge-${r.calc_abonos ? 'success' : 'neutral'}`}>{r.calc_abono_inicial}</span> },
+        {
+          key: 'calc_vigencia', label: 'Válida hasta',
+          render: (r) => (r.calc_vencida
+            ? <span className="badge badge-error" title={`Venció el ${fecha(r.calc_vigencia)}`}>Vencida</span>
+            : <span className="caption">{fecha(r.calc_vigencia)}</span>),
+        },
         { key: 'estado', label: 'Estado', mobile: 'meta', render: celdaEstado },
       ],
       campos: [

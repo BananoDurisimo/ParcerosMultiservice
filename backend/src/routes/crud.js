@@ -34,7 +34,7 @@ const COLECCIONES = {
   },
   compras: {
     tabla: 'compra', pk: 'id_compra', modulos: ['Compras'],
-    campos: ['id_proveedor', 'id_estado_compra', 'fecha', 'fecha_entrega'],
+    campos: ['id_proveedor', 'id_estado_compra', 'fecha', 'fecha_entrega', 'motivo_anulacion'],
   },
   pedidos: {
     tabla: 'pedido', pk: 'id_pedido', modulos: ['Cotizaciones', 'Pedidos', 'Ventas', 'Abonos'],
@@ -122,19 +122,8 @@ const DESPUES = {
       await db.query('UPDATE usuario SET contrasena_hash=$1 WHERE id_usuario=$2', [await bcrypt.hash(String(body.contrasena), 12), fila.id_usuario]);
     }
   },
-  /* Las existencias no se guardan: un cambio en el formulario se registra
-     como un ajuste de inventario por la diferencia. */
-  insumos: async (db, fila, body) => {
-    if (body.stock === undefined || body.stock === '') return;
-    const { rows: [s] } = await db.query('SELECT stock FROM v_insumo_stock WHERE id_insumo=$1', [fila.id_insumo]);
-    const diferencia = Math.round((Number(body.stock) - Number(s.stock)) * 100) / 100;
-    if (diferencia) {
-      await db.query(
-        "INSERT INTO movimiento_inventario(id_insumo,cantidad,origen,id_usuario) VALUES ($1,$2,'AJUSTE',app_user_id())",
-        [fila.id_insumo, diferencia]
-      );
-    }
-  },
+  /* Las existencias de un insumo no se digitan: solo cambian con las compras
+     recibidas y los pedidos en elaboracion (kardex). */
   compras: (db, fila, body) =>
     reemplazarLineas(db, 'detalle_compra_insumo', 'id_compra', fila.id_compra, body.detalles, ['id_insumo', 'cantidad', 'precio_unitario']),
   /* El pedido guarda tres detalles: los productos que se cobran, los insumos

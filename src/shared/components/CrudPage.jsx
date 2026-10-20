@@ -78,7 +78,7 @@ export default function CrudPage({
   accionesExtra,
   tablaCompacta = false,
   emptyText,
-  anulacion = null, // { valor, campo = 'estado', mensaje(reg), validar(reg), campoMotivo, enAcciones }
+  anulacion = null, // { valor, campo = 'estado', mensaje(reg), validar(reg), campoMotivo, enAcciones, alAnular(reg) }
   columnasInvertidas = false,
   eliminacion = {}, // { validar(reg), mensaje(reg), alEliminar(reg) }
   abrirCon = null,
@@ -243,7 +243,7 @@ export default function CrudPage({
   /* Abre la confirmacion solo si el registro se puede anular. */
   const pedirAnular = (r) => {
     const motivo = anulacion.validar?.(r);
-    if (motivo) { toast.error(motivo, `No es posible anular la ${singular}`); return; }
+    if (motivo) { toast.error(motivo, `No es posible anular ${etiqueta(r)}`); return; }
     setMotivoAnulacion('');
     setErrMotivo('');
     setAnular(r);
@@ -252,7 +252,7 @@ export default function CrudPage({
   const confirmarAnulacion = () => {
     const motivo = anulacion.validar?.(anular);
     if (motivo) {
-      toast.error(motivo, `No fue posible anular la ${singular}`);
+      toast.error(motivo, `No fue posible anular ${etiqueta(anular)}`);
       setAnular(null);
       return;
     }
@@ -265,6 +265,7 @@ export default function CrudPage({
       [campoAnulacion]: anulacion.valor,
       ...(anulacion.campoMotivo ? { [anulacion.campoMotivo]: justificacion } : {}),
     });
+    anulacion.alAnular?.(anular);
     toast.warning(`Se anuló el registro de ${singular}: ${etiqueta(anular)}.`, 'Registro anulado');
     setAnular(null);
     cerrar();

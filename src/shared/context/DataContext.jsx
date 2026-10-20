@@ -338,8 +338,10 @@ export function DataProvider({ children }) {
     });
     const productosM = porId(productos);
 
+    /* Un abono anulado se conserva como registro, pero no cuenta en lo
+       abonado ni en el saldo del pedido. */
     const abonosPorPedido = new Map();
-    raw.abonos.forEach((a) => {
+    raw.abonos.filter((a) => a.estado !== 'Anulado').forEach((a) => {
       abonosPorPedido.set(a.id_pedido, [...(abonosPorPedido.get(a.id_pedido) || []), a]);
     });
 
@@ -545,7 +547,7 @@ export function DataProvider({ children }) {
     const vendidos = db.pedidos.filter((p) => p.estado !== COTIZACION);
     return {
       porCobrar: suma(vendidos, (p) => p.calc_saldo),
-      recaudado: suma(db.abonos, (a) => a.monto),
+      recaudado: suma(db.abonos.filter((a) => a.estado !== 'Anulado'), (a) => a.monto),
       bajoStock,
       pedidosActivos: vendidos.filter((p) => p.estado !== ENTREGADO).length,
       totalPedidos: db.pedidos.length,
@@ -560,7 +562,7 @@ export function DataProvider({ children }) {
     const enRango = (f, r) => !!f && f >= r.desde && f <= r.hasta;
     const pedidosDe = (r) => db.pedidos.filter((p) => p.estado !== COTIZACION && enRango(p.fecha_inicio, r));
     const comprasDe = (r) => db.compras.filter((c) => enRango(c.fecha, r) && c.estado !== COMPRA_ANULADA);
-    const abonosDe = (r) => db.abonos.filter((a) => enRango(a.fecha, r));
+    const abonosDe = (r) => db.abonos.filter((a) => a.estado !== 'Anulado' && enRango(a.fecha, r));
 
     const pedidosPeriodo = pedidosDe({ desde, hasta });
     const comprasPeriodo = comprasDe({ desde, hasta });

@@ -42,7 +42,7 @@ const COLECCIONES = {
   },
   abonos: {
     tabla: 'abono', pk: 'id_abono', modulos: ['Abonos', 'Cotizaciones', 'Pedidos', 'Ventas'],
-    campos: ['id_pedido', 'id_metodo_pago', 'monto', 'fecha', 'ruta_comprobante'],
+    campos: ['id_pedido', 'id_metodo_pago', 'monto', 'fecha', 'ruta_comprobante', 'anulado', 'motivo_anulacion'],
   },
   tipos_insumo: {
     tabla: 'tipo_insumo', pk: 'id_tipo_insumo', modulos: ['Categorías de insumo'],
@@ -147,10 +147,14 @@ const DESPUES = {
     reemplazarLineas(db, 'receta_producto', 'id_producto', fila.id_producto, body.receta, ['id_insumo', 'cantidad']),
 };
 
-/* Antes de eliminar un documento se devuelve su efecto en el inventario. */
+/* Antes de eliminar un documento se devuelve su efecto en el inventario. Un
+   pedido se elimina con sus abonos anulados (los vigentes se anulan antes). */
 const ANTES_DE_ELIMINAR = {
   compras: (db, id) => db.query('DELETE FROM movimiento_inventario WHERE id_compra=$1', [id]),
-  pedidos: (db, id) => db.query('DELETE FROM movimiento_inventario WHERE id_pedido=$1', [id]),
+  pedidos: async (db, id) => {
+    await db.query('DELETE FROM movimiento_inventario WHERE id_pedido=$1', [id]);
+    await db.query('DELETE FROM abono WHERE id_pedido=$1 AND anulado', [id]);
+  },
 };
 
 const router = Router();
@@ -224,8 +228,16 @@ router.delete('/:coleccion/:id', async (req, res, next) => {
   if (req.params.coleccion === 'usuarios' && id === req.user.id_usuario) {
     return res.status(400).json({ message: 'No puede eliminar su propio usuario.' });
   }
+  /* Un abono es dinero recibido: no se borra, se anula con motivo. */
+  if (req.params.coleccion === 'abonos') {
+    return res.status(400).json({ message: 'Los abonos no se eliminan: anúlelo indicando el motivo.' });
+  }
   try {
     if (await esRolAdministrador(req.params.coleccion, id)) return res.status(400).json({ message: ROL_PROTEGIDO });
+    if (req.params.coleccion === 'pedidos') {
+      const { rows: [v] } = await query('SELECT count(*)::int AS n FROM abono WHERE id_pedido=$1 AND NOT anulado', [id]);
+      if (v.n) return res.status(400).json({ message: `El pedido tiene ${v.n} abono(s) vigente(s): anúlelos antes de eliminarlo.` });
+    }
     const borradas = await conUsuario(req.user.id_usuario, async (db) => {
       await ANTES_DE_ELIMINAR[req.params.coleccion]?.(db, id);
       return (await db.query(`DELETE FROM ${cfg.tabla} WHERE ${cfg.pk}=$1`, [id])).rowCount;

@@ -257,23 +257,20 @@ export default function Pedidos() {
   /* Eliminar el registro borra tambien sus abonos (dependen de el) y, si ya
      estaba en produccion, devuelve sus insumos al inventario. */
   const eliminacion = {
+    /* Los abonos no se eliminan: un pedido con abonos vigentes se elimina
+       despues de anularlos (la API borra con el los anulados). */
+    validar: (r) => (r.calc_abonos
+      ? `${r.calc_codigo} tiene ${r.calc_abonos} abono(s) vigente(s) por ${money(r.calc_abonado)}: anúlelos en Abonos antes de eliminarlo.`
+      : null),
     mensaje: (r) => [
       `Se eliminará ${r.calc_codigo} de ${r.calc_cliente}.`,
-      r.calc_abonos ? ` También se eliminarán sus ${r.calc_abonos} abono(s) por ${money(r.calc_abonado)}.` : '',
       r.estado !== COTIZACION ? ' Los insumos que tenía descontados volverán al inventario.' : '',
       ' Esta acción no se puede deshacer.',
     ].join(''),
     alEliminar: (r) => {
-      db.abonos.filter((a) => a.id_pedido === r.id).forEach((a) => remove('abonos', a.id));
       remove('pedidos', r.id);
     },
   };
-
-  const cotizaciones = db.pedidos.filter((p) => p.estado === COTIZACION).map((p) => ({ ...p, calc_vigente: p.calc_vencida ? 'Vencida' : 'Vigente' }));
-  const pedidos = db.pedidos.filter((p) => [EN_PROCESO, FALTA_PAGO, COMPLETADO].includes(p.estado));
-  const ventas = db.pedidos.filter((p) => [COMPLETADO, ENTREGADO].includes(p.estado));
-  const mesActual = hoyISO().slice(0, 7);
-  const cuantos = { cotizaciones: cotizaciones.length, pedidos: pedidos.length, ventas: ventas.length };
 
   /* ---------- Exportar y reporte ---------- */
   const FECHA_VISTA = {

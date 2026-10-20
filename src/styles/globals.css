@@ -1428,3 +1428,16 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
 @media (max-width: 560px) {
   .ins-linea.con-defectos { grid-template-columns: 1fr 1fr 1fr 34px; }
 }
+
+/* --- Tooltip del menu lateral contraido --- */
+.sb-tip {
+  position: fixed; z-index: 200; transform: translateY(-50%); pointer-events: none;
+  padding: 6px 10px; border-radius: var(--radius-sm); background: var(--text); color: var(--surface);
+  font-size: 12.5px; font-weight: 500; white-space: nowrap; box-shadow: var(--shadow-lg);
+  animation: fadeIn .12s var(--ease);
+}
+.sb-tip::before {
+  content: ''; position: absolute; left: -4px; top: 50%; width: 8px; height: 8px;
+  background: inherit; transform: translateY(-50%) rotate(45deg); border-radius: 1px;
+}
+@media (max-width: 900px) { .sb-tip { display: none; } }

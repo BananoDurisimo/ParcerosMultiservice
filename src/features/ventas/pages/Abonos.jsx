@@ -31,7 +31,7 @@ const TIPOS_COMPROBANTE = ['image/jpeg', 'image/png', 'image/webp', 'application
  *  Con `?pedido=ID` en la direccion (accion «Agregar abono» del listado de
  *  cotizaciones y de pedidos) el formulario se abre con ese pedido elegido. */
 export default function Abonos() {
-  const { db, stats, getStats, opciones, create, update, remove, faltantes } = useData();
+  const { db, stats, getStats, opciones, create, update, faltantes } = useData();
   const [params, setParams] = useSearchParams();
   const { puedeAccion } = useAuth();
   const toast = useToast();
@@ -120,23 +120,30 @@ export default function Abonos() {
   /* Un abono se puede eliminar mientras no deje al pedido sin respaldo: los
      abonos de una venta entregada son su soporte, y un pedido en produccion
      necesita al menos el abono inicial. */
-  const eliminacion = {
+  /* Un abono no se elimina: se anula con motivo y queda como registro. Se
+     puede anular mientras no deje al pedido sin respaldo: los abonos de una
+     venta entregada son su soporte, y un pedido en produccion necesita al
+     menos un abono vigente. */
+  const anulacion = {
+    valor: 'Anulado',
+    campoMotivo: 'motivo_anulacion',
+    enAcciones: true,
     validar: (r) => {
       const p = pedidoDe(r.id_pedido);
       if (!p) return null;
       if (p.estado === ENTREGADO) return `${p.calc_codigo} ya se entregó: sus abonos son el soporte de la venta.`;
       if (p.estado !== COTIZACION && p.calc_abonos <= 1) {
-        return `Es el abono inicial de ${p.calc_codigo}, que ya está en producción. Si el pedido no va, elimine el pedido.`;
+        return `Es el único abono vigente de ${p.calc_codigo}, que ya está en producción: no se puede anular.`;
       }
       return null;
     },
     mensaje: (r) => {
       const p = pedidoDe(r.id_pedido);
-      return `Se eliminará el abono ${r.calc_codigo} por ${money(r.monto)} de ${r.calc_pedido}; el saldo del pedido aumentará en ese valor.${p?.estado === COMPLETADO ? ` El pedido volverá a «${FALTA_PAGO}».` : ''} Esta acción no se puede deshacer.`;
+      return `El abono ${r.calc_codigo} por ${money(r.monto)} de ${r.calc_pedido} quedará anulado: se conserva como registro, pero deja de contar y el saldo del pedido aumentará en ese valor.${p?.estado === COMPLETADO ? ` El pedido volverá a «${FALTA_PAGO}».` : ''} No se puede deshacer.`;
     },
-    alEliminar: (r) => {
+    /* Un pedido completado vuelve a «falta pago»: ya no esta saldado. */
+    alAnular: (r) => {
       const p = pedidoDe(r.id_pedido);
-      remove('abonos', r.id);
       if (p?.estado === COMPLETADO) {
         update('pedidos', p.id, { estado: FALTA_PAGO, historial_estados: [...(p.historial_estados || []), { estado: FALTA_PAGO, fecha: hoyISO() }] });
       }
@@ -178,6 +185,8 @@ export default function Abonos() {
   };
 
   const suma = (filas, fn) => filas.reduce((s, r) => s + Number(fn(r) || 0), 0);
+  /* Los anulados se listan, pero no suman en lo recaudado. */
+  const vigentes = (filas) => filas.filter((r) => r.estado !== 'Anulado');
   /* El saldo pendiente se cuenta una vez por pedido, no por abono. */
   const saldoPedidos = (filas) => suma([...new Map(filas.map((a) => [a.id_pedido, a])).values()], (a) => a.calc_saldo);
   const exportacion = {
@@ -187,21 +196,23 @@ export default function Abonos() {
       { titulo: 'Cliente', valor: (r) => r.calc_cliente, ancho: 150 },
       { titulo: 'Fecha', valor: (r) => fecha(r.fecha), ancho: 70 },
       { titulo: 'Método de pago', valor: (r) => r.metodo_pago, ancho: 90 },
-      { titulo: 'Monto', valor: (r) => r.monto, tipo: 'dinero', ancho: 86, total: true },
+      { titulo: 'Monto', valor: (r) => (r.estado === 'Anulado' ? 0 : r.monto), tipo: 'dinero', ancho: 86, total: true },
+      { titulo: 'Estado', valor: (r) => r.estado, ancho: 60 },
       { titulo: 'Total del pedido', valor: (r) => r.calc_total_pedido, tipo: 'dinero', ancho: 90 },
       { titulo: 'Saldo del pedido', valor: (r) => r.calc_saldo, tipo: 'dinero', ancho: 90 },
       { titulo: 'Estado del pedido', valor: (r) => r.calc_estado_pedido, ancho: 150 },
     ],
     indicadores: (filas) => [
-      { etiqueta: 'Total recaudado', valor: suma(filas, (r) => r.monto), tipo: 'dinero' },
-      { etiqueta: 'Abonos', valor: filas.length, tipo: 'numero', nota: 'pagos registrados' },
-      { etiqueta: 'Pedidos con abono', valor: new Set(filas.map((r) => r.id_pedido)).size, tipo: 'numero' },
+      { etiqueta: 'Total recaudado', valor: suma(vigentes(filas), (r) => r.monto), tipo: 'dinero', nota: 'sin los anulados' },
+      { etiqueta: 'Abonos vigentes', valor: vigentes(filas).length, tipo: 'numero', nota: `${filas.length - vigentes(filas).length} anulado(s)` },
+      { etiqueta: 'Pedidos con abono', valor: new Set(vigentes(filas).map((r) => r.id_pedido)).size, tipo: 'numero' },
       { etiqueta: 'Saldo pendiente', valor: saldoPedidos(filas), tipo: 'dinero', nota: 'de esos pedidos' },
     ],
     grupos: (filas) => [
-      { titulo: 'Por método de pago', columnas: ['Método de pago', 'Abonos', 'Monto'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.metodo_pago, (r) => r.monto) },
-      { titulo: 'Por mes', columnas: ['Mes', 'Abonos', 'Monto'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => (r.fecha || '').slice(0, 7).split('-').reverse().join('/'), (r) => r.monto) },
-      { titulo: 'Por cliente', columnas: ['Cliente', 'Abonos', 'Monto'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.calc_cliente, (r) => r.monto).slice(0, 15) },
+      { titulo: 'Por método de pago', columnas: ['Método de pago', 'Abonos', 'Monto'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(vigentes(filas), (r) => r.metodo_pago, (r) => r.monto) },
+      { titulo: 'Por mes', columnas: ['Mes', 'Abonos', 'Monto'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(vigentes(filas), (r) => (r.fecha || '').slice(0, 7).split('-').reverse().join('/'), (r) => r.monto) },
+      { titulo: 'Por cliente', columnas: ['Cliente', 'Abonos', 'Monto'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(vigentes(filas), (r) => r.calc_cliente, (r) => r.monto).slice(0, 15) },
+      { titulo: 'Abonos anulados', columnas: ['Abono', 'Monto', 'Motivo'], tipos: ['texto', 'dinero', 'texto'], filas: filas.filter((r) => r.estado === 'Anulado').map((r) => [r.calc_codigo, r.monto, r.motivo_anulacion || '—']) },
     ],
   };
 
@@ -220,19 +231,21 @@ export default function Abonos() {
         { key: 'metodo_pago', label: 'Método de pago', options: METODOS_PAGO },
         { key: 'id_pedido', label: 'Pedido', options: pedidos },
         { key: 'fecha', label: 'Fecha del abono', type: 'rango' },
+        { key: 'estado', label: 'Estado', options: ['Vigente', 'Anulado'] },
       ]}
       defaults={{ metodo_pago: 'Efectivo', fecha: hoyISO(), url_comprobante: '' }}
       etiquetaRegistro={(r) => r.calc_codigo}
       exportacion={exportacion}
       validarExtra={validarExtra}
       alGuardar={alGuardar}
-      eliminacion={eliminacion}
+      anulacion={anulacion}
+      puedeEditarFila={(r) => r.estado !== 'Anulado'}
       abrirCon={abrirCon}
       alAbrirCon={() => setParams({}, { replace: true })}
       resumen={[
         <KpiCard key="a" label="Total recaudado" value={stats.recaudado} prefix="C$ " icon="coin" tono="success" trend={tendencia} trendLabel="recaudo vs. mes anterior" />,
         <KpiCard key="b" label="Saldo por cobrar" value={stats.porCobrar} prefix="C$ " icon="alert" tono="warning" />,
-        <KpiCard key="c" label="Abonos registrados" value={db.abonos.length} icon="clipboard" tono="primary" />,
+        <KpiCard key="c" label="Abonos vigentes" value={db.abonos.filter((a) => a.estado !== 'Anulado').length} icon="clipboard" tono="primary" />,
       ]}
       columnas={[
         { key: 'id', label: 'Abono', mobile: 'title', render: (r) => <span className="cell-main">{r.calc_codigo}</span> },
@@ -240,7 +253,13 @@ export default function Abonos() {
         { key: 'calc_cliente', label: 'Cliente', mobile: 'meta' },
         { key: 'fecha', label: 'Fecha', render: (r) => <span className="caption">{fecha(r.fecha)}</span> },
         { key: 'metodo_pago', label: 'Método', mobile: 'meta', render: (r) => <span className="badge badge-info">{r.metodo_pago}</span> },
-        { key: 'monto', label: 'Monto', align: 'right', mobile: 'value', render: (r) => <span className="money">{money(r.monto)}</span> },
+        {
+          key: 'monto', label: 'Monto', align: 'right', mobile: 'value',
+          render: (r) => (r.estado === 'Anulado'
+            ? <span className="money" style={{ textDecoration: 'line-through', color: 'var(--text-sec)' }} title={`Anulado: ${r.motivo_anulacion}`}>{money(r.monto)}</span>
+            : <span className="money">{money(r.monto)}</span>),
+        },
+        { key: 'estado', label: 'Estado', render: (r) => <span className={`badge badge-${r.estado === 'Anulado' ? 'error' : 'success'}`} title={r.motivo_anulacion || undefined}>{r.estado}</span> },
         { key: 'calc_saldo', label: 'Saldo del pedido', align: 'right', render: (r) => <span style={{ color: r.calc_saldo > 0 ? 'var(--error-fg)' : 'var(--success-fg)', fontWeight: 600 }}>{money(r.calc_saldo)}</span> },
         {
           key: 'url_comprobante', label: 'Comprobante', sortable: false,
@@ -291,6 +310,10 @@ export default function Abonos() {
             <div className="detail-item"><div className="dl">Cliente</div><div className="dv">{r.calc_cliente}</div></div>
             <div className="detail-item"><div className="dl">Fecha</div><div className="dv">{fecha(r.fecha)}</div></div>
             <div className="detail-item"><div className="dl">Monto abonado</div><div className="dv money">{money(r.monto)}</div></div>
+            <div className="detail-item"><div className="dl">Estado</div><div className="dv"><span className={`badge badge-${r.estado === 'Anulado' ? 'error' : 'success'}`}>{r.estado}</span></div></div>
+            {r.estado === 'Anulado' && (
+              <div className="detail-item full"><div className="dl">Motivo de la anulación</div><div className="dv">{r.motivo_anulacion || '—'}</div></div>
+            )}
             <div className="detail-item"><div className="dl">Método de pago</div><div className="dv">{r.metodo_pago}</div></div>
             <div className="detail-item"><div className="dl">Total del pedido</div><div className="dv money">{money(r.calc_total_pedido)}</div></div>
             <div className="detail-item"><div className="dl">Saldo del pedido</div><div className="dv money">{money(r.calc_saldo)}</div></div>

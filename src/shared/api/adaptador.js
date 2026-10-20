@@ -100,6 +100,7 @@ function aFrontend(col, f, cat) {
       return {
         ...base, id_pedido: f.id_pedido, monto: Number(f.monto), fecha: texto(f.fecha),
         metodo_pago: nombrePorId(cat.metodos_pago, 'id_metodo_pago', f.id_metodo_pago), url_comprobante: texto(f.ruta_comprobante),
+        estado: f.anulado ? 'Anulado' : 'Vigente', motivo_anulacion: texto(f.motivo_anulacion),
       };
     case 'categorias_producto':
     case 'tipos_insumo':
@@ -210,6 +211,7 @@ export function aServidor(col, r, cat, sid) {
       return {
         id_pedido: sid('pedidos', r.id_pedido), id_metodo_pago: idPorNombre(cat.metodos_pago, 'id_metodo_pago', r.metodo_pago),
         monto: r.monto, fecha: r.fecha, ruta_comprobante: r.url_comprobante,
+        anulado: r.estado === 'Anulado', motivo_anulacion: r.motivo_anulacion,
       };
     case 'categorias_producto':
     case 'tipos_insumo':

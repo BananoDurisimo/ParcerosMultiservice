@@ -37,6 +37,7 @@ primer inicio de sesión (Mi cuenta > Seguridad).
 | `012_insumos_sin_precio_y_proveedor_pais.sql` | El insumo deja de tener precio (columna opcional, 0 por defecto; la compra conserva lo pagado); el proveedor guarda `pais` y el NIT pasa a opcional |
 | `013_anulacion_compra_y_vigencia_cotizacion.sql` | `compra.motivo_anulacion` obligatorio al anular y una compra Recibida no se puede anular; una cotización vence el 31/12 de su año y deja de recibir abonos. La API ya no registra ajustes manuales de existencias |
 | `014_compra_recibida_no_vuelve_a_transito.sql` | Reemplaza la regla de la 013: una compra Recibida no vuelve a En tránsito, pero sí se puede anular (con motivo); al anularla sus insumos salen del inventario, salvo que ya se hayan gastado |
+| `015_anular_abonos.sql` | Los abonos no se eliminan, se anulan con motivo (`anulado`, `motivo_anulacion`); solo los vigentes cuentan en lo abonado y en la regla del primer abono; Abonos cambia el privilegio `Eliminar` por `Anular` |
 
 `npm start` ejecuta las migraciones pendientes antes de iniciar el servidor,
 así que en Render basta con desplegar. Son idempotentes: no se repiten.

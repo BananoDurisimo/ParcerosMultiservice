@@ -36,6 +36,7 @@ primer inicio de sesión (Mi cuenta > Seguridad).
 | `011_abonos_libres_defectuosas_categorias.sql` | Método de pago `Mixto`; abonos de monto libre sin límite (el primero de al menos el 50% del total); `defectuosas` por producto del pedido; módulo `Categorías de insumo` sobre `tipo_insumo` (descripción, estado, auditoría y permisos) |
 | `012_insumos_sin_precio_y_proveedor_pais.sql` | El insumo deja de tener precio (columna opcional, 0 por defecto; la compra conserva lo pagado); el proveedor guarda `pais` y el NIT pasa a opcional |
 | `013_anulacion_compra_y_vigencia_cotizacion.sql` | `compra.motivo_anulacion` obligatorio al anular y una compra Recibida no se puede anular; una cotización vence el 31/12 de su año y deja de recibir abonos. La API ya no registra ajustes manuales de existencias |
+| `014_compra_recibida_no_vuelve_a_transito.sql` | Reemplaza la regla de la 013: una compra Recibida no vuelve a En tránsito, pero sí se puede anular (con motivo); al anularla sus insumos salen del inventario, salvo que ya se hayan gastado |
 
 `npm start` ejecuta las migraciones pendientes antes de iniciar el servidor,
 así que en Render basta con desplegar. Son idempotentes: no se repiten.

@@ -65,7 +65,7 @@ function aFrontend(col, f, cat) {
       };
     case 'compras':
       return {
-        ...base, id_proveedor: f.id_proveedor, fecha: texto(f.fecha), fecha_entrega: texto(f.fecha_entrega),
+        ...base, id_proveedor: f.id_proveedor, fecha: texto(f.fecha), fecha_entrega: texto(f.fecha_entrega), motivo_anulacion: texto(f.motivo_anulacion),
         estado: nombrePorId(cat.estados_compra, 'id_estado_compra', f.id_estado_compra),
         detalle_insumos: (f.detalles || []).map((l) => ({ id_insumo: l.id_insumo, cantidad: Number(l.cantidad), precio_unitario: Number(l.precio_unitario) })),
       };
@@ -178,7 +178,7 @@ export function aServidor(col, r, cat, sid) {
     case 'insumos':
       return {
         id_tipo_insumo: r.id_tipo_insumo, id_unidad_medida: r.id_unidad_medida, nombre: r.nombre,
-        stock_minimo: r.stock_minimo, activo, stock: r.stock,
+        stock_minimo: r.stock_minimo, activo,
       };
     case 'proveedores':
       return {
@@ -192,7 +192,7 @@ export function aServidor(col, r, cat, sid) {
     case 'compras':
       return {
         id_proveedor: sid('proveedores', r.id_proveedor), id_estado_compra: idPorNombre(cat.estados_compra, 'id_estado_compra', r.estado),
-        fecha: r.fecha, fecha_entrega: r.fecha_entrega,
+        fecha: r.fecha, fecha_entrega: r.fecha_entrega, motivo_anulacion: r.motivo_anulacion,
         detalles: (r.detalle_insumos || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad, precio_unitario: l.precio_unitario })),
       };
     case 'pedidos':

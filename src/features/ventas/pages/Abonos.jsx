@@ -48,7 +48,7 @@ export default function Abonos() {
   const pedidos = opciones(
     'pedidos',
     (p) => `${p.calc_codigo} · ${p.calc_cliente}`,
-    (p) => (p.estado === ENTREGADO ? 'Entregado' : p.calc_saldo <= 0 ? 'Pagado' : undefined)
+    (p) => (p.estado === ENTREGADO ? 'Entregado' : p.calc_vencida ? 'Cotización vencida' : p.calc_saldo <= 0 ? 'Pagado' : undefined)
   );
   const pedidoDe = (id) => db.pedidos.find((x) => x.id === Number(id));
 
@@ -110,6 +110,7 @@ export default function Abonos() {
       return { fecha: `La cotización se creó el ${fecha(p.fecha_creacion)}: el abono no puede ser anterior.` };
     }
     if (modo === 'editar') return null;
+    if (p.calc_vencida) return { id_pedido: `La cotización venció el ${fecha(p.calc_vigencia)}: ya no puede recibir abonos.` };
     if (p.calc_saldo <= 0) return { id_pedido: 'Este pedido ya está pagado en su totalidad.' };
     const l = limites(p);
     const e = errorMonto(v.monto, l.minimo, l.maximo, { primero: l.primero });

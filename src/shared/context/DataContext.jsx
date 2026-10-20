@@ -363,6 +363,11 @@ export function DataProvider({ children }) {
         calc_pct: total ? Math.round((abonado / total) * 100) : 0,
         calc_abonos: abonos.length,
         calc_abono_inicial: abonos.length ? 'Registrado' : 'Pendiente',
+        /* Una cotizacion vale hasta el 31 de diciembre del año en que se creo;
+           vencida, ya no recibe abonos ni pasa a pedido (la base de datos
+           tambien lo impide, 013). */
+        calc_vigencia: p.fecha_creacion ? `${p.fecha_creacion.slice(0, 4)}-12-31` : '',
+        calc_vencida: p.estado === COTIZACION && !!p.fecha_creacion && hoyISO() > `${p.fecha_creacion.slice(0, 4)}-12-31`,
         calc_total_productos: totalProductos,
         calc_total_insumos: totalInsumos,
         calc_lineas: (p.insumos || []).length + (p.productos || []).length,

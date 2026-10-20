@@ -616,20 +616,21 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 
 /* Desplegable con buscador (llaves foraneas) --------------- */
 .ss { position: relative; width: 100%; min-width: 0; }
-.ss-trigger { text-align: left; cursor: pointer; display: flex; align-items: center; }
-.ss-trigger:disabled { cursor: default; opacity: .75; }
-.ss-valor { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ss-placeholder { color: var(--text-sec); }
-.ss.is-open .ss-trigger { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
+/* El campo es el buscador: lupa a la izquierda, flecha a la derecha. */
+.ss-campo { position: relative; display: flex; align-items: center; }
+.ss-campo .ss-input { padding-left: 34px; padding-right: 30px; text-overflow: ellipsis; }
+.ss-campo .ss-input:disabled { cursor: default; opacity: .75; }
+.ss-ico, .ss-flecha { position: absolute; display: grid; place-items: center; color: var(--text-sec); pointer-events: none; }
+.ss-ico { left: 11px; }
+.ss-flecha { right: 10px; }
+.ss.is-open .ss-input { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
 .ss-panel {
   position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0; min-width: 240px;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-lg); padding: 8px; animation: fadeIn .15s var(--ease);
+  box-shadow: var(--shadow-lg); padding: 6px; animation: fadeIn .15s var(--ease);
 }
-.ss-search { max-width: none; min-width: 0; }
-.ss-search .input { min-height: 34px; }
-.ss-search .input, .ins-buscar .input { padding-left: 36px; }
-.ss-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 228px; overflow-y: auto; }
+.ins-buscar .input { padding-left: 36px; }
+.ss-list { list-style: none; margin: 0; padding: 0; max-height: 228px; overflow-y: auto; }
 .ss-opt { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; cursor: pointer; }
 .ss-opt.is-active { background: var(--surface-3); }
 .ss-opt.is-selected { color: var(--primary); font-weight: 500; }
@@ -638,11 +639,13 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 
 /* Formulario en dos columnas (pedido) ---------------------- */
 .form-split { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+/* Datos a la izquierda y lineas (productos, insumos) a la derecha. */
+.form-split.invertido { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); }
 .form-col { display: flex; flex-direction: column; gap: 15px; min-width: 0; }
 .form-col-der { padding-left: 22px; border-left: 1px solid var(--border-soft); }
 [data-theme='dark'] .form-col-der { border-color: var(--border); }
 @media (max-width: 960px) {
-  .form-split { grid-template-columns: 1fr; }
+  .form-split, .form-split.invertido { grid-template-columns: 1fr; }
   .form-col-der { padding-left: 0; border-left: 0; padding-top: 18px; border-top: 1px solid var(--border-soft); }
 }
 .form-section { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--border-soft); font-size: 13.5px; font-weight: 600; color: var(--text); }
@@ -969,7 +972,9 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 .ig-perfil:hover { text-decoration: none; color: var(--text); }
 .ig-perfil .ig-perfil-txt { flex: 1; min-width: 0; }
 .ig-perfil strong { display: block; font-size: 15px; }
-.ig-perfil span { font-size: 12.5px; color: var(--text-sec); }
+/* Solo el texto descriptivo va en gris: el boton «Seguir» conserva su texto blanco. */
+.ig-perfil .ig-perfil-txt span { font-size: 12.5px; color: var(--text-sec); }
+.ig-perfil .btn-primary { color: #fff; flex: none; }
 
 .ig-carousel .c-slide { padding: 0 8px; display: flex; }
 .ig-card { flex: 1; overflow: hidden; display: flex; flex-direction: column; }

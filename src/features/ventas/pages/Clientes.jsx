@@ -6,7 +6,16 @@ import Badge from '@shared/components/ui/Badge.jsx';
 import MiniTabla from '@shared/components/ui/MiniTabla.jsx';
 import { iniciales } from '@shared/context/AuthContext.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
-import { money, fecha, TIPOS_DOCUMENTO, ESTADOS_REGISTRO, COTIZACION, ENTREGADO } from '@shared/data/mock.js';
+import { money, fecha, ESTADOS_REGISTRO, COTIZACION, ENTREGADO } from '@shared/data/mock.js';
+
+/* El cliente se identifica solo con cedula nicaraguense: 3 digitos del
+   municipio, 6 de la fecha de nacimiento (ddmmaa), 4 de consecutivo y una
+   letra. Ej.: 001-010190-0001A. Se acepta con o sin guiones y se guarda con. */
+const CEDULA = /^(\d{3})-?(\d{6})-?(\d{4})([A-Za-z])$/;
+const formatoCedula = (v) => {
+  const m = String(v || '').trim().match(CEDULA);
+  return m ? `${m[1]}-${m[2]}-${m[3]}${m[4].toUpperCase()}` : String(v || '').trim();
+};
 
 /** Etapa comercial del registro: cotizacion, pedido o venta. */
 const etapa = (p) => (p.estado === COTIZACION ? 'Cotización' : p.estado === ENTREGADO ? 'Venta' : 'Pedido');
@@ -20,7 +29,7 @@ export default function Clientes() {
     <div>
       <div className="detail-grid">
         <div className="detail-item"><div className="dl">Nombre o razón social</div><div className="dv">{r.nombre}</div></div>
-        <div className="detail-item"><div className="dl">Documento</div><div className="dv">{r.tipodocumento}: {r.documento}</div></div>
+        <div className="detail-item"><div className="dl">Cédula</div><div className="dv">{r.documento}</div></div>
         <div className="detail-item"><div className="dl">Correo electrónico</div><div className="dv">{r.correo || '—'}</div></div>
         <div className="detail-item"><div className="dl">Teléfono</div><div className="dv">{r.telefono || '—'}</div></div>
         <div className="detail-item"><div className="dl">Dirección</div><div className="dv">{r.direccion || '—'}</div></div>
@@ -60,10 +69,9 @@ export default function Clientes() {
           : null),
       }}
       filtros={[
-        { key: 'tipodocumento', label: 'Tipo de documento', options: TIPOS_DOCUMENTO },
         { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
       ]}
-      defaults={{ tipodocumento: 'RUC', estado: 'Activo' }}
+      defaults={{ tipodocumento: 'Cédula', estado: 'Activo' }}
       resumen={[
         <KpiCard key="a" label="Clientes registrados" value={db.clientes.length} icon="users" tono="primary" />,
         <KpiCard key="b" label="Pedidos acumulados" value={stats.totalPedidos} icon="clipboard" tono="info" />,
@@ -77,22 +85,31 @@ export default function Clientes() {
               <span className="avatar" style={{ background: 'var(--secondary)' }}>{iniciales(r.nombre)}</span>
               <div>
                 <div className="cell-main">{r.nombre}</div>
-                <div className="caption">{r.tipodocumento}: {r.documento}</div>
+                <div className="caption">Cédula: {r.documento}</div>
               </div>
             </div>
           ),
         },
-        { key: 'tipodocumento', label: 'Tipo doc.', mobile: 'meta', render: (r) => <span className="badge badge-neutral">{r.tipodocumento}</span> },
         { key: 'telefono', label: 'Teléfono', mobile: 'meta', render: (r) => <span className="muted row" style={{ gap: 6 }}><Icon name="phone" size={14} /> {r.telefono || '—'}</span> },
         { key: 'correo', label: 'Correo', render: (r) => <span className="muted">{r.correo}</span> },
         { key: 'direccion', label: 'Dirección', render: (r) => <span className="caption">{r.direccion || '—'}</span> },
         { key: 'calc_pedidos', label: 'Pedidos', align: 'center', mobile: 'value', render: (r) => <span className="badge badge-info">{r.calc_pedidos}</span> },
         { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="clientes" modulo="Clientes" options={ESTADOS_REGISTRO} /> },
       ]}
+      /* El formato se exige al registrar o al cambiar el numero: los clientes
+         que ya existian con otro formato se pueden seguir editando. */
+      validarExtra={(v, modo, actual) => {
+        const doc = String(v.documento || '').trim();
+        if (!doc || (modo === 'editar' && doc === actual?.documento)) return null;
+        return CEDULA.test(doc) ? null : { documento: 'Ingrese una cédula válida: 13 dígitos y una letra (ej.: 001-010190-0001A).' };
+      }}
+      beforeSave={(d) => ({ ...d, tipodocumento: 'Cédula', documento: formatoCedula(d.documento) })}
       campos={[
         { name: 'nombre', label: 'Nombre o razón social', type: 'text', required: true, noSpecial: true, minLength: 3, maxLength: 80 },
-        { name: 'tipodocumento', label: 'Tipo de documento', type: 'select', options: TIPOS_DOCUMENTO, required: true },
-        { name: 'documento', label: 'Número de documento', type: 'text', required: true, unique: true, alfanumerico: true, minLength: 5, maxLength: 20, hint: 'No puede repetirse: la columna es única.' },
+        {
+          name: 'documento', label: 'Cédula', type: 'text', required: true, unique: true, maxLength: 16,
+          placeholder: '001-010190-0001A', hint: 'Cédula nicaragüense: 13 dígitos y una letra. Se aceptan con o sin guiones.',
+        },
         { name: 'correo', label: 'Correo electrónico', type: 'email', required: true, unique: true, hint: 'No puede repetirse: la columna es única.' },
         { name: 'telefono', label: 'Teléfono', type: 'tel' },
         { name: 'direccion', label: 'Dirección', type: 'text', full: true, maxLength: 150 },

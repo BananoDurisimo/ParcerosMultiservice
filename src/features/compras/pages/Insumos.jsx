@@ -205,7 +205,22 @@ export default function Insumos() {
         { name: 'nombre', label: 'Nombre del insumo', type: 'text', required: true, full: true, noSpecial: true, unique: true, maxLength: 80 },
         { name: 'id_tipo_insumo', label: 'Categoría', type: 'select', options: tipos, required: true },
         { name: 'id_unidad_medida', label: 'Unidad de medida', type: 'select', options: unidades, required: true },
-        { name: 'stock', label: 'Existencias', type: 'number', required: true, min: 0 },
+        {
+          /* Las existencias no se digitan: suben al recibir una compra y bajan
+             cuando un pedido entra en elaboracion. */
+          name: 'info_stock', type: 'custom', full: true,
+          render: (v, modo) => (
+            <div className="alert alert-info">
+              <Icon name="info" size={18} />
+              <div>
+                {modo === 'editar'
+                  ? <>Existencias actuales: <strong>{v.stock} {db.insumos.find((i) => i.id === v.id)?.calc_abreviatura}</strong>. </>
+                  : 'El insumo empieza con 0 existencias. '}
+                Solo cambian al recibir una compra (entran) o al iniciar un pedido (salen).
+              </div>
+            </div>
+          ),
+        },
         {
           name: 'stock_minimo', label: 'Existencias mínimas', type: 'number', required: true, min: 0,
           hint: 'Cuando las existencias bajen hasta este número el insumo entrará en la alerta de inventario.',

@@ -88,32 +88,37 @@ function ArchivoField({ f, value, error, onChange, readOnly, label }) {
 }
 
 /* --------------------------------------------------------------
-   Desplegable con buscador
+   Buscador de opciones (combobox)
 
    Reemplaza al <select> nativo en todas las listas de los formularios
-   (cliente, proveedor, insumo, rol, pedido, estado…): al abrirlo se escribe para filtrar por nombre, sin
-   distinguir mayusculas ni tildes, y se elige con el mouse o con las flechas
-   y Enter. Las filas dadas de baja se ven pero no se pueden elegir.
+   (cliente, proveedor, insumo, rol, pedido, estado…). El campo ES el
+   buscador: se escribe directamente en el y la lista se filtra en tiempo
+   real, sin distinguir mayusculas ni tildes. Se elige con el mouse o con
+   las flechas y Enter; Escape o salir del campo deja el valor que tenia.
+   Las filas dadas de baja se ven pero no se pueden elegir.
    -------------------------------------------------------------- */
 export const normTexto = (x) => String(x ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-export function SearchSelect({ id, options, value, onChange, disabled, error, placeholder = 'Seleccione…', buscarPlaceholder = 'Escriba para buscar…', ariaLabel }) {
+export function SearchSelect({ id, options, value, onChange, disabled, error, placeholder = 'Escriba para buscar…', buscarPlaceholder, ariaLabel }) {
   const opts = normOpciones(options);
   const [abierto, setAbierto] = useState(false);
   const [q, setQ] = useState('');
   const [activo, setActivo] = useState(0);
   const caja = useRef(null);
   const lista = useRef(null);
+  const entrada = useRef(null);
 
   const elegida = opts.find((o) => String(o.value) === String(value ?? ''));
+  const etiqueta = elegida ? `${elegida.label}${elegida.baja ? ` · ${String(elegida.baja).toLowerCase()}` : ''}` : '';
   const texto = normTexto(q.trim());
   const visibles = texto ? opts.filter((o) => normTexto(o.label).includes(texto)) : opts;
   const bloqueada = (o) => !!o.baja && String(o.value) !== String(value ?? '');
 
   const cerrar = () => { setAbierto(false); setQ(''); };
   const abrir = () => {
-    if (disabled) return;
+    if (disabled || abierto) return;
     setAbierto(true);
+    setQ('');
     setActivo(Math.max(0, opts.findIndex((o) => o === elegida)));
   };
   const elegir = (o) => {
@@ -122,7 +127,7 @@ export function SearchSelect({ id, options, value, onChange, disabled, error, pl
     cerrar();
   };
 
-  /* Un clic fuera del control lo cierra. */
+  /* Un clic fuera del control lo cierra sin cambiar el valor. */
   useEffect(() => {
     if (!abierto) return undefined;
     const fuera = (e) => { if (!caja.current?.contains(e.target)) cerrar(); };
@@ -137,8 +142,8 @@ export function SearchSelect({ id, options, value, onChange, disabled, error, pl
 
   const teclado = (e) => {
     if (e.key === 'Escape' && abierto) {
-      /* Cierra solo el desplegable, no el modal que lo contiene. */
-      e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopPropagation();
+      /* Cierra solo la lista, no el modal que la contiene. */
+      e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation?.();
       cerrar();
       return;
     }
@@ -152,39 +157,38 @@ export function SearchSelect({ id, options, value, onChange, disabled, error, pl
     if (e.key === 'Enter') {
       e.preventDefault();
       if (abierto) elegir(visibles[activo]); else abrir();
+      return;
     }
+    if (e.key === 'Tab') cerrar();
   };
 
   return (
-    <div className={`ss ${abierto ? 'is-open' : ''}`} ref={caja} onKeyDown={teclado}>
-      <button
-        id={id}
-        type="button"
-        className={`select ss-trigger ${error ? 'has-error' : ''}`}
-        disabled={disabled}
-        aria-haspopup="listbox"
-        aria-expanded={abierto}
-        aria-label={ariaLabel}
-        onClick={() => (abierto ? cerrar() : abrir())}
-      >
-        <span className={elegida ? 'ss-valor' : 'ss-valor ss-placeholder'}>
-          {elegida ? `${elegida.label}${elegida.baja ? ` · ${String(elegida.baja).toLowerCase()}` : ''}` : placeholder}
-        </span>
-      </button>
+    <div className={`ss ${abierto ? 'is-open' : ''}`} ref={caja}>
+      <div className="ss-campo">
+        <span className="ss-ico" aria-hidden="true"><Icon name="search" size={15} /></span>
+        <input
+          id={id}
+          ref={entrada}
+          className={`input ss-input ${error ? 'has-error' : ''}`}
+          role="combobox"
+          aria-expanded={abierto}
+          aria-autocomplete="list"
+          aria-label={ariaLabel}
+          autoComplete="off"
+          disabled={disabled}
+          /* Cerrado muestra lo elegido; abierto, lo que se va escribiendo. */
+          value={abierto ? q : etiqueta}
+          placeholder={abierto ? (etiqueta || buscarPlaceholder || placeholder) : placeholder}
+          onFocus={abrir}
+          onClick={abrir}
+          onKeyDown={teclado}
+          onChange={(e) => { setQ(e.target.value); setActivo(0); if (!abierto) setAbierto(true); }}
+        />
+        <span className="ss-flecha" aria-hidden="true"><Icon name={abierto ? 'chevU' : 'chevD'} size={14} /></span>
+      </div>
 
       {abierto && (
         <div className="ss-panel">
-          <div className="search-wrap ss-search">
-            <span className="ico"><Icon name="search" size={15} /></span>
-            <input
-              className="input"
-              autoFocus
-              value={q}
-              placeholder={buscarPlaceholder}
-              aria-label="Buscar opción"
-              onChange={(e) => { setQ(e.target.value); setActivo(0); }}
-            />
-          </div>
           <ul className="ss-list" role="listbox" ref={lista}>
             {visibles.map((o, i) => (
               <li
@@ -339,7 +343,8 @@ export function Field({ f, value, error, onChange, readOnly }) {
           error={error}
           disabled={readOnly}
           onChange={onChange}
-          buscarPlaceholder={f.buscarPlaceholder || `Buscar ${String(f.label).toLowerCase()}…`}
+          placeholder={f.placeholder || `Escriba para buscar ${String(f.label).toLowerCase()}…`}
+          buscarPlaceholder={f.buscarPlaceholder}
         />
         {f.hint && !error && <span className="caption">{f.hint}</span>}
         {error && <span className="field-error"><Icon name="alert" size={12} /> {error}</span>}

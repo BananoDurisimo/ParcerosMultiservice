@@ -1,10 +1,10 @@
 /**
  * Cotizacion en PDF para entregar al cliente (A4 vertical).
  *
- * Lleva el encabezado de la empresa, los datos del cliente, los productos y
- * la personalizacion con sus precios, el total con el abono inicial (50%),
- * la descripcion acordada y la imagen del mockup. Los insumos de la receta
- * no aparecen: son internos del taller.
+ * Lleva el encabezado de la empresa, los datos del cliente, los productos
+ * con sus precios, el total con el abono inicial (50%), la vigencia (31/12
+ * del año de la cotizacion), la descripcion acordada y la imagen del mockup.
+ * Los insumos (receta y personalizacion) no aparecen: son internos.
  *
  * `pdfCotizacion` arma el archivo con los datos ya resueltos (se puede probar
  * fuera del navegador); `descargarCotizacion` resuelve los datos, convierte
@@ -32,25 +32,27 @@ export function pdfCotizacion(c, diseno) {
   const pagina = (primera) => {
     d.nueva();
     if (primera) return;
-    rect(0, 0, W, 40, AZUL);
-    texto(`Cotización ${c.codigo} · ${c.cliente.nombre}`, M, 25, { t: 10, neg: true, color: '#FFFFFF', ancho: W - 2 * M });
-    y = 60;
+    texto(`Cotización ${c.codigo} · ${c.cliente.nombre}`, M, 30, { t: 10, neg: true, color: AZUL, ancho: W - 2 * M });
+    linea(M, 38, W - M, 38, AZUL, 1);
+    y = 56;
   };
   const espacio = (alto) => { if (y + alto > LIMITE) pagina(false); };
 
   /* ---- Encabezado ---- */
   pagina(true);
-  rect(0, 0, W, 96, AZUL);
-  texto('Parceros Multiservice', M, 40, { t: 21, neg: true, color: '#FFFFFF' });
-  texto('Uniformes deportivos personalizados', M, 60, { t: 10, color: '#DBEAFE' });
-  texto(`${TELEFONO.texto} · ${CORREO}`, M, 78, { t: 8.5, color: '#DBEAFE' });
-  texto('COTIZACIÓN', W - M, 40, { t: 17, neg: true, color: '#FFFFFF', der: true });
-  texto(c.codigo, W - M, 60, { t: 11, neg: true, color: '#DBEAFE', der: true });
-  texto(`Fecha: ${fechaTxt(c.fecha)}`, W - M, 78, { t: 8.5, color: '#DBEAFE', der: true });
+  /* Sin fondos de color: se imprime con poca tinta. */
+  texto('Parceros Multiservice', M, 42, { t: 20, neg: true, color: AZUL });
+  texto('Uniformes deportivos personalizados', M, 60, { t: 10, color: GRIS });
+  texto(`${TELEFONO.texto} · ${CORREO}`, M, 76, { t: 8.5, color: GRIS });
+  texto('COTIZACIÓN', W - M, 42, { t: 16, neg: true, color: AZUL, der: true });
+  texto(c.codigo, W - M, 60, { t: 11, neg: true, der: true });
+  texto(`Fecha: ${fechaTxt(c.fecha)}`, W - M, 76, { t: 8.5, color: GRIS, der: true });
+  if (c.vigencia) texto(`Válida hasta: ${fechaTxt(c.vigencia)}`, W - M, 89, { t: 8.5, neg: true, color: AZUL, der: true });
+  linea(M, 98, W - M, 98, AZUL, 1.5);
 
   /* ---- Cliente ---- */
   y = 116;
-  rect(M, y, W - 2 * M, 66, CLARO, LINEA);
+  rect(M, y, W - 2 * M, 66, '#FFFFFF', LINEA);
   texto('CLIENTE', M + 12, y + 16, { t: 7.5, neg: true, color: GRIS });
   texto(c.cliente.nombre, M + 12, y + 33, { t: 12.5, neg: true, ancho: 300 });
   texto(c.cliente.documento || '', M + 12, y + 50, { t: 9, color: GRIS, ancho: 300 });
@@ -65,11 +67,12 @@ export function pdfCotizacion(c, diseno) {
     texto(titulo, M, y + 12, { t: 11.5, neg: true });
     y += 20;
     const cabecera = () => {
-      rect(M, y, W - 2 * M, FILA, AZUL);
+      linea(M, y, W - M, y, LINEA, 0.6);
+      linea(M, y + FILA, W - M, y + FILA, AZUL, 1.2);
       let x = M;
       columnas.forEach((col) => {
         const der = col.al === 'r';
-        texto(col.t, der ? x + col.w - 6 : x + 6, y + 13.5, { t: 8, neg: true, color: '#FFFFFF', der, ancho: col.w - 10 });
+        texto(col.t, der ? x + col.w - 6 : x + 6, y + 13.5, { t: 8, neg: true, color: AZUL, der, ancho: col.w - 10 });
         x += col.w;
       });
       y += FILA;
@@ -101,19 +104,8 @@ export function pdfCotizacion(c, diseno) {
       { t: 'Precio unit.', w: 85, al: 'r' }, { t: 'Subtotal', w: 85, al: 'r' },
     ], c.productos.map((l) => [l.nombre, l.detalle, cant(l.cantidad), dinero(l.precio), dinero(subtotal(l))]));
   }
-  if (c.insumos.length) {
-    /* Los insumos no se cobran: solo se informa que se usara. Un registro
-       anterior que si los cobraba conserva su columna de precio. */
-    if (totalInsumos > 0) {
-      tabla('Personalización', [
-        { t: 'Insumo', w: 250 }, { t: 'Cantidad', w: 95, al: 'r' },
-        { t: 'Precio unit.', w: 85, al: 'r' }, { t: 'Subtotal', w: 85, al: 'r' },
-      ], c.insumos.map((l) => [l.nombre, `${cant(l.cantidad)} ${l.unidad}`, dinero(l.precio), dinero(subtotal(l))]));
-    } else {
-      tabla('Personalización (incluida en el precio)', [{ t: 'Insumo', w: 345 }, { t: 'Cantidad', w: 170, al: 'r' }],
-        c.insumos.map((l) => [l.nombre, `${cant(l.cantidad)} ${l.unidad}`]));
-    }
-  }
+  /* La personalizacion (insumos) no se lista: es interna y no tiene precio.
+     Un registro anterior que si la cobraba la suma en los totales. */
 
   /* ---- Totales ---- */
   const filasTotal = [
@@ -168,7 +160,7 @@ export function pdfCotizacion(c, diseno) {
 
   /* ---- Condiciones ---- */
   espacio(40);
-  envolver('Precios en córdobas (C$). El pedido inicia al registrar el abono inicial (50% del total o el pago completo); el saldo se cancela antes de la entrega.', W - 2 * M, 8.5)
+  envolver(`Precios en córdobas (C$).${c.vigencia ? ` Cotización válida hasta el ${fechaTxt(c.vigencia)}.` : ''} El pedido inicia al registrar el abono inicial (mínimo el 50% del total); el saldo se cancela antes de la entrega.`, W - 2 * M, 8.5)
     .forEach((r) => { texto(r, M, y + 10, { t: 8.5, color: GRIS }); y += 12; });
 
   return d.armar((i, totalPaginas) => {
@@ -207,6 +199,7 @@ export function datosCotizacion(r, db) {
     codigo: r.calc_codigo,
     fecha: r.fecha_creacion,
     abonado: r.calc_abonado || 0,
+    vigencia: r.calc_abonos ? '' : r.calc_vigencia,
     cliente: {
       nombre: cli.nombre || r.calc_cliente,
       documento: cli.documento ? `${cli.tipodocumento}: ${cli.documento}` : '',

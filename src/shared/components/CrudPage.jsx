@@ -26,9 +26,15 @@ import { etiquetaFila, AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ANULAR, ELI
  * prop `anulacion` para dar de baja el documento sin borrarlo, dejandolo en
  * la base de datos con su estado en "Anulada".
  *
- * Formulario en dos columnas: los campos con `col: 'izq'` van a la columna
- * izquierda y el resto a la derecha (p. ej. los insumos del pedido a un lado
- * y el desglose, la descripcion y el diseño al otro).
+ * Formulario en dos columnas: los campos con `col: 'izq'` van a una columna
+ * (las lineas: productos, insumos…) y el resto a la otra (los datos). Por
+ * defecto las lineas van a la izquierda; con `columnasInvertidas` los datos
+ * van a la izquierda y las lineas a la derecha.
+ *
+ * `anulacion.campoMotivo`: anular pide una justificacion (minimo 10
+ * caracteres) que se guarda en esa columna. `anulacion.enAcciones` agrega el
+ * boton «Anular» a las acciones de cada fila; `anulacion.validar(reg)`
+ * devuelve el motivo por el que no se puede anular (se avisa antes de abrir).
  *
  * `abrirCon`: valores con que abrir de una vez el formulario de agregar (p. ej.
  * el abono de una cotizacion, desde el listado de cotizaciones). Con
@@ -72,7 +78,8 @@ export default function CrudPage({
   accionesExtra,
   tablaCompacta = false,
   emptyText,
-  anulacion = null, // { valor, campo = 'estado', mensaje(reg), validar(reg) }
+  anulacion = null, // { valor, campo = 'estado', mensaje(reg), validar(reg), campoMotivo, enAcciones }
+  columnasInvertidas = false,
   eliminacion = {}, // { validar(reg), mensaje(reg), alEliminar(reg) }
   abrirCon = null,
   alAbrirCon,
@@ -99,6 +106,8 @@ export default function CrudPage({
   const [tocados, setTocados] = useState({});
   const [intentado, setIntentado] = useState(false);
   const [anular, setAnular] = useState(null);
+  const [motivoAnulacion, setMotivoAnulacion] = useState('');
+  const [errMotivo, setErrMotivo] = useState('');
   const [eliminar, setEliminar] = useState(null);
 
   /* Anular no borra la fila: solo cambia su estado, de modo que el documento
@@ -231,6 +240,15 @@ export default function CrudPage({
 
   const puedeAnular = !!anulacion && modo === 'editar' && !estaAnulado(actual) && puedeAccion(modulo, ANULAR);
 
+  /* Abre la confirmacion solo si el registro se puede anular. */
+  const pedirAnular = (r) => {
+    const motivo = anulacion.validar?.(r);
+    if (motivo) { toast.error(motivo, `No es posible anular la ${singular}`); return; }
+    setMotivoAnulacion('');
+    setErrMotivo('');
+    setAnular(r);
+  };
+
   const confirmarAnulacion = () => {
     const motivo = anulacion.validar?.(anular);
     if (motivo) {
@@ -238,7 +256,15 @@ export default function CrudPage({
       setAnular(null);
       return;
     }
-    update(coleccion, anular.id, { [campoAnulacion]: anulacion.valor });
+    const justificacion = motivoAnulacion.trim();
+    if (anulacion.campoMotivo && justificacion.length < 10) {
+      setErrMotivo('Explique el motivo de la anulación (mínimo 10 caracteres).');
+      return;
+    }
+    update(coleccion, anular.id, {
+      [campoAnulacion]: anulacion.valor,
+      ...(anulacion.campoMotivo ? { [anulacion.campoMotivo]: justificacion } : {}),
+    });
     toast.warning(`Se anuló el registro de ${singular}: ${etiqueta(anular)}.`, 'Registro anulado');
     setAnular(null);
     cerrar();
@@ -371,7 +397,18 @@ export default function CrudPage({
         onEdit={puedeEditar ? abrirEditar : undefined}
         puedeEditarFila={puedeEditarFila}
         onDelete={puedeEliminar ? pedirEliminar : undefined}
-        accionesExtra={accionesExtra}
+        accionesExtra={anulacion?.enAcciones && puedeAccion(modulo, ANULAR)
+          ? (r) => (
+            <>
+              {accionesExtra?.(r)}
+              {!estaAnulado(r) && (
+                <button className="icon-btn" style={{ color: 'var(--error-fg)' }} onClick={() => pedirAnular(r)} title={`Anular ${singular}`}>
+                  <Icon name="xC" size={16} />
+                </button>
+              )}
+            </>
+          )
+          : accionesExtra}
         onExportar={puedeExportar ? exportar : undefined}
         emptyText={emptyText}
       />
@@ -386,7 +423,7 @@ export default function CrudPage({
         footer={
           <>
             {puedeAnular && (
-              <button className="btn btn-danger" style={{ marginRight: 'auto' }} onClick={() => setAnular(actual)}>
+              <button className="btn btn-danger" style={{ marginRight: 'auto' }} onClick={() => pedirAnular(actual)}>
                 <Icon name="xC" size={16} /> Anular {singular}
               </button>
             )}
@@ -407,7 +444,12 @@ export default function CrudPage({
           </div>
         )}
 
-        {dividido ? (
+        {dividido && columnasInvertidas ? (
+          <div className="form-split invertido">
+            <div className="form-col"><div className="form-grid">{derecha.map(renderCampo)}</div></div>
+            <div className="form-col form-col-der">{izquierda.map(renderCampo)}</div>
+          </div>
+        ) : dividido ? (
           <div className="form-split">
             <div className="form-col">{izquierda.map(renderCampo)}</div>
             <div className="form-col form-col-der"><div className="form-grid">{derecha.map(renderCampo)}</div></div>
@@ -466,7 +508,7 @@ export default function CrudPage({
         }
       />
 
-      {anulacion && (
+      {anulacion && !anulacion.campoMotivo && (
         <ConfirmDialog
           open={!!anular}
           onClose={() => setAnular(null)}
@@ -480,6 +522,49 @@ export default function CrudPage({
               : `El registro "${etiqueta(anular)}" pasará al estado "${anulacion.valor}" y dejará de contar en los totales. No se elimina de la base de datos.`
           }
         />
+      )}
+
+      {/* Anulacion con justificacion obligatoria */}
+      {anulacion?.campoMotivo && (
+        <Modal
+          open={!!anular}
+          onClose={() => setAnular(null)}
+          size="sm"
+          title={`Anular ${singular}`}
+          subtitle={etiqueta(anular)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setAnular(null)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={confirmarAnulacion}><Icon name="xC" size={16} /> Anular</button>
+            </>
+          }
+        >
+          {anular && (
+            <div className="stack" style={{ gap: 14 }}>
+              <div className="alert alert-error">
+                <Icon name="alert" size={20} />
+                <div>
+                  {anulacion.mensaje
+                    ? anulacion.mensaje(anular)
+                    : `El registro "${etiqueta(anular)}" pasará al estado "${anulacion.valor}" y dejará de contar en los totales.`}
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="f-motivo-anulacion">Motivo de la anulación <span className="req">*</span></label>
+                <textarea
+                  id="f-motivo-anulacion" className={`textarea ${errMotivo ? 'has-error' : ''}`} maxLength={300} autoFocus
+                  placeholder="Ej.: el proveedor no tenía la tela disponible y se canceló el pedido."
+                  value={motivoAnulacion}
+                  onChange={(e) => { setMotivoAnulacion(e.target.value); setErrMotivo(''); }}
+                />
+                <span className="caption row" style={{ justifyContent: 'space-between' }}>
+                  <span>Queda registrado en el documento y en el historial.</span><span>{motivoAnulacion.length}/300</span>
+                </span>
+                {errMotivo && <span className="field-error"><Icon name="alert" size={12} /> {errMotivo}</span>}
+              </div>
+            </div>
+          )}
+        </Modal>
       )}
     </div>
   );

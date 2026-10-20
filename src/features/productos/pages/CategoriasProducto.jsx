@@ -19,7 +19,6 @@ export default function CategoriasProducto() {
       <div className="detail-grid">
         <div className="detail-item"><div className="dl">Categoría</div><div className="dv">{r.nombre}</div></div>
         <div className="detail-item"><div className="dl">Productos</div><div className="dv">{r.calc_productos}</div></div>
-        <div className="detail-item full"><div className="dl">Descripción</div><div className="dv">{r.descripcion || '—'}</div></div>
         <div className="detail-item"><div className="dl">Estado</div><div className="dv"><Badge>{r.estado}</Badge></div></div>
       </div>
       <h3 className="det-section">Productos de la categoría</h3>
@@ -47,9 +46,9 @@ export default function CategoriasProducto() {
       entidad="categorías"
       singular="categoría"
       renderDetalle={detalle}
-      searchKeys={['nombre', 'descripcion']}
+      searchKeys={['nombre']}
       filtros={[{ key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO }]}
-      defaults={{ estado: 'Activo', descripcion: '' }}
+      defaults={{ estado: 'Activo' }}
       eliminacion={{
         validar: (r) => (r.calc_productos
           ? `${r.nombre} tiene ${r.calc_productos} producto(s). Para conservarlos, desactívela en lugar de eliminarla.`
@@ -67,13 +66,11 @@ export default function CategoriasProducto() {
       ]}
       columnas={[
         { key: 'nombre', label: 'Categoría', mobile: 'title', render: (r) => <span className="cell-main">{r.nombre}</span> },
-        { key: 'descripcion', label: 'Descripción', mobile: 'meta', render: (r) => <span className="caption">{r.descripcion || '—'}</span> },
         { key: 'calc_productos', label: 'Productos', align: 'center', mobile: 'value', render: (r) => <span className="badge badge-info">{r.calc_productos}</span> },
         { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="categorias_producto" modulo="Categorías de producto" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[
         { name: 'nombre', label: 'Nombre de la categoría', type: 'text', required: true, noSpecial: true, unique: true, maxLength: 60, full: true, placeholder: 'Ej.: Jersey' },
-        { name: 'descripcion', label: 'Descripción', type: 'textarea', full: true, maxLength: 200, placeholder: 'Ej.: Camisetas deportivas de manga corta para competencia.' },
         { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Una categoría inactiva ya no se ofrece para productos nuevos.' },
       ]}
     />

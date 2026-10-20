@@ -80,6 +80,9 @@ export default function Compras() {
         <div className="detail-item"><div className="dl">Fecha de realización</div><div className="dv">{fecha(r.fecha)}</div></div>
         <div className="detail-item"><div className="dl">Fecha de entrega</div><div className="dv">{fecha(r.fecha_entrega)}</div></div>
         <div className="detail-item"><div className="dl">Estado</div><div className="dv"><Badge>{r.estado}</Badge></div></div>
+        {r.estado === COMPRA_ANULADA && (
+          <div className="detail-item full"><div className="dl">Motivo de la anulación</div><div className="dv">{r.motivo_anulacion || '—'}</div></div>
+        )}
       </div>
 
       <h3 className="det-section">Insumos adquiridos</h3>
@@ -120,10 +123,20 @@ export default function Compras() {
         },
         mensaje: (r) => `Se eliminará la compra ${codigo(r)} de ${r.calc_proveedor}.${r.estado === 'Recibida' ? ' Sus insumos se retirarán del inventario.' : ''} Esta acción no se puede deshacer; si solo quiere darla de baja, anúlela.`,
       }}
+      /* Anular: desde las acciones de la fila, con justificacion. Una compra
+         recibida no se anula: sus insumos ya ingresaron al inventario (la base
+         de datos tambien lo impide, 013). */
       anulacion={{
         valor: COMPRA_ANULADA,
-        mensaje: (r) => `La compra ${codigo(r)} de ${r.calc_proveedor} quedará marcada como anulada: se conserva en el listado y en el historial, pero deja de sumar en los totales de compras.`,
+        campoMotivo: 'motivo_anulacion',
+        enAcciones: true,
+        validar: (r) => (r.estado === 'Recibida'
+          ? `La compra ${codigo(r)} ya fue recibida: sus insumos ingresaron al inventario y no se puede anular.`
+          : null),
+        mensaje: (r) => `La compra ${codigo(r)} de ${r.calc_proveedor} quedará anulada: se conserva en el listado y en el historial, pero deja de sumar en los totales de compras. No se puede deshacer.`,
       }}
+      /* Datos de la compra a la izquierda e insumos a la derecha. */
+      columnasInvertidas
       resumen={[
         <KpiCard key="a" label="Compras del mes" value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={stats.tendencias.compras} />,
         <KpiCard key="b" label="Compras registradas" value={db.compras.length} icon="clipboard" tono="info" />,

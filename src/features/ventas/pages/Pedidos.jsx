@@ -272,6 +272,12 @@ export default function Pedidos() {
     },
   };
 
+  const cotizaciones = db.pedidos.filter((p) => p.estado === COTIZACION).map((p) => ({ ...p, calc_vigente: p.calc_vencida ? 'Vencida' : 'Vigente' }));
+  const pedidos = db.pedidos.filter((p) => [EN_PROCESO, FALTA_PAGO, COMPLETADO].includes(p.estado));
+  const ventas = db.pedidos.filter((p) => [COMPLETADO, ENTREGADO].includes(p.estado));
+  const mesActual = hoyISO().slice(0, 7);
+  const cuantos = { cotizaciones: cotizaciones.length, pedidos: pedidos.length, ventas: ventas.length };
+
   /* ---------- Exportar y reporte ---------- */
   const FECHA_VISTA = {
     cotizaciones: ['fecha_creacion', 'Fecha de creación'],

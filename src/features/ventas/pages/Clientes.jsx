@@ -8,9 +8,12 @@ import { iniciales } from '@shared/context/AuthContext.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { money, fecha, ESTADOS_REGISTRO, COTIZACION, ENTREGADO } from '@shared/data/mock.js';
 
-/* El cliente se identifica solo con cedula nicaraguense: 3 digitos del
-   municipio, 6 de la fecha de nacimiento (ddmmaa), 4 de consecutivo y una
-   letra. Ej.: 001-010190-0001A. Se acepta con o sin guiones y se guarda con. */
+/* La cedula admite de 6 a 20 caracteres (letras, numeros y guiones). Si tiene
+   el formato nicaraguense -3 digitos del municipio, 6 de la fecha de
+   nacimiento (ddmmaa), 4 de consecutivo y una letra, ej.: 001-010190-0001A-
+   se guarda con guiones aunque se escriba sin ellos. */
+const CEDULA_MIN = 6;
+const CEDULA_MAX = 20;
 const CEDULA = /^(\d{3})-?(\d{6})-?(\d{4})([A-Za-z])$/;
 const formatoCedula = (v) => {
   const m = String(v || '').trim().match(CEDULA);
@@ -96,19 +99,12 @@ export default function Clientes() {
         { key: 'calc_pedidos', label: 'Pedidos', align: 'center', mobile: 'value', render: (r) => <span className="badge badge-info">{r.calc_pedidos}</span> },
         { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="clientes" modulo="Clientes" options={ESTADOS_REGISTRO} /> },
       ]}
-      /* El formato se exige al registrar o al cambiar el numero: los clientes
-         que ya existian con otro formato se pueden seguir editando. */
-      validarExtra={(v, modo, actual) => {
-        const doc = String(v.documento || '').trim();
-        if (!doc || (modo === 'editar' && doc === actual?.documento)) return null;
-        return CEDULA.test(doc) ? null : { documento: 'Ingrese una cédula válida: 13 dígitos y una letra (ej.: 001-010190-0001A).' };
-      }}
       beforeSave={(d) => ({ ...d, tipodocumento: 'Cédula', documento: formatoCedula(d.documento) })}
       campos={[
         { name: 'nombre', label: 'Nombre o razón social', type: 'text', required: true, noSpecial: true, minLength: 3, maxLength: 80 },
         {
-          name: 'documento', label: 'Cédula', type: 'text', required: true, unique: true, maxLength: 16,
-          placeholder: '001-010190-0001A', hint: 'Cédula nicaragüense: 13 dígitos y una letra. Se aceptan con o sin guiones.',
+          name: 'documento', label: 'Cédula', type: 'text', required: true, unique: true, alfanumerico: true, minLength: CEDULA_MIN, maxLength: CEDULA_MAX,
+          placeholder: '001-010190-0001A', hint: `Entre ${CEDULA_MIN} y ${CEDULA_MAX} caracteres: letras, números y guiones.`,
         },
         { name: 'correo', label: 'Correo electrónico', type: 'email', required: true, unique: true, hint: 'No puede repetirse: la columna es única.' },
         { name: 'telefono', label: 'Teléfono', type: 'tel' },

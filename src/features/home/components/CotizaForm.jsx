@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Icon from '@shared/components/Icon.jsx';
 import { useToast } from '@shared/context/ToastContext.jsx';
 import { waLink } from '@features/home/data/contacto.js';
@@ -9,14 +9,41 @@ const VACIO = { nombre: '', tipo: '', cantidad: '', telefono: '', mensaje: '' };
 /* Limites del formulario: mensajes cortos y claros en WhatsApp. */
 const MAX = { nombre: 80, telefono: 20, digitos: 15, prendas: 1000, mensaje: 500 };
 
+/* Limite de cotizaciones por WhatsApp: se cuentan los envios de las ultimas 24
+   horas en este navegador. Si el almacenamiento no esta disponible no se limita. */
+const LIMITE = 3;
+const VENTANA = 24 * 60 * 60 * 1000;
+const CLAVE = 'pm-cotizaciones-wa';
+const enviosRecientes = () => {
+  try {
+    const lista = JSON.parse(localStorage.getItem(CLAVE) || '[]');
+    return Array.isArray(lista) ? lista.filter((t) => Date.now() - t < VENTANA) : [];
+  } catch { return []; }
+};
+const registrarEnvio = (lista) => {
+  try { localStorage.setItem(CLAVE, JSON.stringify([...lista, Date.now()])); } catch { /* sin almacenamiento */ }
+};
+const horaLibre = (lista) => new Date(Math.min(...lista) + VENTANA)
+  .toLocaleString('es-NI', { weekday: 'long', hour: 'numeric', minute: '2-digit' });
+
 /**
  * Formulario de cotizacion. No hay backend que lo reciba: arma el mensaje y lo
- * abre en WhatsApp para que el cliente lo envie. No se guarda ningun dato.
+ * abre en WhatsApp para que el cliente lo envie. Solo se guarda en el navegador
+ * la hora de cada envio, para aplicar el limite diario.
  */
 export default function CotizaForm() {
   const toast = useToast();
   const [f, setF] = useState(VACIO);
   const [errs, setErrs] = useState({});
+  const [envios, setEnvios] = useState(enviosRecientes);
+  const agotado = envios.length >= LIMITE;
+
+  /* Al vencer el envio mas antiguo se vuelve a habilitar el boton. */
+  useEffect(() => {
+    if (!agotado) return undefined;
+    const t = setTimeout(() => setEnvios(enviosRecientes()), Math.min(...envios) + VENTANA - Date.now() + 1000);
+    return () => clearTimeout(t);
+  }, [agotado, envios]);
 
   const cambiar = (k) => (e) => {
     setF({ ...f, [k]: e.target.value });
@@ -25,6 +52,12 @@ export default function CotizaForm() {
 
   const enviar = (e) => {
     e.preventDefault();
+    const recientes = enviosRecientes();
+    setEnvios(recientes);
+    if (recientes.length >= LIMITE) {
+      toast.warning(`Alcanzó el límite de ${LIMITE} cotizaciones por día. Podrá enviar otra el ${horaLibre(recientes)}`, 'Cotización');
+      return;
+    }
     const n = {};
     if (!f.nombre.trim()) n.nombre = 'Ingrese su nombre.';
     else if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ .'-]+$/.test(f.nombre.trim())) n.nombre = 'El nombre solo admite letras y espacios.';
@@ -46,6 +79,8 @@ export default function CotizaForm() {
       f.mensaje.trim() && `Detalles: ${f.mensaje.trim()}`,
     ].filter(Boolean).join('\n');
     window.open(waLink(texto), '_blank', 'noopener');
+    registrarEnvio(recientes);
+    setEnvios(enviosRecientes());
     toast.success('Abrimos WhatsApp con su solicitud lista para enviar.', 'Cotización');
     setF(VACIO);
   };
@@ -89,9 +124,14 @@ export default function CotizaForm() {
         </div>
       </div>
 
-      <button className="btn lp-btn-wa btn-block" type="submit" style={{ marginTop: 16 }}>
+      <button className="btn lp-btn-wa btn-block" type="submit" style={{ marginTop: 16 }} disabled={agotado}>
         <Icon name="whatsapp" size={17} /> Enviar por WhatsApp
       </button>
+      <p className={agotado ? 'field-error' : 'caption'} style={{ marginTop: 8, textAlign: 'center', justifyContent: 'center' }}>
+        {agotado
+          ? <><Icon name="alert" size={12} /> Alcanzó el límite de {LIMITE} cotizaciones por día. Podrá enviar otra el {horaLibre(envios)}</>
+          : `Puede enviar hasta ${LIMITE} cotizaciones por día · ${LIMITE - envios.length === 1 ? 'le queda 1' : `le quedan ${LIMITE - envios.length}`}.`}
+      </p>
     </form>
   );
 }

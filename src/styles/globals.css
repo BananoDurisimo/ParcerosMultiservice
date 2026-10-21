@@ -596,7 +596,7 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 /* Editor de lineas (compras / pedidos) --------------------- */
 /* Sin overflow oculto: el desplegable con buscador de la linea se sale de la caja. */
 .items-box { border: 1px solid var(--border); border-radius: var(--radius); }
-.items-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, .9fr) minmax(0, 1fr) minmax(0, .9fr) 70px; gap: 8px; align-items: center; padding: 9px 10px; border-bottom: 1px solid var(--border-soft); }
+.items-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(120px, 1.3fr) minmax(90px, 1fr) minmax(0, .8fr) 70px; gap: 8px; align-items: center; padding: 9px 10px; border-bottom: 1px solid var(--border-soft); }
 [data-theme='dark'] .items-row { border-color: var(--border); }
 .items-row.head { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-sec); font-weight: 600; border-radius: var(--radius) var(--radius) 0 0; }
 .items-row.is-editing { background: color-mix(in srgb, var(--warning) 8%, transparent); }
@@ -612,6 +612,10 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 /* Cantidad con su unidad de medida al lado ("12 yd") */
 .input-unidad { position: relative; display: flex; align-items: center; }
 .input-unidad .input { padding-right: 46px; }
+/* Sin flechas del navegador: en la linea de detalle le quitan espacio al numero. */
+.items-row .input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
+.items-row .input[type='number']::-webkit-inner-spin-button,
+.items-row .input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .input-unidad .unidad { position: absolute; right: 10px; font-size: 12px; color: var(--text-sec); pointer-events: none; }
 
 /* Desplegable con buscador (llaves foraneas) --------------- */

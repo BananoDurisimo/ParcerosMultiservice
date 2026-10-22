@@ -8,9 +8,11 @@ import { iniciales } from '@shared/context/AuthContext.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { money, fecha, ESTADOS_REGISTRO, COTIZACION, ENTREGADO } from '@shared/data/mock.js';
 
-/* El cliente se identifica solo con cedula nicaraguense: 3 digitos del
-   municipio, 6 de la fecha de nacimiento (ddmmaa), 4 de consecutivo y una
-   letra. Ej.: 001-010190-0001A. Se acepta con o sin guiones y se guarda con. */
+/* La cedula admite entre 6 y 20 caracteres: letras, numeros y guiones. Si es
+   una cedula nicaraguense (001-010190-0001A) escrita sin guiones, se guarda
+   con ellos. */
+const DOC = { min: 6, max: 20 };
+const CEDULA_VALIDA = /^[A-Za-z0-9-]+$/;
 const CEDULA = /^(\d{3})-?(\d{6})-?(\d{4})([A-Za-z])$/;
 const formatoCedula = (v) => {
   const m = String(v || '').trim().match(CEDULA);
@@ -101,14 +103,15 @@ export default function Clientes() {
       validarExtra={(v, modo, actual) => {
         const doc = String(v.documento || '').trim();
         if (!doc || (modo === 'editar' && doc === actual?.documento)) return null;
-        return CEDULA.test(doc) ? null : { documento: 'Ingrese una cédula válida: 13 dígitos y una letra (ej.: 001-010190-0001A).' };
+        if (doc.length < DOC.min || doc.length > DOC.max) return { documento: `La cédula debe tener entre ${DOC.min} y ${DOC.max} caracteres.` };
+        return CEDULA_VALIDA.test(doc) ? null : { documento: 'La cédula solo admite letras, números y guiones.' };
       }}
       beforeSave={(d) => ({ ...d, tipodocumento: 'Cédula', documento: formatoCedula(d.documento) })}
       campos={[
         { name: 'nombre', label: 'Nombre o razón social', type: 'text', required: true, noSpecial: true, minLength: 3, maxLength: 80 },
         {
-          name: 'documento', label: 'Cédula', type: 'text', required: true, unique: true, maxLength: 16,
-          placeholder: '001-010190-0001A', hint: 'Cédula nicaragüense: 13 dígitos y una letra. Se aceptan con o sin guiones.',
+          name: 'documento', label: 'Cédula', type: 'text', required: true, unique: true, minLength: DOC.min, maxLength: DOC.max,
+          placeholder: '001-010190-0001A', hint: `Entre ${DOC.min} y ${DOC.max} caracteres: letras, números y guiones.`,
         },
         { name: 'correo', label: 'Correo electrónico', type: 'email', required: true, unique: true, hint: 'No puede repetirse: la columna es única.' },
         { name: 'telefono', label: 'Teléfono', type: 'tel' },

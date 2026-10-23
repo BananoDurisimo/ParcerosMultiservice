@@ -5,8 +5,7 @@ import { useData } from '@shared/context/DataContext.jsx';
 /** Procesos del menu lateral: los permisos se agrupan igual que los modulos. */
 const GRUPOS = [
   { titulo: 'Configuración', modulos: ['Roles', 'Usuarios', 'Movimientos'] },
-  { titulo: 'Compras', modulos: ['Categorías de insumo', 'Insumos', 'Proveedores', 'Compras'] },
-  { titulo: 'Productos', modulos: ['Categorías de producto', 'Productos'] },
+  { titulo: 'Compras', modulos: ['Categorías de insumo', 'Insumos', 'Proveedores', 'Compras', 'Categorías de producto', 'Productos'] },
   { titulo: 'Ventas', modulos: ['Clientes', 'Cotizaciones', 'Pedidos', 'Ventas', 'Abonos'] },
 ];
 

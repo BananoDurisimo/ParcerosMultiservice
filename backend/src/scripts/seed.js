@@ -15,7 +15,7 @@ const run = async () => {
     for (const n of ['Tela', 'Hilo', 'Estampado', 'Accesorio']) {
       await client.query('INSERT INTO tipo_insumo(nombre) VALUES($1) ON CONFLICT DO NOTHING', [n]);
     }
-    for (const [n, a] of [['Metro', 'm'], ['Yarda', 'yd'], ['Unidad', 'u'], ['Rollo', 'rollo'], ['Kilogramo', 'kg'], ['Docena', 'doc'], ['Cono', 'cono']]) {
+    for (const [n, a] of [['Metro', 'm'], ['Yarda', 'yd'], ['Centímetro', 'cm'], ['Unidad', 'u'], ['Rollo', 'rollo'], ['Kilogramo', 'kg'], ['Docena', 'doc'], ['Cono', 'cono']]) {
       await client.query('INSERT INTO unidad_medida(nombre,abreviatura) VALUES($1,$2) ON CONFLICT DO NOTHING', [n, a]);
     }
 

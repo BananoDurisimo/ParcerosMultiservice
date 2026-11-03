@@ -3,13 +3,15 @@ import { api, leerToken } from '@shared/api/cliente.js';
 import { deServidor, aServidor, VACIO } from '@shared/api/adaptador.js';
 import { useToast } from '@shared/context/ToastContext.jsx';
 import {
-  COLOR_TIPO_INSUMO,
+  PALETA_TIPO_INSUMO,
   COLOR_METODO_PAGO,
   UMBRAL_STOCK_BAJO,
   MODULOS_AUDITADOS,
   ESTADOS_PEDIDO,
   COTIZACION,
+  EN_PROCESO,
   FALTA_PAGO,
+  COMPLETADO,
   ENTREGADO,
   COMPRA_ANULADA,
   ETIQUETA_ACCION,
@@ -303,12 +305,24 @@ export function DataProvider({ children }) {
     const tallasM = porId(raw.tallas);
     const categoriasM = porId(raw.categorias_producto);
 
+    /* El insumo no tiene precio: su costo es lo que se pago por el en la
+       compra vigente mas reciente. Sirve para valorar lo que se pierde en las
+       prendas defectuosas. */
+    const costoInsumo = new Map();
+    [...raw.compras]
+      .filter((c) => c.estado !== COMPRA_ANULADA)
+      .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)) || b.id - a.id)
+      .forEach((c) => (c.detalle_insumos || []).forEach((l) => {
+        if (!costoInsumo.has(l.id_insumo)) costoInsumo.set(l.id_insumo, Number(l.precio_unitario) || 0);
+      }));
+
     const insumos = raw.insumos.map((i) => ({
       ...i,
       calc_tipo: tipos.get(i.id_tipo_insumo)?.nombre || '—',
       calc_unidad: unidades.get(i.id_unidad_medida)?.nombre || '—',
       calc_abreviatura: unidades.get(i.id_unidad_medida)?.abreviatura || '',
       calc_minimo: Number(i.stock_minimo ?? UMBRAL_STOCK_BAJO),
+      calc_costo: costoInsumo.get(i.id) ?? 0,
     }));
 
     const compras = raw.compras.map((c) => ({
@@ -355,6 +369,11 @@ export function DataProvider({ children }) {
       const total = redondear(totalProductos + totalInsumos);
       const abonos = abonosPorPedido.get(p.id) || [];
       const abonado = redondear(suma(abonos, (a) => a.monto));
+      /* La venta cuenta desde que el pedido terminado queda pagado
+         («Pedido completado»), no desde la entrega: su fecha es la ultima vez
+         que llego a ese estado (si se anulo un abono pudo volver atras). */
+      const vendido = p.estado === COMPLETADO || p.estado === ENTREGADO;
+      const pagado = [...(p.historial_estados || [])].reverse().find((h) => h.estado === COMPLETADO)?.fecha;
       return {
         ...p,
         calc_codigo: codigoPedido(p.id),
@@ -365,6 +384,8 @@ export function DataProvider({ children }) {
         calc_pct: total ? Math.round((abonado / total) * 100) : 0,
         calc_abonos: abonos.length,
         calc_abono_inicial: abonos.length ? 'Registrado' : 'Pendiente',
+        calc_vendido: vendido,
+        calc_fecha_venta: vendido ? (pagado || p.fecha_entrega || p.fecha_inicio || '') : '',
         /* Una cotizacion vale hasta el 31 de diciembre del año en que se creo;
            vencida, ya no recibe abonos ni pasa a pedido (la base de datos
            tambien lo impide, 013). */
@@ -549,7 +570,9 @@ export function DataProvider({ children }) {
       porCobrar: suma(vendidos, (p) => p.calc_saldo),
       recaudado: suma(db.abonos.filter((a) => a.estado !== 'Anulado'), (a) => a.monto),
       bajoStock,
-      pedidosActivos: vendidos.filter((p) => p.estado !== ENTREGADO).length,
+      /* Un pedido completado ya es venta: activos son los que se elaboran o
+         esperan el pago. */
+      pedidosActivos: vendidos.filter((p) => p.estado === EN_PROCESO || p.estado === FALTA_PAGO).length,
       totalPedidos: db.pedidos.length,
     };
   }, [db]);
@@ -561,6 +584,8 @@ export function DataProvider({ children }) {
 
     const enRango = (f, r) => !!f && f >= r.desde && f <= r.hasta;
     const pedidosDe = (r) => db.pedidos.filter((p) => p.estado !== COTIZACION && enRango(p.fecha_inicio, r));
+    /* Ventas: pedidos terminados y pagados, por la fecha en que se pagaron. */
+    const ventasDe = (r) => db.pedidos.filter((p) => p.calc_vendido && enRango(p.calc_fecha_venta, r));
     const comprasDe = (r) => db.compras.filter((c) => enRango(c.fecha, r) && c.estado !== COMPRA_ANULADA);
     const abonosDe = (r) => db.abonos.filter((a) => a.estado !== 'Anulado' && enRango(a.fecha, r));
 
@@ -571,14 +596,14 @@ export function DataProvider({ children }) {
     const pedidosPrevio = pedidosDe(previo);
     const comprasPrevio = comprasDe(previo);
 
-    const ventasMes = suma(pedidosPeriodo, (p) => p.calc_total);
+    const ventasMes = suma(ventasDe({ desde, hasta }), (p) => p.calc_total);
     const comprasMes = suma(comprasPeriodo, (c) => c.calc_total);
     const recaudadoPeriodo = suma(abonosPeriodo, (a) => a.monto);
 
     /* Ventas / Compras por tramo del periodo (linea de area) */
     const tramos = tramosPeriodo(periodo, refFecha);
     const serie = {
-      ventas: tramos.map((t) => ({ l: t.l, v: suma(pedidosDe(t), (p) => p.calc_total) })),
+      ventas: tramos.map((t) => ({ l: t.l, v: suma(ventasDe(t), (p) => p.calc_total) })),
       compras: tramos.map((t) => ({ l: t.l, v: suma(comprasDe(t), (c) => c.calc_total) })),
     };
 
@@ -598,8 +623,9 @@ export function DataProvider({ children }) {
       });
     });
     const comprasPorCategoria = Object.entries(porTipo)
-      .map(([tipo, value]) => ({ label: tipo, value, color: COLOR_TIPO_INSUMO[tipo] || 'var(--error)' }))
-      .sort((a, b) => b.value - a.value);
+      .map(([tipo, value]) => ({ label: tipo, value }))
+      .sort((a, b) => b.value - a.value)
+      .map((d, i) => ({ ...d, color: PALETA_TIPO_INSUMO[i % PALETA_TIPO_INSUMO.length] }));
 
     /* Recaudo por método de pago (dona) */
     const porMetodo = {};
@@ -634,7 +660,7 @@ export function DataProvider({ children }) {
       existencias,
       // variación real de cada KPI contra el período anterior
       tendencias: {
-        ventas: variacion(ventasMes, suma(pedidosPrevio, (p) => p.calc_total)),
+        ventas: variacion(ventasMes, suma(ventasDe(previo), (p) => p.calc_total)),
         compras: variacion(comprasMes, suma(comprasPrevio, (c) => c.calc_total)),
         recaudado: variacion(recaudadoPeriodo, suma(abonosDe(previo), (a) => a.monto)),
         pedidos: variacion(pedidosPeriodo.length, pedidosPrevio.length),

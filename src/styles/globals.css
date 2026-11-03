@@ -339,13 +339,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .input::placeholder, .textarea::placeholder { color: var(--text-sec); opacity: .8; }
 .input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); background: var(--surface); }
 .input.has-error, .select.has-error, .textarea.has-error { border-color: var(--error); box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 20%, transparent); }
-.file-row { display: flex; gap: 8px; }
-.file-row .input { flex: 1; min-width: 0; }
-.file-row .btn { flex: none; }
+/* Archivo adjunto: la imagen centrada en la zona de arrastre y los botones debajo. */
+.file-drop { display: flex; align-items: center; justify-content: center; min-height: 96px; padding: 12px; border: 1.5px dashed var(--border); border-radius: var(--radius); background: var(--surface-2); text-align: center; transition: border-color .2s, background .2s; }
+.file-drop:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
+.file-drop.is-over { border-color: var(--primary); background: var(--primary-soft); }
+.file-drop.has-error { border-color: var(--error); }
+.file-drop .file-preview { margin: 0 auto; }
+.file-drop-txt { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-sec); max-width: 320px; }
+.file-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
 .file-preview { display: block; max-width: 100%; max-height: 180px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); object-fit: contain; }
 .link-btn { background: none; border: 0; padding: 0; color: var(--primary); cursor: pointer; font: inherit; }
 .link-btn:hover { text-decoration: underline; }
-@media (max-width: 480px) { .file-row { flex-direction: column; } }
 .field-error { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--error-fg); animation: fadeIn .2s var(--ease); }
 .select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--text-sec) 50%), linear-gradient(135deg, var(--text-sec) 50%, transparent 50%); background-position: calc(100% - 17px) 17px, calc(100% - 12px) 17px; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
 
@@ -1277,9 +1281,13 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
 
 @keyframes growBarX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
-/* Dos columnas iguales para las filas de graficos del dashboard */
-.grid-2-eq { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-@media (max-width: 1080px) { .grid-2-eq { grid-template-columns: 1fr; } }
+/* Graficos del dashboard: dos columnas parejas; las tarjetas de una misma fila
+   se estiran a la misma altura. */
+.dash-graficos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.dash-celda { display: flex; min-width: 0; }
+.dash-celda > .card { flex: 1; min-width: 0; }
+.dash-celda.is-ancha { grid-column: 1 / -1; }
+@media (max-width: 1080px) { .dash-graficos { grid-template-columns: 1fr; } }
 @media (max-width: 560px) {
   .hbar-row { grid-template-columns: 1fr auto; row-gap: 5px; }
   .hbar-track { grid-column: 1 / -1; }
@@ -1292,6 +1300,9 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
 .det-section { margin: 18px 0 10px; font-size: 15px; font-weight: 600; }
 
 .diseno-thumb { display: block; width: 100%; max-width: 260px; aspect-ratio: 600 / 440; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); }
+/* Mockup en el detalle: imagen al centro y los botones debajo. */
+.mockup-detalle { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.mockup-detalle .diseno-thumb { max-width: 340px; }
 .diseno-full { display: block; width: 100%; max-height: 62vh; object-fit: contain; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-2); }
 
 /* Permisos y privilegios del formulario de roles */
@@ -1420,9 +1431,17 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
 /* --- Prendas defectuosas en los productos del pedido --- */
 .ins-linea.con-defectos { grid-template-columns: minmax(0, 1.5fr) minmax(0, .8fr) minmax(0, 1fr) minmax(0, .8fr) 34px; }
 .receta-auto.defectos { border-color: color-mix(in srgb, var(--warning) 55%, transparent); background: var(--warning-bg); }
+/* Personalizacion con «Defectuoso»: insumo, cantidad (con unidad), defectuoso y quitar. */
+.ins-linea.sin-precio.con-defectos { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, .8fr) 34px; }
 @media (max-width: 560px) {
   .ins-linea.con-defectos { grid-template-columns: 1fr 1fr 1fr 34px; }
+  .ins-linea.sin-precio.con-defectos { grid-template-columns: 1fr 1fr 34px; }
 }
+
+/* Cantidad de un insumo de longitud con su unidad a elegir (yd, cm, m). */
+.cant-longitud { display: flex; gap: 4px; min-width: 0; }
+.cant-longitud .input { flex: 1; min-width: 0; }
+.cant-longitud .select { flex: none; width: 64px; min-height: 34px; padding: 6px 24px 6px 9px; background-position: calc(100% - 14px) 14px, calc(100% - 9px) 14px; }
 
 /* --- Tooltip del menu lateral contraido --- */
 .sb-tip {

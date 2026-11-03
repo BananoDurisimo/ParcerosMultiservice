@@ -45,19 +45,36 @@ function ArchivoField({ f, value, error, onChange, readOnly, label }) {
   const inputFile = useRef(null);
   const [errArchivo, setErrArchivo] = useState('');
   const [nombre, setNombre] = useState('');
+  const [encima, setEncima] = useState(false);
   const msg = errArchivo || error;
 
-  const subir = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+  const cargar = async (file) => {
+    if (!file || readOnly) return;
     try {
       onChange(await leerArchivo(file, f.tipos));
-      setNombre(file.name);
+      setNombre(file.name || '');
       setErrArchivo('');
     } catch (err) {
       setErrArchivo(err.message);
     }
+  };
+  const subir = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    cargar(file);
+  };
+  /* Tambien se puede arrastrar el archivo a la zona, o hacer clic en ella y
+     pegarlo con Ctrl+V (p. ej. una captura del comprobante). */
+  const soltar = (e) => {
+    e.preventDefault();
+    setEncima(false);
+    cargar(e.dataTransfer.files?.[0]);
+  };
+  const pegar = (e) => {
+    const file = [...(e.clipboardData?.files || [])][0];
+    if (!file) return;
+    e.preventDefault();
+    cargar(file);
   };
 
   const quitar = () => { onChange(''); setNombre(''); setErrArchivo(''); };
@@ -65,22 +82,35 @@ function ArchivoField({ f, value, error, onChange, readOnly, label }) {
   return (
     <div className={`field ${f.full ? 'full' : ''}`}>
       {label}
-      <div className="file-row">
-        <input
-          className={`input ${msg ? 'has-error' : ''}`}
-          type="text"
-          readOnly
-          value={value ? (nombre || (esPdf(value) ? 'Documento PDF adjunto' : 'Imagen adjunta')) : ''}
-          placeholder="Ningún archivo seleccionado"
-        />
-        <input ref={inputFile} type="file" accept={f.tipos.join(',')} hidden onChange={subir} />
-        {!readOnly && (value ? (
-          <button type="button" className="btn" onClick={quitar}><Icon name="x" size={15} /> Quitar</button>
+      <div
+        className={`file-drop ${encima ? 'is-over' : ''} ${msg ? 'has-error' : ''}`}
+        tabIndex={readOnly ? undefined : 0}
+        aria-label={readOnly ? undefined : 'Zona para arrastrar o pegar el archivo'}
+        onDragOver={readOnly ? undefined : (e) => { e.preventDefault(); setEncima(true); }}
+        onDragLeave={() => setEncima(false)}
+        onDrop={readOnly ? undefined : soltar}
+        onPaste={readOnly ? undefined : pegar}
+      >
+        {esImagen(value) ? (
+          <img className="file-preview" src={value} alt={f.label} />
+        ) : value ? (
+          <span className="file-drop-txt"><Icon name="receipt" size={22} /> {nombre || (esPdf(value) ? 'Documento PDF adjunto' : 'Archivo adjunto')}</span>
         ) : (
-          <button type="button" className="btn" onClick={() => inputFile.current?.click()}><Icon name="upload" size={15} /> Subir archivo</button>
-        ))}
+          <span className="file-drop-txt">
+            <Icon name="upload" size={22} />
+            {readOnly ? 'Ningún archivo adjunto' : 'Arrastre el archivo aquí, o haga clic en este recuadro y péguelo con Ctrl+V'}
+          </span>
+        )}
       </div>
-      {esImagen(value) && <img className="file-preview" src={value} alt={f.label} />}
+      <input ref={inputFile} type="file" accept={f.tipos.join(',')} hidden onChange={subir} />
+      {!readOnly && (
+        <div className="file-actions">
+          <button type="button" className="btn btn-sm" onClick={() => inputFile.current?.click()}>
+            <Icon name="upload" size={15} /> {value ? 'Cambiar archivo' : 'Subir archivo'}
+          </button>
+          {value && <button type="button" className="btn btn-sm" onClick={quitar}><Icon name="x" size={15} /> Quitar</button>}
+        </div>
+      )}
       {f.hint && !msg && <span className="caption">{f.hint}</span>}
       {msg && <span className="field-error"><Icon name="alert" size={12} /> {msg}</span>}
     </div>

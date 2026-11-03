@@ -12,6 +12,33 @@ const defectosValidos = (l) => l.defectuosas === undefined || l.defectuosas === 
 const precioValido = (l) => l.precio_unitario !== '' && !isNaN(Number(l.precio_unitario)) && Number(l.precio_unitario) >= 0;
 const redondear = (n) => Math.round(n * 100) / 100;
 
+/* Insumo de personalizacion echado a perder: cantidad de cero en adelante,
+   con decimales (vacio cuenta como 0). */
+const defectoInsumoValido = (l) => l.defectuosas === undefined || l.defectuosas === '' || (!isNaN(Number(l.defectuosas)) && Number(l.defectuosas) >= 0);
+
+/* Insumos de longitud: la cantidad se puede escribir en yardas, centimetros o
+   metros; se guarda convertida a la unidad del insumo (la de sus existencias). */
+const METROS = { yd: 0.9144, m: 1, cm: 0.01 };
+const NOMBRE_LONGITUD = { yd: 'Yardas', cm: 'Centímetros', m: 'Metros' };
+const esLongitud = (i) => Object.hasOwn(METROS, i?.calc_abreviatura || '');
+const convertir = (v, de, a) => (v === '' || isNaN(Number(v)) ? v : String(redondear((Number(v) * METROS[de]) / METROS[a])));
+
+/** Lo que se echo a perder de la personalizacion, como [{ id_insumo, cantidad }]. */
+export const defectosInsumos = (insumos = []) =>
+  insumos.filter((l) => Number(l.defectuosas) > 0).map((l) => ({ id_insumo: l.id_insumo, cantidad: Number(l.defectuosas) }));
+
+/** Junta varias listas [{ id_insumo, cantidad }] sumando las de un mismo insumo. */
+export const sumarLineas = (...listas) => {
+  const m = new Map();
+  listas.flat().forEach((l) => m.set(l.id_insumo, (m.get(l.id_insumo) || 0) + Number(l.cantidad || 0)));
+  return [...m].map(([id_insumo, cantidad]) => ({ id_insumo, cantidad: Math.round(cantidad * 1000) / 1000 }));
+};
+
+/** Lo que costaron unos insumos ([{ id_insumo, cantidad }]) al precio de su
+ *  ultima compra. `insumo` busca la fila del insumo por id. */
+export const gastoInsumos = (lineas = [], insumo) =>
+  redondear(lineas.reduce((s, l) => s + Number(l.cantidad || 0) * Number(insumo(l.id_insumo)?.calc_costo || 0), 0));
+
 /** Total que se cobra: productos + insumos de personalizacion. */
 export const totalLineas = (productos = [], insumos = []) =>
   redondear([...productos, ...insumos].reduce((s, l) => s + subtotal(l), 0));
@@ -51,8 +78,9 @@ function Buscador({ value, onChange, placeholder }) {
  * abrirlas. El error de las lineas se muestra arriba, visible en cualquiera.
  *
  * `conDefectuosas` (al editar un pedido en elaboracion): cada producto tiene
- * «Defectuosas», las prendas que salieron mal. Su receta se descuenta del
- * inventario ademas de la del pedido; el precio no cambia.
+ * «Defectuosas», las prendas que salieron mal, y cada insumo de
+ * personalizacion «Defectuoso», lo que se echo a perder. Ambos se descuentan
+ * del inventario ademas de lo del pedido; el precio no cambia.
  */
 export default function LineasPedido({ productos = [], insumos = [], onProductos, onInsumos, error, readOnly, conDefectuosas = false }) {
   const { db, expandirReceta } = useData();
@@ -72,9 +100,26 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
   const cambiar = (lineas, set) => (idx, campo, v) => set(lineas.map((l, j) => (j === idx ? { ...l, [campo]: v } : l)));
   const quitar = (lineas, set) => (idx) => set(lineas.filter((_, j) => j !== idx));
 
+  /* Cantidad de un insumo de personalizacion. En los de longitud se escribe
+     en la unidad elegida (`entrada`) y se guarda convertida. */
+  const cambiarInsumo = (idx, campo, v) => onInsumos(insumos.map((l, j) => {
+    if (j !== idx) return l;
+    const i = insumo(l.id_insumo);
+    if (!esLongitud(i)) return { ...l, [campo]: v };
+    const base = i.calc_abreviatura;
+    const e = { unidad: base, cantidad: String(l.cantidad ?? ''), defectuosas: String(l.defectuosas ?? ''), ...l.entrada, [campo]: v };
+    return { ...l, entrada: e, cantidad: convertir(e.cantidad, e.unidad, base), defectuosas: convertir(e.defectuosas, e.unidad, base) };
+  }));
+
   const receta = expandirReceta(productos.filter((l) => cantidadValida(l, true)));
   const conDefecto = productos.filter((l) => defectosValidos(l) && Number(l.defectuosas) > 0);
-  const recetaDefectos = expandirReceta(conDefecto.map((l) => ({ ...l, cantidad: Number(l.defectuosas) })));
+  const insumosConDefecto = insumos.filter((l) => defectoInsumoValido(l) && Number(l.defectuosas) > 0);
+  /* Lo que se gasto de mas: receta de las prendas defectuosas + insumos de
+     personalizacion echados a perder. */
+  const recetaDefectos = sumarLineas(
+    expandirReceta(conDefecto.map((l) => ({ ...l, cantidad: Number(l.defectuosas) }))),
+    defectosInsumos(insumosConDefecto),
+  );
   const total = totalLineas(productos, insumos);
   const abrir = (p) => { setPestana(p); setQ(''); };
 
@@ -106,23 +151,29 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
     </div>
   );
 
-  /* Insumos extra que se gastaron en las prendas defectuosas (solo lectura). */
+  /* Insumos extra que se gastaron en las prendas defectuosas (solo lectura),
+     con lo que costaron segun la ultima compra de cada insumo. */
+  const gastoDefectos = gastoInsumos(recetaDefectos, insumo);
   const defectosAuto = recetaDefectos.length > 0 && (
     <div className="field">
-      <label><Icon name="alert" size={13} /> Insumos de las prendas defectuosas (automático)</label>
+      <label><Icon name="alert" size={13} /> Insumos gastados en defectuosos (automático)</label>
       <div className="receta-auto defectos">
         {recetaDefectos.map((r) => {
           const i = insumo(r.id_insumo);
           return (
             <div className="linea" key={r.id_insumo}>
               <span>{i?.nombre || `#${r.id_insumo}`}</span>
-              <span className="caption">+{r.cantidad} {unidadDe(i)}</span>
+              <span className="caption">+{r.cantidad} {unidadDe(i)} · {money(r.cantidad * (i?.calc_costo || 0))}</span>
             </div>
           );
         })}
+        <div className="linea"><strong>Gasto en insumos</strong><strong className="money">{money(gastoDefectos)}</strong></div>
       </div>
       <span className="caption">
-        {conDefecto.map((l) => `${producto(l.id_producto)?.nombre}: ${l.defectuosas}`).join(' · ')}. Se descuentan del inventario; el precio no cambia.
+        {[
+          ...conDefecto.map((l) => `${producto(l.id_producto)?.nombre}: ${l.defectuosas}`),
+          ...insumosConDefecto.map((l) => `${insumo(l.id_insumo)?.nombre}: ${l.defectuosas} ${unidadDe(insumo(l.id_insumo))}`),
+        ].join(' · ')}. Se descuentan del inventario; el precio no cambia. El gasto se calcula con el precio de la última compra de cada insumo.
       </span>
     </div>
   );
@@ -282,29 +333,63 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
           <div className="field">
             <label>Insumos de personalización agregados</label>
             <div className="ins-agregados">
-              <div className="ins-linea head sin-precio">
-                <span>Insumo</span><span>Cantidad a gastar</span><span />
+              <div className={`ins-linea head sin-precio ${conDefectuosas ? 'con-defectos' : ''}`}>
+                <span>Insumo</span><span>Cantidad a gastar</span>{conDefectuosas && <span>Defectuoso</span>}<span />
               </div>
               {insumos.length === 0 && (
                 <div className="caption" style={{ padding: '14px 12px' }}>Opcional: estampados, colores o accesorios desde el catálogo.</div>
               )}
               {insumos.map((l, idx) => {
                 const i = insumo(l.id_insumo);
+                const base = unidadDe(i);
+                const longitud = esLongitud(i);
+                const unidadUi = l.entrada?.unidad || base;
+                const convertido = longitud && unidadUi !== base && cantidadValida(l);
                 return (
-                  <div className="ins-linea sin-precio" key={l.id_insumo}>
+                  <div className={`ins-linea sin-precio ${conDefectuosas ? 'con-defectos' : ''}`} key={l.id_insumo}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{i?.nombre || `#${l.id_insumo}`}</div>
-                      <div className="caption">{i?.calc_tipo} · Unidad: {i?.calc_unidad} ({unidadDe(i)})</div>
+                      <div className="caption">
+                        {i?.calc_tipo} · Existencias en {i?.calc_unidad?.toLowerCase()} ({base})
+                        {convertido && <> · <strong>= {Number(l.cantidad)} {base}</strong></>}
+                      </div>
                     </div>
-                    <div className="input-unidad">
+                    {longitud ? (
+                      /* Yardas, centimetros o metros: se elige la unidad y se convierte sola. */
+                      <div className="cant-longitud">
+                        <input
+                          className={`input ${cantidadValida(l) ? '' : 'has-error'}`}
+                          type="number" min="0" step="any" aria-label={`Cantidad de ${i?.nombre}`}
+                          value={l.entrada?.cantidad ?? l.cantidad} readOnly={readOnly}
+                          onChange={(e) => cambiarInsumo(idx, 'cantidad', e.target.value)}
+                        />
+                        <select
+                          className="select" aria-label={`Unidad de ${i?.nombre}`} value={unidadUi} disabled={readOnly}
+                          onChange={(e) => cambiarInsumo(idx, 'unidad', e.target.value)}
+                        >
+                          {Object.keys(METROS).map((u) => <option key={u} value={u} title={NOMBRE_LONGITUD[u]}>{u}</option>)}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="input-unidad">
+                        <input
+                          className={`input ${cantidadValida(l) ? '' : 'has-error'}`}
+                          type="number" min="0" step="any" aria-label={`Cantidad de ${i?.nombre}`}
+                          value={l.cantidad} readOnly={readOnly}
+                          onChange={(e) => cambiarInsumo(idx, 'cantidad', e.target.value)}
+                        />
+                        <span className="unidad">{base}</span>
+                      </div>
+                    )}
+                    {conDefectuosas && (
                       <input
-                        className={`input ${cantidadValida(l) ? '' : 'has-error'}`}
-                        type="number" min="0" step="any" aria-label={`Cantidad de ${i?.nombre}`}
-                        value={l.cantidad} readOnly={readOnly}
-                        onChange={(e) => cambiar(insumos, onInsumos)(idx, 'cantidad', e.target.value)}
+                        className={`input ${defectoInsumoValido(l) ? '' : 'has-error'}`}
+                        type="number" min="0" step="any" placeholder="0" aria-label={`Cantidad defectuosa de ${i?.nombre}`}
+                        title={`Lo que se echó a perder (en ${unidadUi}): se descuenta del inventario`}
+                        value={l.entrada?.defectuosas ?? l.defectuosas ?? ''} readOnly={readOnly}
+                        onChange={(e) => cambiarInsumo(idx, 'defectuosas', e.target.value)}
                       />
-                      <span className="unidad">{unidadDe(i)}</span>
-                    </div>
+                    )}
                     {!readOnly ? (
                       <button type="button" className="icon-btn is-delete" onClick={() => quitar(insumos, onInsumos)(idx)} aria-label={`Quitar ${i?.nombre}`} title="Quitar">
                         <Icon name="trash" size={15} />
@@ -314,8 +399,14 @@ export default function LineasPedido({ productos = [], insumos = [], onProductos
                 );
               })}
             </div>
-            <span className="caption">Indique cuánto se va a gastar de cada insumo: los insumos no se cobran, el precio está en los productos.</span>
+            <span className="caption">
+              Indique cuánto se va a gastar de cada insumo: los insumos no se cobran, el precio está en los productos.
+              {' '}Las telas y cintas se pueden escribir en yardas (yd), centímetros (cm) o metros (m).
+              {conDefectuosas && ' En «Defectuoso» anote lo que se echó a perder: se descuenta del inventario.'}
+            </span>
           </div>
+
+          {defectosAuto}
 
           {!readOnly && (
             <button type="button" className="btn btn-sm lp-siguiente" onClick={() => abrir('resumen')}>
@@ -385,7 +476,7 @@ export function DesglosePedido({ productos = [], insumos = [], children }) {
                 {i?.nombre || `#${l.id_insumo}`}
                 <span className="caption">{Number(l.cantidad || 0)} {unidadDe(i)}</span>
               </span>
-              {subtotal(l) > 0 ? <strong className="money">{money(subtotal(l))}</strong> : <span className="caption">sin costo</span>}
+              {subtotal(l) > 0 ? <strong className="money">{money(subtotal(l))}</strong> : <span />}
             </div>
           );
         })}

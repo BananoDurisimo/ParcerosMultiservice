@@ -136,7 +136,11 @@ const DESPUES = {
       Array.isArray(body.productos) ? body.productos.map((l) => ({ ...l, defectuosas: Number(l.defectuosas) || 0 })) : undefined,
       ['id_producto', 'cantidad', 'precio_unitario', 'defectuosas']
     );
-    await reemplazarLineas(db, 'detalle_pedido_insumo', 'id_pedido', fila.id_pedido, body.insumos, ['id_insumo', 'cantidad', 'precio_unitario'], { de_receta: false });
+    await reemplazarLineas(
+      db, 'detalle_pedido_insumo', 'id_pedido', fila.id_pedido,
+      Array.isArray(body.insumos) ? body.insumos.map((l) => ({ ...l, defectuosas: Number(l.defectuosas) || 0 })) : undefined,
+      ['id_insumo', 'cantidad', 'precio_unitario', 'defectuosas'], { de_receta: false }
+    );
     await reemplazarLineas(
       db, 'detalle_pedido_insumo', 'id_pedido', fila.id_pedido,
       Array.isArray(body.insumos_receta) ? body.insumos_receta.map((l) => ({ ...l, precio_unitario: 0 })) : undefined,
@@ -232,9 +236,20 @@ router.delete('/:coleccion/:id', async (req, res, next) => {
   if (req.params.coleccion === 'abonos') {
     return res.status(400).json({ message: 'Los abonos no se eliminan: anúlelo indicando el motivo.' });
   }
+  /* Las compras tampoco se borran: se anulan con motivo (018). */
+  if (req.params.coleccion === 'compras') {
+    return res.status(400).json({ message: 'Las compras no se eliminan: anúlela indicando el motivo.' });
+  }
   try {
     if (await esRolAdministrador(req.params.coleccion, id)) return res.status(400).json({ message: ROL_PROTEGIDO });
     if (req.params.coleccion === 'pedidos') {
+      /* Un pedido terminado y pagado ya es una venta: no se elimina (018). */
+      const { rows: [e] } = await query(
+        'SELECT e.nombre FROM pedido p JOIN estado_pedido e ON e.id_estado_pedido = p.id_estado_pedido WHERE p.id_pedido=$1', [id]
+      );
+      if (e && ['Pedido completado', 'Pedido entregado / vendido'].includes(e.nombre)) {
+        return res.status(400).json({ message: 'Las ventas no se eliminan.' });
+      }
       const { rows: [v] } = await query('SELECT count(*)::int AS n FROM abono WHERE id_pedido=$1 AND NOT anulado', [id]);
       if (v.n) return res.status(400).json({ message: `El pedido tiene ${v.n} abono(s) vigente(s): anúlelos antes de eliminarlo.` });
     }

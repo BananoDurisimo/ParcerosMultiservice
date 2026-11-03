@@ -1,0 +1,72 @@
+/**
+ * Publica el sitio compilado en la rama `gh-pages` sin pasar por GitHub Actions.
+ *
+ *   npm run deploy        (dentro de Frontend/)
+ *
+ * Es el camino de publicacion en uso: el hook Frontend/scripts/hooks/pre-push lo ejecuta
+ * en cada push a develop. El workflow .github/workflows/deploy.yml quedo en
+ * disparo manual porque Actions esta bloqueado por facturacion en la cuenta.
+ */
+import { execFileSync } from 'node:child_process';
+import { cpSync, rmSync, mkdirSync, copyFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+const RAMA = 'gh-pages';
+
+const git = (...args) => execFileSync('git', args, { stdio: 'inherit' });
+const gitOut = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
+
+/* El script corre dentro de Frontend/ (ahi esta dist/), pero la carpeta .git
+   esta en la raiz del repositorio: se pide su ruta absoluta a git. */
+const TMP = join(gitOut('rev-parse', '--absolute-git-dir'), 'gh-pages-build');
+
+console.log('1/4  Compilando…');
+execFileSync('npm', ['run', 'build'], { stdio: 'inherit', shell: true });
+
+console.log(`2/4  Preparando la rama ${RAMA}…`);
+try {
+  git('worktree', 'remove', TMP, '--force');
+} catch {
+  /* no existia */
+}
+rmSync(TMP, { recursive: true, force: true });
+mkdirSync(TMP, { recursive: true });
+
+/* La rama se recrea SIEMPRE a partir de lo ya publicado en el remoto. Si se
+   partiera de develop, el commit nuevo no descenderia del anterior y el push
+   quedaria rechazado por no ser fast-forward. */
+git('fetch', '-q', 'origin');
+const yaPublicada = gitOut('ls-remote', '--heads', 'origin', RAMA) !== '';
+if (yaPublicada) {
+  git('worktree', 'add', '-q', '-B', RAMA, TMP, `origin/${RAMA}`);
+} else {
+  git('worktree', 'add', '-q', '-B', RAMA, TMP);
+}
+
+// Se vacia la rama y se deja solo el contenido de dist/.
+for (const f of readdirSync(TMP)) {
+  if (f !== '.git') rmSync(join(TMP, f), { recursive: true, force: true });
+}
+cpSync('dist', TMP, { recursive: true });
+
+// GitHub Pages no reescribe rutas: sin 404.html, recargar /app/pedidos da error.
+copyFileSync(join(TMP, 'index.html'), join(TMP, '404.html'));
+// Evita que Pages procese el sitio con Jekyll (ignoraria carpetas con guion bajo).
+writeFileSync(join(TMP, '.nojekyll'), '');
+
+console.log('3/4  Registrando el cambio…');
+execFileSync('git', ['add', '-A'], { cwd: TMP, stdio: 'inherit' });
+const hayCambios = execFileSync('git', ['status', '--porcelain'], { cwd: TMP, encoding: 'utf8' }).trim();
+
+if (!hayCambios) {
+  console.log('     Sin cambios respecto a lo publicado.');
+} else {
+  const commit = gitOut('rev-parse', '--short', 'HEAD');
+  execFileSync('git', ['commit', '-q', '-m', `Sitio compilado desde ${commit}`], { cwd: TMP, stdio: 'inherit' });
+  console.log('4/4  Publicando…');
+  execFileSync('git', ['push', 'origin', RAMA], { cwd: TMP, stdio: 'inherit' });
+}
+
+git('worktree', 'remove', TMP, '--force');
+console.log('\nListo. El sitio tarda alrededor de un minuto en actualizarse:');
+console.log('https://bananodurisimo.github.io/ParcerosMultiservice/');

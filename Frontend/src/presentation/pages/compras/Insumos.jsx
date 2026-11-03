@@ -1,0 +1,238 @@
+import CrudPage from '@core/widgets/CrudPage.jsx';
+import Icon from '@core/widgets/Icon.jsx';
+import Badge from '@core/widgets/ui/Badge.jsx';
+import EstadoCell from '@core/widgets/ui/EstadoCell.jsx';
+import KpiCard from '@core/widgets/ui/KpiCard.jsx';
+import MiniTabla from '@core/widgets/ui/MiniTabla.jsx';
+import { useData } from '@presentation/blocs/DataContext.jsx';
+import { consumeInventario, consumoPedido } from '@domain/usecases/pedidos.js';
+import { UMBRAL_STOCK_BAJO, ESTADOS_REGISTRO } from '@core/constants/catalogos.js';
+import { money, fecha } from '@core/utils/formato.js';
+import { agrupar } from '@core/utils/exportar.js';
+
+/** Tabla `insumo`: nombre, id_tipo_insumo, id_unidad_medida, stock,
+ *  stock_minimo, estado. El insumo no tiene precio: lo que se cobra son los
+ *  productos; lo que se pago por el se ve en sus compras.
+ *  Cada insumo define sus propias existencias minimas: por debajo de ese
+ *  numero la fila se marca en amarillo y entra en la alerta de inventario. */
+export default function Insumos() {
+  const { db, stats, opciones } = useData();
+  const tipos = opciones('tipos_insumo');
+  /* Las unidades de longitud (yarda, centimetro, metro) van primero: son las
+     de las telas y cintas, las que mas se usan. */
+  const LONGITUD = ['yd', 'cm', 'm'];
+  const orden = (o) => { const i = LONGITUD.indexOf(db.unidades_medida.find((u) => u.id === o.value)?.abreviatura); return i < 0 ? LONGITUD.length : i; };
+  const unidades = opciones('unidades_medida', (u) => `${u.nombre} (${u.abreviatura})`).sort((a, b) => orden(a) - orden(b));
+
+  const nivel = (i) => {
+    if (i.stock === 0) return { tono: 'bad', label: 'Agotado', badge: 'error' };
+    if (i.stock <= i.calc_minimo) return { tono: 'warn', label: 'Existencias bajas', badge: 'warning' };
+    return { tono: 'ok', label: 'Disponible', badge: 'success' };
+  };
+
+  /* Compras que trajeron el insumo, de la mas reciente a la mas antigua. */
+  const ultimasCompras = (i) =>
+    db.compras
+      .flatMap((c) => (c.detalle_insumos || [])
+        .filter((l) => l.id_insumo === i.id)
+        .map((l, k) => ({ id: `${c.id}-${k}`, compra: c, cantidad: l.cantidad, precio: l.precio_unitario })))
+      .sort((a, b) => b.compra.fecha.localeCompare(a.compra.fecha))
+      .slice(0, 5);
+
+  /* Movimientos de inventario del insumo: entradas por compras recibidas,
+     salidas por pedidos en produccion y ajustes hechos a mano en el formulario. */
+  const movimientosInventario = (i) => {
+    const out = [];
+    db.compras.filter((c) => c.estado === 'Recibida').forEach((c) =>
+      (c.detalle_insumos || []).filter((l) => l.id_insumo === i.id).forEach((l) =>
+        out.push({ fecha: c.fecha_entrega || c.fecha, tipo: 'Entrada', origen: `Compra ${c.calc_codigo}`, cantidad: l.cantidad })
+      )
+    );
+    db.pedidos.filter((p) => consumeInventario(p.estado)).forEach((p) =>
+      consumoPedido(p).filter((l) => l.id_insumo === i.id).forEach((l) =>
+        out.push({ fecha: p.fecha_inicio, tipo: 'Salida', origen: `Pedido ${p.calc_codigo}`, cantidad: -l.cantidad })
+      )
+    );
+    db.movimientos
+      .filter((m) => m.tabla === 'insumo' && m.id_registro === i.id && m.accion === 'UPDATE' && m.calc_cambios.some((c) => c.campo === 'stock'))
+      .forEach((m) => {
+        const n = Number(m.valor_nuevo.stock) - Number(m.valor_anterior.stock);
+        out.push({ fecha: m.calc_fecha, tipo: 'Ajuste manual', origen: m.calc_usuario, cantidad: n });
+      });
+    return out.sort((a, b) => b.fecha.localeCompare(a.fecha)).map((x, k) => ({ ...x, id: k }));
+  };
+
+  const exportacion = {
+    columnas: [
+      { titulo: 'Insumo', valor: (r) => r.nombre, ancho: 160 },
+      { titulo: 'Tipo', valor: (r) => r.calc_tipo, ancho: 80 },
+      { titulo: 'Unidad', valor: (r) => `${r.calc_unidad} (${r.calc_abreviatura})`, ancho: 80 },
+      { titulo: 'Existencias', valor: (r) => r.stock, tipo: 'numero', ancho: 70 },
+      { titulo: 'Mínimo', valor: (r) => r.calc_minimo, tipo: 'numero', ancho: 60 },
+      { titulo: 'Disponibilidad', valor: (r) => nivel(r).label, ancho: 90 },
+      { titulo: 'Estado', valor: (r) => r.estado, ancho: 60 },
+    ],
+    indicadores: (filas) => [
+      { etiqueta: 'Insumos', valor: filas.length, tipo: 'numero', nota: 'en el reporte' },
+      { etiqueta: 'Existencias suficientes', valor: filas.filter((r) => r.stock > r.calc_minimo).length, tipo: 'numero', nota: 'sobre su mínimo' },
+      { etiqueta: 'Bajo su mínimo', valor: filas.filter((r) => r.stock > 0 && r.stock <= r.calc_minimo).length, tipo: 'numero', nota: 'reponer pronto' },
+      { etiqueta: 'Agotados', valor: filas.filter((r) => r.stock === 0).length, tipo: 'numero', nota: 'sin existencias' },
+    ],
+    grupos: (filas) => [
+      { titulo: 'Insumos por categoría', columnas: ['Categoría', 'Insumos'], tipos: ['texto', 'numero'], filas: agrupar(filas, (r) => r.calc_tipo) },
+      { titulo: 'Disponibilidad', columnas: ['Disponibilidad', 'Insumos'], tipos: ['texto', 'numero'], filas: agrupar(filas, (r) => nivel(r).label) },
+      {
+        titulo: 'Insumos para reponer', columnas: ['Insumo', 'Existencias', 'Mínimo'], tipos: ['texto', 'numero', 'numero'],
+        filas: filas.filter((r) => r.stock <= r.calc_minimo).sort((a, b) => a.stock - b.stock).map((r) => [r.nombre, r.stock, r.calc_minimo]),
+      },
+    ],
+  };
+
+  const detalle = (r) => {
+    const n = nivel(r);
+    return (
+      <div>
+        <div className="detail-grid">
+          <div className="detail-item"><div className="dl">Insumo</div><div className="dv">{r.nombre}</div></div>
+          <div className="detail-item"><div className="dl">Categoría</div><div className="dv">{r.calc_tipo}</div></div>
+          <div className="detail-item"><div className="dl">Unidad de medida</div><div className="dv">{r.calc_unidad} ({r.calc_abreviatura})</div></div>
+          <div className="detail-item"><div className="dl">Existencias</div><div className="dv">{r.stock} {r.calc_abreviatura}</div></div>
+          <div className="detail-item"><div className="dl">Existencias mínimas</div><div className="dv">{r.calc_minimo} {r.calc_abreviatura}</div></div>
+          <div className="detail-item"><div className="dl">Disponibilidad</div><div className="dv"><Badge tono={n.badge}>{n.label}</Badge></div></div>
+          <div className="detail-item"><div className="dl">Estado</div><div className="dv"><Badge>{r.estado}</Badge></div></div>
+        </div>
+
+        {r.stock <= r.calc_minimo && (
+          <div className={`alert alert-${r.stock === 0 ? 'error' : 'warning'}`} style={{ marginTop: 16 }}>
+            <Icon name="alert" size={20} />
+            <div>
+              {r.stock === 0
+                ? 'Este insumo está agotado: no hay existencias para la producción.'
+                : `Quedan ${r.stock} ${r.calc_abreviatura}, en o por debajo del mínimo de ${r.calc_minimo}.`}
+            </div>
+          </div>
+        )}
+
+        <h3 className="det-section">Últimas compras asociadas</h3>
+        <MiniTabla
+          filas={ultimasCompras(r)}
+          vacio="Este insumo no figura en ninguna compra."
+          columnas={[
+            { label: 'Compra', render: (x) => x.compra.calc_codigo },
+            { label: 'Fecha', render: (x) => fecha(x.compra.fecha) },
+            { label: 'Proveedor', render: (x) => x.compra.calc_proveedor },
+            { label: 'Cantidad', align: 'right', render: (x) => `${x.cantidad} ${r.calc_abreviatura}` },
+            { label: 'Precio de compra', align: 'right', render: (x) => <span className="money">{money(x.precio)}</span> },
+            { label: 'Estado', render: (x) => <Badge>{x.compra.estado}</Badge> },
+          ]}
+        />
+
+        <h3 className="det-section">Movimientos de inventario</h3>
+        <MiniTabla
+          filas={movimientosInventario(r)}
+          vacio="Este insumo no tiene movimientos de inventario."
+          columnas={[
+            { label: 'Fecha', render: (x) => fecha(x.fecha) },
+            { label: 'Tipo', render: (x) => <Badge tono={x.cantidad >= 0 ? 'success' : 'warning'} dot={false}>{x.tipo}</Badge> },
+            { label: 'Origen', render: (x) => x.origen },
+            { label: 'Cantidad', align: 'right', render: (x) => <strong>{x.cantidad > 0 ? '+' : ''}{x.cantidad} {r.calc_abreviatura}</strong> },
+          ]}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <CrudPage
+      titulo="Insumos"
+      subtitulo="Controle las existencias de materiales, su unidad de medida y su costo unitario."
+      icono="package"
+      modulo="Insumos"
+      coleccion="insumos"
+      renderDetalle={detalle}
+      exportacion={exportacion}
+      entidad="insumos"
+      singular="insumo"
+      searchKeys={['nombre', 'calc_tipo', 'calc_unidad']}
+      eliminacion={{
+        validar: (r) => {
+          const compras = db.compras.filter((c) => (c.detalle_insumos || []).some((l) => l.id_insumo === r.id)).length;
+          const pedidos = db.pedidos.filter((p) => consumoPedido(p).some((l) => l.id_insumo === r.id)).length;
+          const productos = db.productos.filter((p) => p.calc_insumos.includes(r.id) || p.id_insumo_tela === r.id).length;
+          if (!compras && !pedidos && !productos) return null;
+          return `${r.nombre} figura en ${[compras && `${compras} compra(s)`, pedidos && `${pedidos} cotización(es) o pedido(s)`, productos && `la receta de ${productos} producto(s)`].filter(Boolean).join(', ')}. Para conservar ese historial, desactívelo en lugar de eliminarlo.`;
+        },
+      }}
+      filtros={[
+        { key: 'id_tipo_insumo', label: 'Categoría', options: tipos },
+        { key: 'id_unidad_medida', label: 'Unidad de medida', options: unidades },
+        { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
+      ]}
+      defaults={{ stock: 0, stock_minimo: UMBRAL_STOCK_BAJO, estado: 'Activo' }}
+      resumen={[
+        <KpiCard key="a" label="Insumos registrados" value={db.insumos.length} icon="package" tono="primary" />,
+        <KpiCard key="b" label="Bajo su mínimo" value={stats.bajoStock.length} icon="alert" tono="warning" />,
+        <KpiCard key="c" label="Agotados" value={db.insumos.filter((i) => i.stock === 0).length} icon="xC" tono="error" />,
+      ]}
+      columnas={[
+        {
+          key: 'nombre', label: 'Insumo', mobile: 'title',
+          render: (r) => (
+            <div>
+              <div className="cell-main">{r.nombre}</div>
+              <div className="caption">{r.calc_tipo}</div>
+            </div>
+          ),
+        },
+        { key: 'calc_unidad', label: 'Unidad', mobile: 'meta', render: (r) => <span className="muted">{r.calc_unidad} ({r.calc_abreviatura})</span> },
+        {
+          key: 'stock', label: 'Existencias', mobile: 'meta',
+          render: (r) => {
+            const n = nivel(r);
+            /* La barra se llena contra el minimo de este insumo: llena = el
+               doble del minimo, para que el amarillo caiga siempre a la mitad. */
+            const pct = Math.min(100, (r.stock / Math.max(1, r.calc_minimo * 2)) * 100);
+            return (
+              <div style={{ minWidth: 118 }}>
+                <div className="row" style={{ gap: 6, marginBottom: 4 }}>
+                  <strong>{r.stock}</strong>
+                  <span className="caption">{r.calc_abreviatura}</span>
+                </div>
+                <div className={`bar ${n.tono}`}><i style={{ width: pct + '%' }} /></div>
+                <div className="caption" style={{ marginTop: 3 }}>mín. {r.calc_minimo}</div>
+              </div>
+            );
+          },
+        },
+        { key: 'disponibilidad', label: 'Disponibilidad', sortable: false, render: (r) => <Badge tono={nivel(r).badge}>{nivel(r).label}</Badge> },
+        { key: 'estado', label: 'Estado', mobile: 'value', render: (r) => <EstadoCell row={r} coleccion="insumos" modulo="Insumos" options={ESTADOS_REGISTRO} /> },
+      ]}
+      campos={[
+        { name: 'nombre', label: 'Nombre del insumo', type: 'text', required: true, full: true, noSpecial: true, unique: true, maxLength: 80 },
+        { name: 'id_tipo_insumo', label: 'Categoría', type: 'select', options: tipos, required: true },
+        { name: 'id_unidad_medida', label: 'Unidad de medida', type: 'select', options: unidades, required: true },
+        {
+          /* Las existencias no se digitan: suben al recibir una compra y bajan
+             cuando un pedido entra en elaboracion. */
+          name: 'info_stock', type: 'custom', full: true,
+          render: (v, modo) => (
+            <div className="alert alert-info">
+              <Icon name="info" size={18} />
+              <div>
+                {modo === 'editar'
+                  ? <>Existencias actuales: <strong>{v.stock} {db.insumos.find((i) => i.id === v.id)?.calc_abreviatura}</strong>. </>
+                  : 'El insumo empieza con 0 existencias. '}
+                Solo cambian al recibir una compra (entran) o al iniciar un pedido (salen).
+              </div>
+            </div>
+          ),
+        },
+        {
+          name: 'stock_minimo', label: 'Existencias mínimas', type: 'number', required: true, min: 0,
+          hint: 'Cuando las existencias bajen hasta este número el insumo entrará en la alerta de inventario.',
+        },
+        { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Un insumo inactivo sigue en el catálogo, pero ya no se ofrece para compra.' },
+      ]}
+    />
+  );
+}

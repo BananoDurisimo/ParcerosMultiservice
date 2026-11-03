@@ -1,0 +1,9 @@
+#!/bin/sh
+#
+# Puente de compatibilidad: el hook de publicacion vive ahora en
+# Frontend/scripts/hooks/pre-push. Los equipos que instalaron el proyecto antes
+# de separar Backend/ y Frontend/ tienen core.hooksPath apuntando a esta
+# carpeta; este archivo les reenvia el push al hook nuevo, sin reinstalar nada.
+# (`npm install` dentro de Frontend/ apunta core.hooksPath directo al nuevo.)
+#
+exec sh "$(git rev-parse --show-toplevel)/Frontend/scripts/hooks/pre-push" "$@"

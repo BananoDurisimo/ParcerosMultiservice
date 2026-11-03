@@ -78,6 +78,10 @@ El despliegue automático es un hook de Git, no un workflow: `npm install` en
 sigue su curso y basta con ejecutar `npm run deploy` después. Para saltarse el
 hook en un push puntual: `git push --no-verify`.
 
+Los equipos instalados antes de separar `Backend/` y `Frontend/` tienen
+`core.hooksPath` en `scripts/hooks/`: ahí quedó un puente que reenvía cada push al
+hook de `Frontend/scripts/hooks/`, así que no hace falta reinstalar nada.
+
 > **Nota:** el workflow de Actions quedó en disparo manual porque la cuenta tiene
 > Actions bloqueado por facturación: cada push dejaba un run fallido y su correo
 > de error, sin publicar nada. Por eso el despliegue automático se hace con el

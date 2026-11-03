@@ -14,8 +14,9 @@ const unidadDe = (i) => i?.calc_abreviatura || i?.calc_unidad || '';
  *  detalle_compra_insumo (id_insumo, cantidad, precio_unitario).
  *
  *  Una compra mueve el inventario: al quedar "Recibida" sus lineas ingresan a
- *  las existencias de cada insumo, y si vuelve a "En transito" o se anula, ese
- *  ingreso se deshace. */
+ *  las existencias de cada insumo. Una recibida ya no vuelve a "En transito";
+ *  si hubo un error se anula (con motivo) y ese ingreso se deshace, siempre
+ *  que sus insumos no se hayan gastado. */
 export default function Compras() {
   const { db, getStats, opciones } = useData();
   const stats = getStats('Mes');
@@ -35,6 +36,16 @@ export default function Compras() {
     return ultima?.detalle_insumos.find((l) => l.id_insumo === id)?.precio_unitario;
   };
   const codigo = (r) => r.calc_codigo || '';
+  /** Insumos de una compra recibida que ya no estan completos en el inventario
+   *  (se gastaron en pedidos): sacarlos dejaria existencias negativas. */
+  const insumosGastados = (r) => {
+    if (r.estado !== 'Recibida') return '';
+    return (r.detalle_insumos || [])
+      .map((l) => ({ l, i: db.insumos.find((x) => x.id === l.id_insumo) }))
+      .filter(({ l, i }) => i && Number(i.stock) < Number(l.cantidad))
+      .map(({ i }) => i.nombre)
+      .join(', ');
+  };
 
   /* Las anuladas se listan, pero no suman en los totales del reporte. */
   const vigentes = (filas) => filas.filter((c) => c.estado !== COMPRA_ANULADA);
@@ -80,6 +91,9 @@ export default function Compras() {
         <div className="detail-item"><div className="dl">Fecha de realización</div><div className="dv">{fecha(r.fecha)}</div></div>
         <div className="detail-item"><div className="dl">Fecha de entrega</div><div className="dv">{fecha(r.fecha_entrega)}</div></div>
         <div className="detail-item"><div className="dl">Estado</div><div className="dv"><Badge>{r.estado}</Badge></div></div>
+        {r.estado === COMPRA_ANULADA && (
+          <div className="detail-item full"><div className="dl">Motivo de la anulación</div><div className="dv">{r.motivo_anulacion || '—'}</div></div>
+        )}
       </div>
 
       <h3 className="det-section">Insumos adquiridos</h3>
@@ -105,25 +119,24 @@ export default function Compras() {
       ]}
       defaults={{ detalle_insumos: [], estado: 'En tránsito', fecha: hoyISO(), fecha_entrega: '' }}
       etiquetaRegistro={codigo}
-      eliminacion={{
-        /* Borrar una compra recibida retira del inventario lo que ingreso: no
-           se puede si esas existencias ya se gastaron. */
-        validar: (r) => {
-          if (r.estado !== 'Recibida') return null;
-          const faltan = (r.detalle_insumos || []).filter((l) => {
-            const i = db.insumos.find((x) => x.id === l.id_insumo);
-            return i && Number(i.stock) < Number(l.cantidad);
-          });
-          return faltan.length
-            ? `Sus insumos ya se usaron en producción (${faltan.map((l) => db.insumos.find((x) => x.id === l.id_insumo)?.nombre).join(', ')}): no se pueden retirar del inventario. Puede anularla.`
-            : null;
-        },
-        mensaje: (r) => `Se eliminará la compra ${codigo(r)} de ${r.calc_proveedor}.${r.estado === 'Recibida' ? ' Sus insumos se retirarán del inventario.' : ''} Esta acción no se puede deshacer; si solo quiere darla de baja, anúlela.`,
-      }}
+      /* Las compras no se eliminan: quedan en el historial y, si hay que darlas
+         de baja, se anulan (018). */
+      conEliminar={false}
+      /* Anular: desde las acciones de la fila, con justificacion. Una recibida
+         tambien se anula y sus insumos salen del inventario, salvo que ya se
+         hayan gastado (la base de datos tambien lo valida, 014). */
       anulacion={{
         valor: COMPRA_ANULADA,
-        mensaje: (r) => `La compra ${codigo(r)} de ${r.calc_proveedor} quedará marcada como anulada: se conserva en el listado y en el historial, pero deja de sumar en los totales de compras.`,
+        campoMotivo: 'motivo_anulacion',
+        enAcciones: true,
+        validar: (r) => {
+          const faltan = insumosGastados(r);
+          return faltan ? `Los insumos de la compra ${codigo(r)} ya se usaron en producción (${faltan}): no se puede anular.` : null;
+        },
+        mensaje: (r) => `La compra ${codigo(r)} de ${r.calc_proveedor} quedará anulada: se conserva en el listado y en el historial, pero deja de sumar en los totales de compras.${r.estado === 'Recibida' ? ' Como ya fue recibida, sus insumos se retirarán del inventario.' : ''} No se puede deshacer.`,
       }}
+      /* Datos de la compra a la izquierda e insumos a la derecha. */
+      columnasInvertidas
       resumen={[
         <KpiCard key="a" label="Compras del mes" value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={stats.tendencias.compras} />,
         <KpiCard key="b" label="Compras registradas" value={db.compras.length} icon="clipboard" tono="info" />,
@@ -151,7 +164,8 @@ export default function Compras() {
               nombre={codigo(r)}
               options={ESTADOS_COMPRA_ACTIVOS}
               comoLista
-              disabled={r.estado === COMPRA_ANULADA}
+              /* Recibida y anulada son finales: una recibida solo se puede anular. */
+              disabled={r.estado === COMPRA_ANULADA || r.estado === 'Recibida'}
             />
           ),
         },
@@ -175,7 +189,10 @@ export default function Compras() {
           hint: 'Indique la cantidad y lo que se pagó por cada insumo. Al elegirlo se sugiere el precio de su última compra; puede ajustarlo.',
         },
       ]}
-      validarExtra={(v) => {
+      validarExtra={(v, modo, actual) => {
+        if (actual?.estado === 'Recibida' && v.estado !== 'Recibida') {
+          return { estado: 'Una compra recibida no puede volver a «En tránsito». Si hubo un error, anúlela.' };
+        }
         if (v.fecha && v.fecha_entrega && v.fecha_entrega < v.fecha) {
           return { fecha_entrega: 'La fecha de entrega no puede ser anterior a la fecha de la compra.' };
         }

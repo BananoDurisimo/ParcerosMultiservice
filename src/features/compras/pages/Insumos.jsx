@@ -16,7 +16,11 @@ import { agrupar } from '@shared/lib/exportar.js';
 export default function Insumos() {
   const { db, stats, opciones } = useData();
   const tipos = opciones('tipos_insumo');
-  const unidades = opciones('unidades_medida', (u) => `${u.nombre} (${u.abreviatura})`);
+  /* Las unidades de longitud (yarda, centimetro, metro) van primero: son las
+     de las telas y cintas, las que mas se usan. */
+  const LONGITUD = ['yd', 'cm', 'm'];
+  const orden = (o) => { const i = LONGITUD.indexOf(db.unidades_medida.find((u) => u.id === o.value)?.abreviatura); return i < 0 ? LONGITUD.length : i; };
+  const unidades = opciones('unidades_medida', (u) => `${u.nombre} (${u.abreviatura})`).sort((a, b) => orden(a) - orden(b));
 
   const nivel = (i) => {
     if (i.stock === 0) return { tono: 'bad', label: 'Agotado', badge: 'error' };
@@ -205,7 +209,22 @@ export default function Insumos() {
         { name: 'nombre', label: 'Nombre del insumo', type: 'text', required: true, full: true, noSpecial: true, unique: true, maxLength: 80 },
         { name: 'id_tipo_insumo', label: 'Categoría', type: 'select', options: tipos, required: true },
         { name: 'id_unidad_medida', label: 'Unidad de medida', type: 'select', options: unidades, required: true },
-        { name: 'stock', label: 'Existencias', type: 'number', required: true, min: 0 },
+        {
+          /* Las existencias no se digitan: suben al recibir una compra y bajan
+             cuando un pedido entra en elaboracion. */
+          name: 'info_stock', type: 'custom', full: true,
+          render: (v, modo) => (
+            <div className="alert alert-info">
+              <Icon name="info" size={18} />
+              <div>
+                {modo === 'editar'
+                  ? <>Existencias actuales: <strong>{v.stock} {db.insumos.find((i) => i.id === v.id)?.calc_abreviatura}</strong>. </>
+                  : 'El insumo empieza con 0 existencias. '}
+                Solo cambian al recibir una compra (entran) o al iniciar un pedido (salen).
+              </div>
+            </div>
+          ),
+        },
         {
           name: 'stock_minimo', label: 'Existencias mínimas', type: 'number', required: true, min: 0,
           hint: 'Cuando las existencias bajen hasta este número el insumo entrará en la alerta de inventario.',

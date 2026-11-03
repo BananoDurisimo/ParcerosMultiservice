@@ -321,13 +321,14 @@ function lienzo(doc, subtitulo) {
   const d = documentoPdf();
   const { nueva, rect, texto } = d;
 
-  /* Encabezado de la primera pagina: banda azul, titulo y filtros. */
+  /* Encabezado de la primera pagina: sin fondos de color, para no gastar
+     tinta al imprimir. Titulo en azul y una linea de color debajo. */
   nueva();
-  rect(0, 0, W, 72, AZUL);
-  texto('Parceros Multiservice', M, 34, { t: 22, neg: true, color: '#FFFFFF' });
-  texto(subtitulo, M, 54, { t: 11, color: '#DBEAFE' });
-  texto(`Generado: ${generadoTxt(doc.generado)}`, W - M, 34, { t: 9, color: '#DBEAFE', der: true });
-  texto(`${doc.filas.length} registro(s)`, W - M, 54, { t: 9, color: '#DBEAFE', der: true });
+  texto('Parceros Multiservice', M, 38, { t: 20, neg: true, color: AZUL });
+  texto(subtitulo, M, 56, { t: 11, color: GRIS });
+  texto(`Generado: ${generadoTxt(doc.generado)}`, W - M, 38, { t: 9, color: GRIS, der: true });
+  texto(`${doc.filas.length} registro(s)`, W - M, 56, { t: 9, color: GRIS, der: true });
+  d.linea(M, 68, W - M, 68, AZUL, 1.5);
   texto('FILTROS APLICADOS', M, 96, { t: 7.5, color: GRIS, neg: true });
   texto(doc.filtros?.length ? doc.filtros.map(([k, v]) => `${k}: ${v}`).join('   ·   ') : 'Ninguno: se incluyen todos los registros.', M, 110, { t: 10, ancho: W - 2 * M });
   let y = 126;
@@ -339,11 +340,13 @@ function lienzo(doc, subtitulo) {
     const anchos = base.map((w) => w * escala);
     const alinear = (i) => (esNumerica(tipos[i]) ? 'r' : 'l');
     const cabecera = () => {
-      rect(M, y, W - 2 * M, 20, AZUL);
+      /* Cabecera de tabla en contorno: texto azul entre dos lineas. */
+      d.linea(M, y, W - M, y, LINEA, 0.6);
+      d.linea(M, y + 20, W - M, y + 20, AZUL, 1.2);
       let x = M;
       columnas.forEach((c, i) => {
         const w = anchos[i];
-        texto(c.titulo, alinear(i) === 'r' ? x + w - 6 : x + 6, y + 13.5, { t: 8.5, neg: true, color: '#FFFFFF', der: alinear(i) === 'r', ancho: w - 10 });
+        texto(c.titulo, alinear(i) === 'r' ? x + w - 6 : x + 6, y + 13.5, { t: 8.5, neg: true, color: AZUL, der: alinear(i) === 'r', ancho: w - 10 });
         x += w;
       });
       y += 20;
@@ -385,7 +388,7 @@ function lienzo(doc, subtitulo) {
       if (col === 0 && i) y += 68;
       if (col === 0 && y + 58 > LIMITE) { nueva(); y = M; }
       const x = M + col * (wt + 10);
-      rect(x, y, wt, 58, CLARO, LINEA);
+      rect(x, y, wt, 58, '#FFFFFF', LINEA);
       texto(k.etiqueta.toUpperCase(), x + 10, y + 16, { t: 7.5, color: GRIS, neg: true, ancho: wt - 16 });
       texto(formatear(k.valor, k.tipo), x + 10, y + 36, { t: 13.5, neg: true, ancho: wt - 16 });
       if (k.nota) texto(k.nota, x + 10, y + 50, { t: 7.5, color: GRIS, ancho: wt - 16 });

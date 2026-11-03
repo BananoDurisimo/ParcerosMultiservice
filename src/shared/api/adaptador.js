@@ -65,7 +65,7 @@ function aFrontend(col, f, cat) {
       };
     case 'compras':
       return {
-        ...base, id_proveedor: f.id_proveedor, fecha: texto(f.fecha), fecha_entrega: texto(f.fecha_entrega),
+        ...base, id_proveedor: f.id_proveedor, fecha: texto(f.fecha), fecha_entrega: texto(f.fecha_entrega), motivo_anulacion: texto(f.motivo_anulacion),
         estado: nombrePorId(cat.estados_compra, 'id_estado_compra', f.id_estado_compra),
         detalle_insumos: (f.detalles || []).map((l) => ({ id_insumo: l.id_insumo, cantidad: Number(l.cantidad), precio_unitario: Number(l.precio_unitario) })),
       };
@@ -75,7 +75,7 @@ function aFrontend(col, f, cat) {
       const linea = (l) => {
         const cantidad = Number(l.cantidad);
         const precio = Number(l.precio_unitario);
-        return { id_insumo: l.id_insumo, cantidad, precio_unitario: precio, subtotal: Math.round(cantidad * precio * 100) / 100 };
+        return { id_insumo: l.id_insumo, cantidad, precio_unitario: precio, defectuosas: Number(l.defectuosas || 0), subtotal: Math.round(cantidad * precio * 100) / 100 };
       };
       return {
         ...base, id_cliente: f.id_cliente, estado: nombrePorId(cat.estados_pedido, 'id_estado_pedido', f.id_estado_pedido),
@@ -100,6 +100,7 @@ function aFrontend(col, f, cat) {
       return {
         ...base, id_pedido: f.id_pedido, monto: Number(f.monto), fecha: texto(f.fecha),
         metodo_pago: nombrePorId(cat.metodos_pago, 'id_metodo_pago', f.id_metodo_pago), url_comprobante: texto(f.ruta_comprobante),
+        estado: f.anulado ? 'Anulado' : 'Vigente', motivo_anulacion: texto(f.motivo_anulacion),
       };
     case 'categorias_producto':
     case 'tipos_insumo':
@@ -178,7 +179,7 @@ export function aServidor(col, r, cat, sid) {
     case 'insumos':
       return {
         id_tipo_insumo: r.id_tipo_insumo, id_unidad_medida: r.id_unidad_medida, nombre: r.nombre,
-        stock_minimo: r.stock_minimo, activo, stock: r.stock,
+        stock_minimo: r.stock_minimo, activo,
       };
     case 'proveedores':
       return {
@@ -192,7 +193,7 @@ export function aServidor(col, r, cat, sid) {
     case 'compras':
       return {
         id_proveedor: sid('proveedores', r.id_proveedor), id_estado_compra: idPorNombre(cat.estados_compra, 'id_estado_compra', r.estado),
-        fecha: r.fecha, fecha_entrega: r.fecha_entrega,
+        fecha: r.fecha, fecha_entrega: r.fecha_entrega, motivo_anulacion: r.motivo_anulacion,
         detalles: (r.detalle_insumos || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad, precio_unitario: l.precio_unitario })),
       };
     case 'pedidos':
@@ -203,13 +204,14 @@ export function aServidor(col, r, cat, sid) {
         productos: (r.productos || []).map((l) => ({
           id_producto: sid('productos', l.id_producto), cantidad: l.cantidad, precio_unitario: l.precio_unitario, defectuosas: Number(l.defectuosas) || 0,
         })),
-        insumos: (r.insumos || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad, precio_unitario: l.precio_unitario })),
+        insumos: (r.insumos || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad, precio_unitario: l.precio_unitario, defectuosas: Number(l.defectuosas) || 0 })),
         insumos_receta: (r.insumos_receta || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad })),
       };
     case 'abonos':
       return {
         id_pedido: sid('pedidos', r.id_pedido), id_metodo_pago: idPorNombre(cat.metodos_pago, 'id_metodo_pago', r.metodo_pago),
         monto: r.monto, fecha: r.fecha, ruta_comprobante: r.url_comprobante,
+        anulado: r.estado === 'Anulado', motivo_anulacion: r.motivo_anulacion,
       };
     case 'categorias_producto':
     case 'tipos_insumo':

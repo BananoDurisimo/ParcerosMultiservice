@@ -26,17 +26,6 @@ const ETIQUETA_PERIODO = {
 const PERMISOS_VENTAS = ['Cotizaciones', 'Pedidos', 'Ventas', 'Abonos'];
 const PERMISOS_COMPRAS = ['Compras', 'Insumos', 'Proveedores'];
 
-/* Accesos rapidos: abren el formulario de registro del modulo en un clic
-   (`?nuevo=1`). Solo aparecen los que el rol puede usar. */
-const ACCESOS = [
-  { to: '/app/pedidos?vista=cotizaciones&nuevo=1', icon: 'clipboard', label: 'Nueva cotización', modulo: 'Cotizaciones' },
-  { to: '/app/pedidos?vista=pedidos&nuevo=1', icon: 'package', label: 'Nuevo pedido', modulo: 'Pedidos' },
-  { to: '/app/abonos?nuevo=1', icon: 'dollar', label: 'Registrar abono', modulo: 'Abonos' },
-  { to: '/app/compras?nuevo=1', icon: 'cart', label: 'Nueva compra', modulo: 'Compras' },
-  { to: '/app/productos?nuevo=1', icon: 'shirt', label: 'Nuevo producto', modulo: 'Productos' },
-  { to: '/app/clientes?nuevo=1', icon: 'users', label: 'Nuevo cliente', modulo: 'Clientes' },
-];
-
 /** Cabecera comun de cada tarjeta de grafico: titulo + tipo de grafico. */
 function CabeceraGrafico({ titulo, tipo, tono = 'neutral' }) {
   return (
@@ -47,17 +36,24 @@ function CabeceraGrafico({ titulo, tipo, tono = 'neutral' }) {
   );
 }
 
-/** Dos tarjetas lado a lado, o una sola a todo el ancho si el rol solo ve una. */
-function Fila({ children, clase = 'grid-2-eq' }) {
+/** Graficos en dos columnas parejas. Cada rol ve solo los suyos, asi que se
+ *  acomodan juntos sin dejar huecos: si quedan en numero impar, el primero
+ *  (la linea de area, que necesita ancho) ocupa toda la fila. */
+function Tablero({ children }) {
   const items = children.filter(Boolean);
   if (!items.length) return null;
-  return <div className={items.length > 1 ? clase : ''} style={{ marginTop: 16 }}>{items}</div>;
+  return (
+    <div className="dash-graficos">
+      {items.map((el, i) => (
+        <div key={el.key} className={`dash-celda ${i === 0 && items.length % 2 ? 'is-ancha' : ''}`}>{el}</div>
+      ))}
+    </div>
+  );
 }
 
 export default function Dashboard() {
   const { db, getStats } = useData();
-  const { user, puede, puedeAccion } = useAuth();
-  const accesos = ACCESOS.filter((a) => puedeAccion(a.modulo, 'Agregar'));
+  const { user, puede } = useAuth();
   const [periodo, setPeriodo] = useState('Mes');
 
   const verVentas = puede(PERMISOS_VENTAS);
@@ -103,18 +99,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {accesos.length > 0 && (
-        <div className="accesos" aria-label="Accesos rápidos">
-          {accesos.map((a) => (
-            <Link key={a.to} className="acceso" to={a.to}>
-              <span className="acceso-ico"><Icon name={a.icon} size={18} /></span>
-              <span>{a.label}</span>
-              <Icon name="plus" size={15} />
-            </Link>
-          ))}
-        </div>
-      )}
-
       {verCompras && stats.bajoStock.length > 0 && (
         <div className="alert alert-warning anim-in" style={{ marginBottom: 16 }}>
           <Icon name="alert" size={20} />
@@ -145,7 +129,7 @@ export default function Dashboard() {
         {verCompras && <KpiCard label="Insumos bajo su mínimo" value={stats.bajoStock.length} icon="package" tono="error" />}
       </div>
 
-      <Fila clase="grid-2">
+      <Tablero>
         {series.length > 0 && (
           <div className="card chart-box" key="area">
             <CabeceraGrafico titulo={series.map((s) => s.name).join(' / ')} tipo={`Línea de área · ${periodo === 'Hoy' ? 'últimos 7 días' : periodo}`} tono="info" />
@@ -158,9 +142,6 @@ export default function Dashboard() {
             <BarChart data={barras} />
           </div>
         )}
-      </Fila>
-
-      <Fila>
         {verCompras && (
           <div className="card chart-box" key="tipo">
             <CabeceraGrafico titulo="Compras por tipo de insumo" tipo="Dona" tono="warning" />
@@ -185,9 +166,6 @@ export default function Dashboard() {
             )}
           </div>
         )}
-      </Fila>
-
-      <Fila clase="grid-2">
         {verVentas && (
           <div className="card" key="recientes">
             <div className="card-head">
@@ -231,7 +209,7 @@ export default function Dashboard() {
             <HBarChart data={stats.existencias} formato={(v) => v.toLocaleString('es-NI')} />
           </div>
         )}
-      </Fila>
+      </Tablero>
     </div>
   );
 }

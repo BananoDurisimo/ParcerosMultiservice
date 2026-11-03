@@ -134,7 +134,12 @@ export function TablaAbonos({ idPedido, puedeVer, puedeDescargar }) {
         { label: 'Abono', render: (a) => a.calc_codigo },
         { label: 'Fecha', render: (a) => fecha(a.fecha) },
         { label: 'Método de pago', render: (a) => a.metodo_pago },
-        { label: 'Monto', align: 'right', render: (a) => <span className="money">{money(a.monto)}</span> },
+        {
+          label: 'Monto', align: 'right',
+          render: (a) => (a.estado === 'Anulado'
+            ? <span title={`Anulado: ${a.motivo_anulacion}`}><span className="money" style={{ textDecoration: 'line-through', color: 'var(--text-sec)' }}>{money(a.monto)}</span> <span className="badge badge-error">Anulado</span></span>
+            : <span className="money">{money(a.monto)}</span>),
+        },
         ...(conComprobante ? [{
           label: 'Comprobante',
           render: (a) => !a.url_comprobante ? <span className="caption">—</span> : (

@@ -5,6 +5,7 @@ import MiniTabla from '@shared/components/ui/MiniTabla.jsx';
 import { ItemsView } from '@shared/components/ui/Form.jsx';
 import { useData } from '@shared/context/DataContext.jsx';
 import { TablaAbonos, useDescargas } from './Archivos.jsx';
+import { gastoInsumos, defectosInsumos, sumarLineas } from './LineasPedido.jsx';
 import { money, fecha, ESTADOS_PEDIDO, FALTA_PAGO } from '@shared/data/mock.js';
 
 /**
@@ -13,11 +14,19 @@ import { money, fecha, ESTADOS_PEDIDO, FALTA_PAGO } from '@shared/data/mock.js';
  * el usuario con el diseño y los comprobantes en la pestaña desde la que abre.
  */
 export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
-  const { db, opciones } = useData();
+  const { db, opciones, expandirReceta } = useData();
   const { descargarDiseno } = useDescargas();
   const insumos = opciones('insumos');
   const productos = opciones('productos');
-  const unidad = (id) => db.insumos.find((i) => i.id === id)?.calc_abreviatura || '';
+  const insumo = (id) => db.insumos.find((i) => String(i.id) === String(id));
+  const unidad = (id) => insumo(id)?.calc_abreviatura || '';
+  /* Lo que se gasto de mas: receta de las prendas defectuosas e insumos de
+     personalizacion echados a perder. */
+  const insumosDefecto = (r.insumos || []).filter((l) => l.defectuosas > 0);
+  const defectos = sumarLineas(
+    expandirReceta((r.productos || []).filter((l) => l.defectuosas > 0).map((l) => ({ ...l, cantidad: l.defectuosas }))),
+    defectosInsumos(r.insumos),
+  );
   const idx = ESTADOS_PEDIDO.indexOf(r.estado);
   const fechaEtapa = (e) => (r.historial_estados || []).find((h) => h.estado === e)?.fecha;
 
@@ -46,6 +55,29 @@ export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
             {' '}Sus insumos se descontaron del inventario; no cambian el total.
           </div>
         </div>
+      )}
+      {defectos.length > 0 && (
+        <>
+          <h3 className="det-section">Gasto en insumos por defectuosos</h3>
+          {insumosDefecto.length > 0 && (
+            <p className="caption" style={{ marginBottom: 8 }}>
+              Personalización echada a perder: {insumosDefecto.map((l) => `${insumo(l.id_insumo)?.nombre || `#${l.id_insumo}`} (${l.defectuosas} ${unidad(l.id_insumo)})`).join(' · ')}.
+            </p>
+          )}
+          <MiniTabla
+            filas={defectos}
+            columnas={[
+              { label: 'Insumo', render: (l) => insumo(l.id_insumo)?.nombre || '—' },
+              { label: 'Cantidad', align: 'right', render: (l) => `${l.cantidad} ${unidad(l.id_insumo)}` },
+              { label: 'Costo unit.', align: 'right', render: (l) => <span className="money">{money(insumo(l.id_insumo)?.calc_costo || 0)}</span> },
+              { label: 'Gasto', align: 'right', render: (l) => <span className="money">{money(l.cantidad * (insumo(l.id_insumo)?.calc_costo || 0))}</span> },
+            ]}
+          />
+          <div className="pedido-total" style={{ marginTop: 10 }}>
+            <div className="is-total"><span>Gasto total por defectuosos</span><strong className="money">{money(gastoInsumos(defectos, insumo))}</strong></div>
+          </div>
+          <p className="caption" style={{ marginTop: 6 }}>Calculado con el precio de la última compra de cada insumo.</p>
+        </>
       )}
 
       <h3 className="det-section">Insumos de personalización</h3>
@@ -76,15 +108,16 @@ export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
               { label: 'Cantidad', align: 'right', render: (l) => `${l.cantidad} ${unidad(l.id_insumo)}` },
             ]}
           />
-          <p className="caption" style={{ marginTop: 6 }}>Copia de la receta al guardar el registro: descuenta inventario y no se cobra aparte.</p>
+          <p className="caption" style={{ marginTop: 6 }}>Copia de la receta al guardar el registro, más lo gastado en defectuosos: descuenta inventario y no se cobra aparte.</p>
         </>
       )}
 
       <h3 className="det-section">Mockup</h3>
       {r.imagen_diseno ? (
-        <div className="row" style={{ gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        /* La imagen centrada y sus botones debajo. */
+        <div className="mockup-detalle">
           <img className="diseno-thumb" src={r.imagen_diseno} alt={`Diseño de ${r.calc_codigo}`} />
-          <div className="stack" style={{ gap: 8 }}>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
             {acciones.verDiseno && (
               <button className="btn btn-sm" onClick={() => onVerDiseno(r)}><Icon name="image" size={15} /> Ver mockup</button>
             )}

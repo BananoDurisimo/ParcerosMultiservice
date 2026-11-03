@@ -74,6 +74,7 @@ export default function CrudPage({
   validarExtra,
   conDetalle = true,
   conCrear = true,
+  conEliminar = true, // false: el modulo no elimina registros, aunque el rol tenga el privilegio
   puedeEditarFila = () => true,
   accionesExtra,
   tablaCompacta = false,
@@ -94,7 +95,7 @@ export default function CrudPage({
   const puedeEditar = puedeAccion(modulo, EDITAR);
   const puedeVer = conDetalle && puedeAccion(modulo, VER_DETALLE);
   const puedeEstado = puedeAccion(modulo, CAMBIAR_ESTADO);
-  const puedeEliminar = puedeAccion(modulo, ELIMINAR);
+  const puedeEliminar = conEliminar && puedeAccion(modulo, ELIMINAR);
   const puedeExportar = !!exportacion && puedeAccion(modulo, EXPORTAR);
 
   const [modo, setModo] = useState(null); // 'crear' | 'editar' | 'ver'

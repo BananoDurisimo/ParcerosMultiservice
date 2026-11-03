@@ -75,7 +75,7 @@ function aFrontend(col, f, cat) {
       const linea = (l) => {
         const cantidad = Number(l.cantidad);
         const precio = Number(l.precio_unitario);
-        return { id_insumo: l.id_insumo, cantidad, precio_unitario: precio, subtotal: Math.round(cantidad * precio * 100) / 100 };
+        return { id_insumo: l.id_insumo, cantidad, precio_unitario: precio, defectuosas: Number(l.defectuosas || 0), subtotal: Math.round(cantidad * precio * 100) / 100 };
       };
       return {
         ...base, id_cliente: f.id_cliente, estado: nombrePorId(cat.estados_pedido, 'id_estado_pedido', f.id_estado_pedido),
@@ -204,7 +204,7 @@ export function aServidor(col, r, cat, sid) {
         productos: (r.productos || []).map((l) => ({
           id_producto: sid('productos', l.id_producto), cantidad: l.cantidad, precio_unitario: l.precio_unitario, defectuosas: Number(l.defectuosas) || 0,
         })),
-        insumos: (r.insumos || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad, precio_unitario: l.precio_unitario })),
+        insumos: (r.insumos || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad, precio_unitario: l.precio_unitario, defectuosas: Number(l.defectuosas) || 0 })),
         insumos_receta: (r.insumos_receta || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad })),
       };
     case 'abonos':

@@ -91,8 +91,9 @@ export const COMPRA_ANULADA = 'Anulada';
 export const ESTADOS_COMPRA = [...ESTADOS_COMPRA_ACTIVOS, COMPRA_ANULADA];
 export const ESTADOS_REGISTRO = ['Activo', 'Inactivo'];
 export const TIPOS_DOCUMENTO = ['Cédula', 'RUC', 'Pasaporte', 'Cédula de residencia'];
-/** «Mixto»: el cliente pagó el abono combinando varios métodos. */
-export const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque', 'Mixto'];
+/** «Mixto»: el cliente pagó el abono combinando varios métodos. El cheque ya
+ *  no se acepta (016); los abonos antiguos con cheque lo conservan. */
+export const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta', 'Mixto'];
 
 /* --------------------------------------------------------------
    Permisos (modulos) y privilegios (acciones dentro de cada modulo)
@@ -261,13 +262,10 @@ export const COLOR_METODO_PAGO = {
   Mixto: 'var(--secondary)',
 };
 
-/** Color de la dona del dashboard segun el tipo de insumo comprado. */
-export const COLOR_TIPO_INSUMO = {
-  Tela: 'var(--info)',
-  Estampado: 'var(--success)',
-  Accesorio: 'var(--warning)',
-  Hilo: 'var(--primary)',
-};
+/** Colores de la dona «Compras por tipo de insumo». Las categorias las crea
+ *  el usuario, asi que se asignan en orden (de la mayor a la menor) y cada
+ *  porcion queda con un color distinto. Sin rojo: en el sistema es alerta. */
+export const PALETA_TIPO_INSUMO = ['#2563EB', '#14B8A6', '#F59E0B', '#8B5CF6', '#0EA5E9', '#EC4899', '#22C55E', '#64748B'];
 
 /** Valor por defecto de `insumo.stock_minimo`: cada insumo guarda su propio
  *  minimo y las alertas de inventario se comparan contra el. Este numero solo

@@ -119,17 +119,9 @@ export default function Compras() {
       ]}
       defaults={{ detalle_insumos: [], estado: 'En tránsito', fecha: hoyISO(), fecha_entrega: '' }}
       etiquetaRegistro={codigo}
-      /* Una compra recibida que se anula o elimina retira del inventario lo
-         que ingreso: no se puede si esas existencias ya se gastaron. */
-      eliminacion={{
-        /* Borrar una compra recibida retira del inventario lo que ingreso: no
-           se puede si esas existencias ya se gastaron. */
-        validar: (r) => {
-          const faltan = insumosGastados(r);
-          return faltan ? `Sus insumos ya se usaron en producción (${faltan}): no se pueden retirar del inventario.` : null;
-        },
-        mensaje: (r) => `Se eliminará la compra ${codigo(r)} de ${r.calc_proveedor}.${r.estado === 'Recibida' ? ' Sus insumos se retirarán del inventario.' : ''} Esta acción no se puede deshacer; si solo quiere darla de baja, anúlela.`,
-      }}
+      /* Las compras no se eliminan: quedan en el historial y, si hay que darlas
+         de baja, se anulan (018). */
+      conEliminar={false}
       /* Anular: desde las acciones de la fila, con justificacion. Una recibida
          tambien se anula y sus insumos salen del inventario, salvo que ya se
          hayan gastado (la base de datos tambien lo valida, 014). */

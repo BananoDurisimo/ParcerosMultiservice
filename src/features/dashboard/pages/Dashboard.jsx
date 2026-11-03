@@ -36,11 +36,19 @@ function CabeceraGrafico({ titulo, tipo, tono = 'neutral' }) {
   );
 }
 
-/** Dos tarjetas lado a lado, o una sola a todo el ancho si el rol solo ve una. */
-function Fila({ children, clase = 'grid-2-eq' }) {
+/** Graficos en dos columnas parejas. Cada rol ve solo los suyos, asi que se
+ *  acomodan juntos sin dejar huecos: si quedan en numero impar, el primero
+ *  (la linea de area, que necesita ancho) ocupa toda la fila. */
+function Tablero({ children }) {
   const items = children.filter(Boolean);
   if (!items.length) return null;
-  return <div className={items.length > 1 ? clase : ''} style={{ marginTop: 16 }}>{items}</div>;
+  return (
+    <div className="dash-graficos">
+      {items.map((el, i) => (
+        <div key={el.key} className={`dash-celda ${i === 0 && items.length % 2 ? 'is-ancha' : ''}`}>{el}</div>
+      ))}
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -121,7 +129,7 @@ export default function Dashboard() {
         {verCompras && <KpiCard label="Insumos bajo su mínimo" value={stats.bajoStock.length} icon="package" tono="error" />}
       </div>
 
-      <Fila clase="grid-2">
+      <Tablero>
         {series.length > 0 && (
           <div className="card chart-box" key="area">
             <CabeceraGrafico titulo={series.map((s) => s.name).join(' / ')} tipo={`Línea de área · ${periodo === 'Hoy' ? 'últimos 7 días' : periodo}`} tono="info" />
@@ -134,9 +142,6 @@ export default function Dashboard() {
             <BarChart data={barras} />
           </div>
         )}
-      </Fila>
-
-      <Fila>
         {verCompras && (
           <div className="card chart-box" key="tipo">
             <CabeceraGrafico titulo="Compras por tipo de insumo" tipo="Dona" tono="warning" />
@@ -161,9 +166,6 @@ export default function Dashboard() {
             )}
           </div>
         )}
-      </Fila>
-
-      <Fila clase="grid-2">
         {verVentas && (
           <div className="card" key="recientes">
             <div className="card-head">
@@ -207,7 +209,7 @@ export default function Dashboard() {
             <HBarChart data={stats.existencias} formato={(v) => v.toLocaleString('es-NI')} />
           </div>
         )}
-      </Fila>
+      </Tablero>
     </div>
   );
 }

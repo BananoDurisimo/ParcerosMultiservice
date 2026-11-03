@@ -74,7 +74,7 @@ router.post('/recuperar', async (req, res, next) => {
     );
     if (u) {
       const token = crypto.randomBytes(32).toString('hex');
-      await query("INSERT INTO recuperacion_clave VALUES ($1, $2, NOW() + interval '30 minutes')", [sha(token), u.id_usuario]);
+      await query("INSERT INTO recuperacion_clave (token_hash, id_usuario, vence) VALUES ($1, $2, NOW() + interval '30 minutes')", [sha(token), u.id_usuario]);
       const enlace = `${process.env.APP_URL || 'http://localhost:5173'}/recuperar?token=${token}`;
       enviarCorreo({
         para: correo,

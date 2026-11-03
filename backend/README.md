@@ -83,7 +83,5 @@ nombre de la columna (p. ej. un documento repetido devuelve `409` con
 
 ## Pendiente
 
-- Recuperación de contraseña por correo: la tabla `recuperacion_clave` existe,
-  falta el servicio de envío de correos.
 - Archivos (diseño y comprobante) en un servicio de almacenamiento: hoy se
   guardan como data URL en columnas `TEXT`.

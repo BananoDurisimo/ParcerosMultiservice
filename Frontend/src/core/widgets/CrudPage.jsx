@@ -68,7 +68,9 @@ export default function CrudPage({
   renderDetalle,
   beforeSave,
   /* Guardado propio del modulo: recibe los datos ya validados y se encarga de
-     persistirlos y de avisar. Si no viene, se crea o actualiza la fila. */
+     persistirlos y de avisar. Si no viene, se crea o actualiza la fila.
+     Puede devolver una promesa (p. ej. tras una confirmacion): el formulario
+     se cierra cuando se resuelve, salvo que resuelva `false`. */
   alGuardar,
   pageActions,
   etiquetaRegistro,
@@ -229,7 +231,14 @@ export default function CrudPage({
     if (beforeSave) data = beforeSave(data, modo, actual);
 
     if (alGuardar) {
-      alGuardar(data, modo, actual);
+      /* El modulo puede pedir una confirmacion antes de guardar: si devuelve
+         una promesa, el formulario espera; con `false` sigue abierto. */
+      const r = alGuardar(data, modo, actual);
+      if (r && typeof r.then === 'function') {
+        r.then((ok) => { if (ok !== false) cerrar(); });
+        return;
+      }
+      if (r === false) return;
     } else if (modo === 'crear') {
       create(coleccion, data);
       toast.success(`El registro de ${singular} se guardó correctamente.`);

@@ -144,7 +144,7 @@ export default function Pedidos() {
         toast.error(`No hay existencias suficientes: ${listaFaltantes(faltan)}.`, 'No fue posible cambiar el estado');
         return;
       }
-      setCambio({ r, nuevo, mensaje: `La cotización ${r.calc_codigo} pasará a «${EN_PROCESO}» y sus insumos se descontarán del inventario. El cambio no se puede deshacer.` });
+      setCambio({ r, nuevo, mensaje: `La cotización ${r.calc_codigo} pasará a «${EN_PROCESO}» y sus insumos se descontarán del inventario. El cambio no se puede deshacer. Se le enviará un correo al cliente con el nuevo estado.` });
       return;
     }
     if (nuevo === ENTREGADO) {
@@ -154,12 +154,12 @@ export default function Pedidos() {
       }
       setFechaEntrega(hoyISO());
       setErrFecha('');
-      setCambio({ r, nuevo, conFecha: true, mensaje: `El pedido ${r.calc_codigo} de ${r.calc_cliente} quedará registrado como entregado y vendido. El cambio no se puede deshacer.` });
+      setCambio({ r, nuevo, conFecha: true, mensaje: `El pedido ${r.calc_codigo} de ${r.calc_cliente} quedará registrado como entregado y vendido. El cambio no se puede deshacer. Se le enviará un correo al cliente con el nuevo estado.` });
       return;
     }
     setCambio({
       r, nuevo,
-      mensaje: `El pedido ${r.calc_codigo} se marcará como terminado y pasará a «${nuevo}»${nuevo === FALTA_PAGO ? ` porque tiene un saldo pendiente de ${money(r.calc_saldo)}` : ' porque ya está pagado en su totalidad'}. El cambio no se puede deshacer.`,
+      mensaje: `El pedido ${r.calc_codigo} se marcará como terminado y pasará a «${nuevo}»${nuevo === FALTA_PAGO ? ` porque tiene un saldo pendiente de ${money(r.calc_saldo)}` : ' porque ya está pagado en su totalidad'}. El cambio no se puede deshacer. Se le enviará un correo al cliente con el nuevo estado.`,
     });
   };
 

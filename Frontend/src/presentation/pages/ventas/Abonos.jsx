@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import CrudPage from '@core/widgets/CrudPage.jsx';
 import KpiCard from '@core/widgets/ui/KpiCard.jsx';
 import Icon from '@core/widgets/Icon.jsx';
+import ConfirmDialog from '@core/widgets/ui/ConfirmDialog.jsx';
 import { useDescargas, ComprobanteModal } from '@presentation/widgets/ventas/Archivos.jsx';
 import MontoAbono from '@presentation/widgets/ventas/MontoAbono.jsx';
 import { errorMonto } from '@domain/usecases/abonos.js';
@@ -49,6 +50,9 @@ export default function Abonos() {
   const descComp = puedeAccion('Abonos', DESCARGAR_COMPROBANTE);
   /* Abono cuyo comprobante se esta viendo (modal, sin salir de la pantalla). */
   const [verComprobante, setVerComprobante] = useState(null);
+  /* Abono que cambia el estado del pedido, pendiente de confirmar:
+     { p, nuevo, monto, resolver(ok) }. */
+  const [cambio, setCambio] = useState(null);
 
   /* Se pueden abonar las cotizaciones y los pedidos con saldo; los pagados
      en su totalidad y los ya entregados se listan, pero no se pueden elegir. */
@@ -146,7 +150,7 @@ export default function Abonos() {
     },
     mensaje: (r) => {
       const p = pedidoDe(r.id_pedido);
-      return `El abono ${r.calc_codigo} por ${money(r.monto)} de ${r.calc_pedido} quedará anulado: se conserva como registro, pero deja de contar y el saldo del pedido aumentará en ese valor.${p?.estado === COMPLETADO ? ` El pedido volverá a «${FALTA_PAGO}».` : ''} No se puede deshacer.`;
+      return `El abono ${r.calc_codigo} por ${money(r.monto)} de ${r.calc_pedido} quedará anulado: se conserva como registro, pero deja de contar y el saldo del pedido aumentará en ese valor.${p?.estado === COMPLETADO ? ` El pedido volverá a «${FALTA_PAGO}» y se le avisará al cliente por correo.` : ''} No se puede deshacer.`;
     },
     /* Un pedido completado vuelve a «falta pago»: ya no esta saldado. */
     alAnular: (r) => {
@@ -164,31 +168,50 @@ export default function Abonos() {
       return;
     }
     const p = pedidoDe(d.id_pedido);
-    create('abonos', { ...d, id_pedido: p.id, monto: redondear(Number(d.monto)), url_comprobante: d.url_comprobante || '' });
-    toast.success('El registro de abono se guardó correctamente.');
-
     const saldo = Math.round((p.calc_saldo - Number(d.monto)) * 100) / 100;
     const etapa = (estado) => [...(p.historial_estados || []), { estado, fecha: d.fecha }];
 
-    /* Primer abono de una cotizacion: inicia el pedido si hay existencias. */
-    if (p.estado === COTIZACION) {
-      const faltan = faltantes(consumoPedido(p), p);
+    /* Estado al que pasa el pedido con este abono: el primero inicia la
+       cotizacion si hay existencias y el que salda un pedido terminado lo
+       completa. Sin existencias la cotizacion sigue igual. */
+    const faltan = p.estado === COTIZACION ? faltantes(consumoPedido(p), p) : [];
+    const nuevo = p.estado === COTIZACION && !faltan.length ? EN_PROCESO
+      : p.estado === FALTA_PAGO && saldo <= 0 ? COMPLETADO
+      : null;
+
+    const registrar = () => {
+      create('abonos', { ...d, id_pedido: p.id, monto: redondear(Number(d.monto)), url_comprobante: d.url_comprobante || '' });
+      toast.success('El registro de abono se guardó correctamente.');
       if (faltan.length) {
         toast.warning(
           `${p.calc_codigo} sigue como cotización: no hay existencias suficientes de ${faltan.map((f) => `${f.nombre} (se piden ${f.pide} y hay ${f.hay})`).join('; ')}.`,
           'Pedido sin iniciar'
         );
-        return;
+      } else if (nuevo === EN_PROCESO) {
+        update('pedidos', p.id, { estado: EN_PROCESO, fecha_inicio: d.fecha, historial_estados: etapa(EN_PROCESO) });
+        toast.info(`${p.calc_codigo} pasó a «${EN_PROCESO}» y sus insumos se descontaron del inventario.`, 'Pedido iniciado');
+      } else if (nuevo === COMPLETADO) {
+        update('pedidos', p.id, { estado: COMPLETADO, historial_estados: etapa(COMPLETADO) });
+        toast.info(`${p.calc_codigo} quedó pagado y pasó a «${COMPLETADO}».`, 'Pedido completado');
       }
-      update('pedidos', p.id, { estado: EN_PROCESO, fecha_inicio: d.fecha, historial_estados: etapa(EN_PROCESO) });
-      toast.info(`${p.calc_codigo} pasó a «${EN_PROCESO}» y sus insumos se descontaron del inventario.`, 'Pedido iniciado');
+    };
+
+    if (!nuevo) {
+      registrar();
       return;
     }
-    /* Abono que salda un pedido terminado. */
-    if (p.estado === FALTA_PAGO && saldo <= 0) {
-      update('pedidos', p.id, { estado: COMPLETADO, historial_estados: etapa(COMPLETADO) });
-      toast.info(`${p.calc_codigo} quedó pagado y pasó a «${COMPLETADO}».`, 'Pedido completado');
-    }
+    /* El abono cambia el estado del pedido (y el cliente recibe un correo):
+       se confirma antes de guardar. Si se cancela, el formulario sigue abierto. */
+    return new Promise((resolve) => {
+      setCambio({
+        p, nuevo, monto: Number(d.monto),
+        resolver: (ok) => {
+          setCambio(null);
+          if (ok) registrar();
+          resolve(ok);
+        },
+      });
+    });
   };
 
   const suma = (filas, fn) => filas.reduce((s, r) => s + Number(fn(r) || 0), 0);
@@ -344,6 +367,23 @@ export default function Abonos() {
       )}
     />
     <ComprobanteModal abono={verComprobante} onClose={() => setVerComprobante(null)} puedeDescargar={descComp} />
+    <ConfirmDialog
+      open={!!cambio}
+      onClose={() => cambio?.resolver(false)}
+      onConfirm={() => cambio?.resolver(true)}
+      titulo="Cambiar estado del pedido"
+      tono="warning"
+      icono="check"
+      confirmLabel="Registrar abono"
+      mensaje={cambio && (
+        <>
+          Al registrar este abono de <strong>{money(cambio.monto)}</strong>, el pedido <strong>{cambio.p.calc_codigo}</strong> de {cambio.p.calc_cliente} pasará
+          de «{cambio.p.estado}» a <strong>«{cambio.nuevo}»</strong>
+          {cambio.nuevo === EN_PROCESO ? ' y sus insumos se descontarán del inventario' : ''}. Se le enviará un correo al cliente con el nuevo estado.
+          ¿Desea continuar?
+        </>
+      )}
+    />
     </>
   );
 }

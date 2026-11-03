@@ -256,33 +256,12 @@ export function DataProvider({ children }) {
   }, [aplicar, sincronizar, sid]);
 
   /* --------------------------------------------------------------
-     Recuperacion de contrasena: enlace de un solo uso, valido 30 minutos.
+     Recuperacion de contrasena: el servidor envia por correo un enlace
+     de un solo uso, valido 30 minutos. Son rutas publicas (sin sesion).
      -------------------------------------------------------------- */
-  const enlaces = useRef(new Map());
-
-  /** Genera el enlace si el correo es de un usuario registrado y activo;
-   *  devuelve el token o null. */
-  const solicitarRecuperacion = useCallback((correo) => {
-    const c = String(correo).trim().toLowerCase();
-    const u = rawRef.current.usuarios.find((x) => (x.correo_empresarial || '').toLowerCase() === c && x.estado === 'Activo');
-    if (!u) return null;
-    const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    enlaces.current.set(token, { id_usuario: u.id, vence: Date.now() + 30 * 60 * 1000, usado: false });
-    return token;
-  }, []);
-
-  const enlaceValido = useCallback((token) => {
-    const e = enlaces.current.get(token);
-    return !!e && !e.usado && e.vence > Date.now();
-  }, []);
-
-  const restablecerClave = useCallback((token, clave) => {
-    if (!enlaceValido(token)) return false;
-    const e = enlaces.current.get(token);
-    e.usado = true;
-    update('usuarios', e.id_usuario, { contrasena: clave });
-    return true;
-  }, [enlaceValido, update]);
+  const solicitarRecuperacion = useCallback((correo) => api('POST', '/auth/recuperar', { correo }), []);
+  const enlaceValido = useCallback(async (token) => (await api('GET', `/auth/recuperar/${encodeURIComponent(token)}`)).valido, []);
+  const restablecerClave = useCallback((token, nueva) => api('POST', '/auth/restablecer', { token, nueva }), []);
 
   /* --------------------------------------------------------------
      Valores derivados.

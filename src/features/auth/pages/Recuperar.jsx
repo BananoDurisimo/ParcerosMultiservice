@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Icon from '@shared/components/Icon.jsx';
 import Logo from '@shared/components/Logo.jsx';
@@ -8,8 +8,8 @@ import { useData } from '@shared/context/DataContext.jsx';
 
 /**
  * Recuperacion de contraseña en dos pasos:
- *  1. /recuperar: el usuario escribe su correo y el sistema genera un enlace
- *     de un solo uso, valido 30 minutos, si el correo es de un usuario activo.
+ *  1. /recuperar: el usuario escribe su correo y el servidor le envia un
+ *     enlace de un solo uso, valido 30 minutos, si es de un usuario activo.
  *  2. /recuperar?token=…: el enlace pide la contraseña nueva y su confirmacion.
  */
 export default function Recuperar() {
@@ -42,24 +42,24 @@ function Solicitar() {
   const [correo, setCorreo] = useState('');
   const [err, setErr] = useState('');
   const [enviado, setEnviado] = useState(false);
-  const [enlace, setEnlace] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  const enviar = (e) => {
+  const enviar = async (e) => {
     e.preventDefault();
     if (!correo.trim()) { setErr('Este campo no puede estar vacío.'); toast.error('Ingrese su correo electrónico.', 'Validación de campos'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(correo)) { setErr('Ingrese un correo electrónico válido.'); return; }
     setErr('');
     setCargando(true);
-    setTimeout(() => {
-      /* Por seguridad la respuesta es la misma exista o no el correo: si no
-         es de un usuario registrado y activo, el enlace no es valido. */
-      const token = solicitarRecuperacion(correo) || Math.random().toString(36).slice(2);
-      setEnlace(`/recuperar?token=${token}`);
-      setCargando(false);
+    try {
+      /* Por seguridad la respuesta es la misma exista o no el correo. */
+      await solicitarRecuperacion(correo);
       setEnviado(true);
       toast.success('Si el correo está registrado, recibirá un enlace para restablecer su contraseña.', 'Solicitud enviada');
-    }, 700);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
@@ -89,12 +89,6 @@ function Solicitar() {
               <div className="alert alert-info" style={{ marginTop: 18 }}>
                 <Icon name="info" size={18} />
                 <div>El enlace es válido por 30 minutos y se puede usar una sola vez.</div>
-              </div>
-              <div className="card card-pad" style={{ marginTop: 14, background: 'var(--surface-2)' }}>
-                <div className="caption" style={{ marginBottom: 8 }}>
-                  Versión de demostración sin servidor de correo: este es el enlace que llegaría al correo.
-                </div>
-                <Link className="btn btn-sm" to={enlace}><Icon name="mail" size={15} /> Abrir enlace de restablecimiento</Link>
               </div>
               <button className="btn btn-block" style={{ marginTop: 18 }} onClick={() => setEnviado(false)}>
                 <Icon name="refresh" size={16} /> Usar otro correo
@@ -135,11 +129,16 @@ function Restablecer({ token }) {
   const toast = useToast();
   const nav = useNavigate();
   const { enlaceValido, restablecerClave } = useData();
-  const [valido] = useState(() => enlaceValido(token));
+  const [valido, setValido] = useState(null); // null: verificando el enlace
+  const [guardando, setGuardando] = useState(false);
   const [form, setForm] = useState({ nueva: '', repetir: '' });
   const [errs, setErrs] = useState({});
 
-  const guardar = (e) => {
+  useEffect(() => {
+    enlaceValido(token).then(setValido, () => setValido(false));
+  }, [token, enlaceValido]);
+
+  const guardar = async (e) => {
     e.preventDefault();
     const n = {};
     if (!form.nueva) n.nueva = 'Este campo no puede estar vacío.';
@@ -148,12 +147,15 @@ function Restablecer({ token }) {
     else if (form.nueva !== form.repetir) n.repetir = 'Las contraseñas no coinciden.';
     setErrs(n);
     if (Object.keys(n).length) { toast.error('Revise los campos marcados.', 'Validación de campos'); return; }
-    if (!restablecerClave(token, form.nueva)) {
-      toast.error('El enlace no es válido o ha vencido. Solicite uno nuevo.', 'Enlace no válido');
-      return;
+    setGuardando(true);
+    try {
+      await restablecerClave(token, form.nueva);
+      toast.success('Su contraseña se actualizó correctamente.');
+      nav('/login', { replace: true });
+    } catch (error) {
+      toast.error(error.message, 'Enlace no válido');
+      setGuardando(false);
     }
-    toast.success('Su contraseña se actualizó correctamente.');
-    nav('/login', { replace: true });
   };
 
   const campo = (k, label) => (
@@ -178,7 +180,9 @@ function Restablecer({ token }) {
             <ThemeToggle />
           </div>
 
-          {!valido ? (
+          {valido === null ? (
+            <p className="muted" style={{ fontSize: 13.5 }}>Verificando enlace…</p>
+          ) : !valido ? (
             <div className="anim-page">
               <div className="alert alert-error">
                 <Icon name="alert" size={20} />
@@ -195,8 +199,8 @@ function Restablecer({ token }) {
               <form onSubmit={guardar} className="stack" style={{ gap: 15, marginTop: 24 }} noValidate>
                 {campo('nueva', 'Contraseña nueva')}
                 {campo('repetir', 'Confirmar contraseña')}
-                <button className="btn btn-primary btn-block" type="submit">
-                  <Icon name="check" size={16} /> Guardar contraseña
+                <button className="btn btn-primary btn-block" type="submit" disabled={guardando}>
+                  <Icon name="check" size={16} /> {guardando ? 'Guardando…' : 'Guardar contraseña'}
                 </button>
               </form>
             </>

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { conUsuario, query } from '../db/pool.js';
 import { puede } from '../middleware/auth.js';
+import { notificarEstadoPedido } from '../correo.js';
 
 /*
  * Escritura de todos los modulos: POST /api/:coleccion, PUT /api/:coleccion/:id
@@ -214,6 +215,9 @@ router.put('/:coleccion/:id', async (req, res, next) => {
     if (req.params.coleccion === 'roles' && req.body.activo === false && id === req.user.id_rol) {
       return res.status(400).json({ message: 'No puede inactivar el rol con el que inició sesión.' });
     }
+    const estadoPrevio = req.params.coleccion === 'pedidos'
+      ? (await query('SELECT id_estado_pedido FROM pedido WHERE id_pedido=$1', [id])).rows[0]?.id_estado_pedido
+      : null;
     const fila = await conUsuario(req.user.id_usuario, async (db) => {
       const actual = await actualizar(db, cfg, id, limpiar(campos, req.body));
       if (!actual) return null;
@@ -221,6 +225,8 @@ router.put('/:coleccion/:id', async (req, res, next) => {
       return actual;
     });
     if (!fila) return res.status(404).json({ message: 'Registro no encontrado.' });
+    /* Ya confirmada la transaccion se avisa al cliente; un fallo del correo no afecta la respuesta. */
+    if (estadoPrevio && fila.id_estado_pedido !== estadoPrevio) notificarEstadoPedido(id).catch(console.error);
     res.json(fila);
   } catch (e) { next(e); }
 });

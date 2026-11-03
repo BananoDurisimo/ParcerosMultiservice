@@ -5,12 +5,12 @@ repositorio tiene dos partes:
 
 | Carpeta | Qué es | Stack |
 |---|---|---|
-| `/` (`src/`) | Frontend: sitio público y sistema de gestión | React 18 + Vite + React Router |
-| `backend/` | API REST con auditoría y permisos por rol | Node.js + Express + PostgreSQL |
+| `Frontend/` | Sitio público y sistema de gestión | React 18 + Vite + React Router |
+| `Backend/` | API REST con auditoría y permisos por rol | Node.js + Express + PostgreSQL |
 
 El frontend no usa librerías de UI ni de gráficos: el sistema de diseño (colores,
 tipografía, iconografía, componentes y gráficos SVG) está hecho a mano según la guía
-de estilos del equipo. La API está documentada en [`backend/README.md`](backend/README.md).
+de estilos del equipo. La API está documentada en [`Backend/README.md`](Backend/README.md).
 
 ---
 
@@ -25,20 +25,22 @@ de estilos del equipo. La API está documentada en [`backend/README.md`](backend
 Por defecto el frontend usa la API publicada en Render, así que basta con:
 
 ```bash
+cd Frontend
 npm install
 npm run dev      # http://localhost:5173
 ```
 
-Para trabajar contra una API local, levante `backend/` (ver su README) y copie
-`.env.example` como `.env`:
+Para trabajar contra una API local, levante `Backend/` (ver su README) y copie
+`Frontend/.env.example` como `Frontend/.env`:
 
 ```
 VITE_API_URL=http://localhost:3000
 ```
 
-Otros comandos: `npm run build` (compila a `dist/`), `npm run preview` y
-`npm run deploy` (publica el sitio, ver abajo). Las pruebas del backend se
-ejecutan con `npm test` dentro de `backend/`.
+Otros comandos, dentro de `Frontend/`: `npm run build` (compila a `dist/`),
+`npm run preview`, `npm test` (pruebas con Vitest) y `npm run deploy` (publica el
+sitio, ver abajo). Las pruebas del backend se ejecutan con `npm test` dentro de
+`Backend/`.
 
 ## Despliegue
 
@@ -48,13 +50,13 @@ por defecto del repositorio, así que los Pull Request apuntan a ella.
 
 | Parte | Dónde vive | Cómo se publica desde `develop` |
 |---|---|---|
-| Frontend | GitHub Pages (rama `gh-pages`) | Hook `scripts/hooks/pre-push` en cada push a `develop` |
-| API | Render, servicio `parceros-multiservice-api` | Auto-deploy de Render al llegar un commit a `develop` (carpeta `backend/`); `npm start` aplica las migraciones pendientes |
+| Frontend | GitHub Pages (rama `gh-pages`) | Hook `Frontend/scripts/hooks/pre-push` en cada push a `develop` |
+| API | Render, servicio `parceros-multiservice-api` | Auto-deploy de Render al llegar un commit a `develop` (carpeta `Backend/`, campo *Root Directory* del servicio); `npm start` aplica las migraciones pendientes |
 
 Flujo de trabajo: crear una rama desde `develop`, abrir el PR hacia `develop` y
 hacer merge. Si el merge se hace en GitHub (no desde el equipo), el hook no corre:
 la API se despliega igual, pero el sitio hay que publicarlo con `git pull` y
-`npm run deploy` desde `develop`.
+`npm run deploy` (en `Frontend/`) desde `develop`.
 
 El sitio vive en GitHub Pages y se sirve desde el subdirectorio
 `/ParcerosMultiservice/`, por eso `vite.config.js` fija `base` en la compilación
@@ -66,12 +68,12 @@ Hay tres caminos, todos ya configurados:
 
 | | Cuándo se usa | Qué hace |
 |---|---|---|
-| `scripts/hooks/pre-push` | Automático, en cada push a `develop` | Publica desde tu equipo, enganchado al mismo push |
-| `npm run deploy` | Manual, desde tu equipo | Compila y empuja `dist/` a la rama `gh-pages` |
+| `Frontend/scripts/hooks/pre-push` | Automático, en cada push a `develop` | Publica desde tu equipo, enganchado al mismo push |
+| `npm run deploy` (en `Frontend/`) | Manual, desde tu equipo | Compila y empuja `dist/` a la rama `gh-pages` |
 | `.github/workflows/deploy.yml` | Manual, desde la pestaña Actions | Compila y publica con GitHub Actions |
 
-El despliegue automático es un hook de Git, no un workflow: `npm install` apunta
-`core.hooksPath` a `scripts/hooks/` (script `prepare`), y desde ahí cada push a
+El despliegue automático es un hook de Git, no un workflow: `npm install` en
+`Frontend/` apunta `core.hooksPath` a `Frontend/scripts/hooks/` (script `prepare`), y desde ahí cada push a
 `develop` compila y publica el sitio. Si la publicación falla, el push de `develop`
 sigue su curso y basta con ejecutar `npm run deploy` después. Para saltarse el
 hook en un push puntual: `git push --no-verify`.
@@ -86,7 +88,7 @@ hook en un push puntual: `git push --no-verify`.
 ## Acceso
 
 Los datos viven en PostgreSQL, no en el frontend. El único usuario inicial lo crea
-`npm run seed` en `backend/`:
+`npm run seed` en `Backend/`:
 
 | Correo | Contraseña | Rol |
 |---|---|---|
@@ -187,56 +189,82 @@ Inicio, Compras, Abonos, Pedidos y Cuenta. Las tablas se transforman en listas.
   compras; privilegio «Exportar»): «Exportar» descarga la tabla a PDF o Excel y «Reporte»
   genera un PDF con indicadores, resumen agrupado y detalle. Ambos usan lo que muestra la
   tabla (búsqueda y filtros aplicados) y se generan en el navegador, sin librerías
-  (`shared/lib/exportar.js`).
+  (`core/utils/exportar.js`).
 - **Trazabilidad del pedido** en línea de tiempo con los cinco estados de la ficha.
 
 ---
 
-## Estructura (Feature Based)
+## Estructura por capas
 
-El código se organiza por **funcionalidad**, no por tipo de archivo: cada macroproceso
-del menú es una carpeta en `features/` que agrupa sus páginas, sus componentes y sus
-datos propios. Lo que usan dos o más funcionalidades vive en `shared/`, y el armado de
-la aplicación (proveedores y rutas) en `app/`.
+El repositorio separa las dos aplicaciones en `Backend/` y `Frontend/`, cada una con
+su `package.json`, sus pruebas y su README.
+
+### Backend (`Backend/`)
 
 ```
-src/
-├─ app/                        Ensamblado de la aplicación
-│  ├─ App.jsx                  Composición: proveedores + rutas + splash
-│  ├─ providers/               AppProviders (tema, avisos, sesión, datos)
-│  ├─ routes/                  AppRoutes (mapa de rutas por macroproceso)
-│  └─ pages/NotFound.jsx       Ruta no encontrada
-│
-├─ features/                   Una carpeta por macroproceso
-│  ├─ home/                    Landing público (pages · data · assets)
-│  ├─ auth/                    Login · Recuperar · Cuenta
-│  ├─ dashboard/               Dashboard con KPIs y gráficos
-│  ├─ configuracion/           Roles · Usuarios · Movimientos
-│  │  ├─ pages/                Una vista por módulo
-│  │  └─ components/           MovimientoDetalle (comparativo antes / después)
-│  ├─ compras/                 Insumos · Proveedores · Compras
-│  ├─ productos/               Categorías de producto · Productos (con su receta)
-│  └─ ventas/                  Clientes · Pedidos (cotizaciones, pedidos, ventas) · Abonos
-│
-├─ shared/                     Transversal a todas las funcionalidades
-│  ├─ components/
-│  │  ├─ Icon.jsx              Iconografía completa del sistema (SVG)
-│  │  ├─ CrudPage.jsx          Página CRUD reutilizable (la usan todos los módulos)
-│  │  ├─ charts/               AreaChart · BarChart · HBarChart · DonutChart
-│  │  ├─ layout/               Sidebar · TopBar · BottomBar · Footer · AppLayout
-│  │  └─ ui/                   DataTable · Modal · ConfirmDialog · Form · KpiCard ·
-│  │                           EstadoCell (estado editable en lista) · Carousel …
-│  ├─ context/                 ThemeContext · AuthContext · ToastContext · DataContext
-│  ├─ api/                     cliente.js (HTTP + token) · adaptador.js (BD ↔ colecciones)
-│  └─ data/                    mock.js (constantes y utilidades) · nav.js (menú)
-│
-├─ assets/                     Recursos globales (logo)
-└─ styles/globals.css          Tokens de color, tipografía y componentes
+Backend/
+├─ src/
+│  ├─ config/         Configuración global: variables de entorno (env.js), conexión
+│  │                  a PostgreSQL (db.js), migraciones (migrate.js) y datos iniciales (seed.js)
+│  ├─ controllers/    Manejo de las solicitudes (request/response) de cada ruta
+│  ├─ services/       Lógica de negocio: sesión, lectura de datos, escritura de cada
+│  │                  colección y envío de correos
+│  ├─ models/         Modelo de cada colección (tabla, llave, campos, permisos) y el
+│  │                  esquema de la base de datos en migrations/
+│  ├─ routes/         Definición de los endpoints (/api/auth, /api/datos, /api/{coleccion})
+│  ├─ middlewares/    Autenticación con JWT y permisos por rol
+│  ├─ utils/          Utilidades y plantillas HTML de los correos
+│  ├─ errors/         Error HTTP propio y traducción de los errores de PostgreSQL
+│  ├─ validators/     Validación de los datos de entrada
+│  ├─ app.js          Configuración de Express (CORS, JSON, rutas, errores)
+│  └─ server.js       Punto de entrada del servidor
+├─ tests/             Pruebas unitarias y de integración (node --test)
+└─ .env.example · .gitignore · package.json · README.md
 ```
 
-**Reglas de dependencia:** `app` puede importar de `features` y de `shared`;
-`features` importa de `shared`; `shared` no importa de `features`. Así ninguna
-funcionalidad depende de otra y se pueden agregar o quitar módulos sin tocar el resto.
+### Frontend (`Frontend/`)
+
+```
+Frontend/
+├─ src/
+│  ├─ core/                 Recursos compartidos por toda la aplicación
+│  │  ├─ constants/         Catálogos (estados, colores), privilegios, movimientos,
+│  │  │                     menú (nav.js), países y datos de contacto
+│  │  ├─ errors/            ErrorApi (error de la API con su campo)
+│  │  ├─ network/           cliente.js: HTTP contra la API con el token de la sesión
+│  │  ├─ themes/            globals.css: tokens de color claro / oscuro, tipografía y componentes
+│  │  ├─ utils/             Formato (dinero, fechas, códigos), archivos adjuntos,
+│  │  │                     exportación a PDF / Excel y PDF de la cotización
+│  │  └─ widgets/           Componentes reutilizables: CrudPage, Icon, Logo, Splash,
+│  │                        ui/ (DataTable, Modal, Form, EstadoCell…) y charts/ (SVG)
+│  ├─ data/                 Capa de datos
+│  │  ├─ datasources/       Remota (parcerosApi.js: endpoints) y local (sesionLocal.js: token)
+│  │  ├─ models/            Llave de cada colección, tabla que le corresponde y estado vacío
+│  │  ├─ repositories/      datosRepository y authRepository (fuente + mapeador)
+│  │  └─ mappers/           adaptador.js: tablas de la BD ↔ colecciones del frontend
+│  ├─ domain/               Reglas de negocio sin React
+│  │  ├─ entities/ · repositories/ · exceptions/
+│  │  └─ usecases/          Pedidos (consumo de inventario, líneas, totales), abonos
+│  │                        (monto), movimientos (cambios campo a campo) y periodos del dashboard
+│  ├─ presentation/         Capa de presentación
+│  │  ├─ blocs/             Estado global: AuthContext, DataContext, ThemeContext,
+│  │  │                     ToastContext, AppProviders y hooks
+│  │  ├─ pages/             Una carpeta por macroproceso: home, auth, dashboard,
+│  │  │                     configuracion, compras, productos y ventas
+│  │  ├─ widgets/           Componentes de cada macroproceso y el layout (Sidebar, TopBar…)
+│  │  ├─ routes/            AppRoutes (mapa de rutas)
+│  │  └─ themes/
+│  ├─ main.jsx              Punto de entrada de la aplicación
+│  └─ app.jsx               Composición: proveedores + rutas + splash
+├─ test/                    Pruebas (Vitest): data/, domain/, presentation/ y utils/
+├─ assets/                  Imágenes y video (logo, fotos del landing)
+├─ public/ · scripts/       Archivos públicos de Vite y scripts de publicación
+└─ index.html · vite.config.js · jsconfig.json · package.json
+```
+
+**Reglas de dependencia:** `presentation` usa `domain`, `data` y `core`; `data` usa
+`core`; `domain` solo usa constantes y utilidades de `core`; `core` no depende de las
+demás capas (salvo `network`, que lee el token de la sesión local).
 
 ### Alias de importación
 
@@ -245,25 +273,23 @@ y en `jsconfig.json` para el autocompletado del editor):
 
 | Alias | Carpeta |
 |---|---|
-| `@app/…` | `src/app` |
-| `@features/…` | `src/features` |
-| `@shared/…` | `src/shared` |
-| `@assets/…` · `@styles/…` | `src/assets` · `src/styles` |
+| `@core/…` · `@data/…` · `@domain/…` · `@presentation/…` | `src/core` · `src/data` · `src/domain` · `src/presentation` |
+| `@assets/…` | `assets` |
+| `@/…` | `src` |
 
 ```jsx
-import DataTable from '@shared/components/ui/DataTable.jsx';
-import { Roles, Usuarios, Movimientos } from '@features/configuracion';
+import DataTable from '@core/widgets/ui/DataTable.jsx';
+import { totalLineas } from '@domain/usecases/pedidos.js';
 ```
 
 ### Relación con la API
 
 `DataContext` es el único punto que toca los datos: carga todo con `GET /api/datos`
-y crea, edita o elimina con `POST/PUT/DELETE /api/{coleccion}` mediante
-`shared/api/cliente.js`. `adaptador.js` traduce las tablas de la base de datos
-(`id_cliente`, `activo`, `id_estado_pedido`…) a las colecciones que usan las páginas
-(`id`, `estado`…), por eso las vistas no conocen el esquema SQL. `mock.js` ya no
-contiene datos de ejemplo: solo constantes (estados, privilegios, colores) y
-formateadores. El token de sesión se guarda en `sessionStorage` y se envía como
+y crea, edita o elimina con `POST/PUT/DELETE /api/{coleccion}` mediante los
+repositorios de `data/`, que usan `core/network/cliente.js`. `adaptador.js` traduce las
+tablas de la base de datos (`id_cliente`, `activo`, `id_estado_pedido`…) a las
+colecciones que usan las páginas (`id`, `estado`…), por eso las vistas no conocen el
+esquema SQL. El token de sesión se guarda en `sessionStorage` y se envía como
 `Authorization: Bearer`; si la API responde 401, la sesión se cierra.
 
 ---

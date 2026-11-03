@@ -5,11 +5,11 @@ name: Deploy a GitHub Pages
 # OJO: este workflow NO corre solo. La cuenta tiene Actions bloqueado por un
 # problema de facturacion ("billing issue"), asi que cada push dejaba un
 # run fallido y su correspondiente correo de error, sin publicar nada. El sitio
-# se publica con `npm run deploy` (scripts/deploy-pages.mjs), que sube dist/ a
+# se publica con `npm run deploy` (Frontend/scripts/deploy-pages.mjs), que sube dist/ a
 # la rama gh-pages sin pasar por Actions.
 #
 # El despliegue automatico se hace mientras tanto desde el equipo: el hook
-# scripts/hooks/pre-push ejecuta esa misma publicacion en cada push a develop,
+# Frontend/scripts/hooks/pre-push ejecuta esa misma publicacion en cada push a develop,
 # la rama de despliegue del proyecto.
 #
 # Cuando Actions vuelva a estar disponible: devolver el disparador `push` de
@@ -34,6 +34,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # El frontend vive en Frontend/.
+    defaults:
+      run:
+        working-directory: Frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -41,6 +45,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: Frontend/package-lock.json
 
       - name: Instalar dependencias
         run: npm ci
@@ -59,7 +64,7 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: Frontend/dist
 
   deploy:
     needs: build

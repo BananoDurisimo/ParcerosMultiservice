@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import AppLayout from '@presentation/widgets/layout/AppLayout.jsx';
 import NotFound from '@presentation/pages/NotFound.jsx';
+import Licencias from '@presentation/pages/Licencias.jsx';
 
 import Home from '@presentation/pages/home/Home.jsx';
 import Login from '@presentation/pages/auth/Login.jsx';
@@ -33,6 +34,7 @@ export default function AppRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/recuperar" element={<Recuperar />} />
+        <Route path="/licencias" element={<Licencias publico />} />
 
         {/* Privado */}
         <Route path="/app" element={<AppLayout />}>
@@ -59,6 +61,7 @@ export default function AppRoutes() {
           <Route path="abonos" element={<Abonos />} />
 
           <Route path="cuenta" element={<Cuenta />} />
+          <Route path="licencias" element={<Licencias />} />
         </Route>
 
         <Route path="/dashboard" element={<Navigate to="/app" replace />} />

@@ -123,6 +123,7 @@ export default function TopBar({ titulo, onOpenMenu }) {
             <Link className="dropdown-item" to="/app/cuenta"><Icon name="user" size={16} /> Mi perfil</Link>
             <Link className="dropdown-item" to="/app"><Icon name="home" size={16} /> Inicio</Link>
             <Link className="dropdown-item" to="/"><Icon name="sparkle" size={16} /> Sitio público</Link>
+            <Link className="dropdown-item" to="/app/licencias"><Icon name="shield" size={16} /> Licencias</Link>
             <div className="dropdown-sep" />
             <button className="dropdown-item danger" onClick={pedirSalir}><Icon name="logout" size={16} /> Cerrar sesión</button>
           </div>

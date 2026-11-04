@@ -296,6 +296,14 @@ colecciones que usan las páginas (`id`, `estado`…), por eso las vistas no con
 esquema SQL. El token de sesión se guarda en `sessionStorage` y se envía como
 `Authorization: Bearer`; si la API responde 401, la sesión se cierra.
 
+## Licencia
+
+Software privativo: © 2026 Equipo de Desarrollo VP, todos los derechos reservados
+(ver [`LICENSE`](LICENSE)). Parceros Multiservice tiene licencia de uso interno; que el
+repositorio sea visible no autoriza copiar, modificar ni distribuir el código. Las
+licencias de las herramientas de terceros se muestran en `/licencias` (sitio público)
+y `/app/licencias` (sistema); su listado vive en `Frontend/src/core/constants/licencias.js`.
+
 ---
 
 Equipo de Desarrollo VP · © 2026 Parceros Multiservice

@@ -74,8 +74,7 @@ const TIPOS_COMPROBANTE = ['image/jpeg', 'image/png', 'image/webp', 'application
 
 const redondear = (n) => Math.round(n * 100) / 100;
 /* Las lineas se editan como texto en el formulario; se guardan como numeros. */
-/* `entrada` (lo escrito en yd/cm/m) solo vive en el formulario. */
-const conSubtotal = ({ entrada, ...l }) => {
+const conSubtotal = (l) => {
   const cantidad = Number(l.cantidad);
   const precio = Number(l.precio_unitario);
   return { ...l, cantidad, precio_unitario: precio, subtotal: redondear(cantidad * precio), defectuosas: Number(l.defectuosas) || 0 };

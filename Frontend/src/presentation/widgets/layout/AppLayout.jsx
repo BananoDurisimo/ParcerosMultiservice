@@ -25,6 +25,7 @@ const TITULOS = {
   '/app/pedidos': 'Pedidos',
   '/app/abonos': 'Abonos',
   '/app/cuenta': 'Mi cuenta',
+  '/app/licencias': 'Licencias',
 };
 
 /** Se muestra cuando el rol del usuario no tiene el permiso del modulo. */

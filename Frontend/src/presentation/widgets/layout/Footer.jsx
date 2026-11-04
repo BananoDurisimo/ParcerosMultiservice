@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import Icon from '@core/widgets/Icon.jsx';
 import Logo from '@core/widgets/Logo.jsx';
 import { IG_PERFIL, IG_FACEBOOK } from '@core/constants/instagram.js';
@@ -39,7 +40,7 @@ export default function Footer({ compact = false }) {
             ))}
           </div>
           <div className="footer-bottom" style={{ justifyContent: 'center' }}>
-            <span>Equipo de Desarrollo VP · © 2026 Parceros Multiservice</span>
+            <span>Equipo de Desarrollo VP · © 2026 Parceros Multiservice · <Link to="/licencias">Licencias</Link></span>
           </div>
         </div>
       </footer>
@@ -73,6 +74,7 @@ export default function Footer({ compact = false }) {
             <h4>Otros</h4>
             <ul>
               {OTROS.map(([t, h]) => <li key={t}><a href={h}>{t}</a></li>)}
+              <li><Link to="/licencias">Licencias</Link></li>
               <li className="row" style={{ gap: 6 }}><Icon name="pin" size={14} /> Managua, Nicaragua</li>
             </ul>
           </div>
@@ -85,7 +87,7 @@ export default function Footer({ compact = false }) {
               <Icon name="linkedin" size={13} />
             </a>
           </span>
-          <span>© 2026 Parceros Multiservice. Todos los derechos reservados.</span>
+          <span>© 2026 Equipo de Desarrollo VP. Software privativo, todos los derechos reservados. <Link to="/licencias">Licencias</Link></span>
         </div>
       </div>
     </footer>

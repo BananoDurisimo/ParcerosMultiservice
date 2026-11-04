@@ -1455,3 +1455,22 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
   background: inherit; transform: translateY(-50%) rotate(45deg); border-radius: 1px;
 }
 @media (max-width: 900px) { .sb-tip { display: none; } }
+
+/* Licencias (/licencias y /app/licencias) ------------------- */
+.lic-wrap { max-width: 1120px; margin: 0 auto; padding: 28px 24px 48px; }
+.lic-grupo, .lic-proyecto { margin-top: 14px; }
+.lic-tabla { overflow-x: auto; }
+.lic-tabla td { white-space: nowrap; }
+.lic-proyecto { border-left: 3px solid var(--primary); }
+.lic-terminos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+.lic-termino { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--primary); }
+.lic-termino strong { color: var(--text); font-weight: 600; font-size: 13.5px; }
+.lic-termino svg { flex: none; margin-top: 2px; }
+.lic-wrap a.badge, .content a.badge { text-decoration: none; white-space: nowrap; }
+.lic-wrap a.badge:hover, .content a.badge:hover { filter: brightness(.95); text-decoration: underline; }
+.lic-transitivas { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+.footer-bottom a { text-decoration: underline; line-height: inherit; }
+@media (max-width: 720px) {
+  .lic-terminos, .lic-transitivas { grid-template-columns: 1fr; }
+  .lic-wrap { padding: 20px 16px 36px; }
+}

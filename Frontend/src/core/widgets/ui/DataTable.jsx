@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Icon from '@core/widgets/Icon.jsx';
 import Pagination from '@core/widgets/ui/Pagination.jsx';
-import { normOpciones, normTexto } from '@core/widgets/ui/Form.jsx';
+import { normOpciones, normTexto, SearchSelect } from '@core/widgets/ui/Form.jsx';
 
 /**
  * Tabla estandar del sistema: busqueda, filtros, orden, paginacion,
@@ -10,7 +10,8 @@ import { normOpciones, normTexto } from '@core/widgets/ui/Form.jsx';
  * y eliminar (siempre al final, para no pulsarla por error).
  *
  * Un filtro es un desplegable `{ key, label, options }` o un rango de fechas
- * `{ key, label, type: 'rango' }` (desde / hasta).
+ * `{ key, label, type: 'rango' }` (desde / hasta). Con `buscable: true` el
+ * desplegable deja escribir para buscar la opcion (p. ej. el cliente).
  *
  * `onExportar(formato, filas, filtros)`: muestra «Exportar» (PDF o Excel) y
  * «Reporte». Recibe las filas que la tabla tiene en ese momento -con la
@@ -201,6 +202,19 @@ export default function DataTable({
               {rangoInvalido(fv[f.key]) && (
                 <span className="field-error"><Icon name="alert" size={12} /> La fecha final no puede ser anterior a la inicial.</span>
               )}
+            </div>
+          ) : f.buscable ? (
+            /* Listas largas (clientes…): se escribe para encontrar la opcion. */
+            <div className="field filtro-buscable" key={f.key} style={{ minWidth: 220 }}>
+              <label style={{ fontSize: 11.5 }}>{f.label}</label>
+              <SearchSelect
+                options={[{ value: '', label: 'Todos' }, ...normOpciones(f.options)]}
+                value={fv[f.key] || ''}
+                onChange={(v) => setFv({ ...fv, [f.key]: String(v) })}
+                placeholder="Todos"
+                buscarPlaceholder={`Buscar ${String(f.label).toLowerCase()}…`}
+                ariaLabel={f.label}
+              />
             </div>
           ) : (
             <div className="field" key={f.key} style={{ minWidth: 170 }}>

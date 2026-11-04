@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import CrudPage from '@core/widgets/CrudPage.jsx';
 import EstadoCell from '@core/widgets/ui/EstadoCell.jsx';
-import KpiCard from '@core/widgets/ui/KpiCard.jsx';
 import Modal from '@core/widgets/ui/Modal.jsx';
 import Icon from '@core/widgets/Icon.jsx';
 import DetalleRegistro from '@presentation/widgets/ventas/DetalleRegistro.jsx';
@@ -296,7 +295,6 @@ export default function Pedidos() {
   const cotizaciones = db.pedidos.filter((p) => p.estado === COTIZACION).map((p) => ({ ...p, calc_vigente: p.calc_vencida ? 'Vencida' : 'Vigente' }));
   const pedidos = db.pedidos.filter((p) => [EN_PROCESO, FALTA_PAGO].includes(p.estado));
   const ventas = db.pedidos.filter((p) => [COMPLETADO, ENTREGADO].includes(p.estado));
-  const mesActual = hoyISO().slice(0, 7);
   const cuantos = { cotizaciones: cotizaciones.length, pedidos: pedidos.length, ventas: ventas.length };
 
   /* ---------- Exportar y reporte ---------- */
@@ -411,17 +409,12 @@ export default function Pedidos() {
       singular: 'cotización',
       searchKeys: ['calc_codigo', 'calc_cliente', 'calc_productos_txt', 'fecha_creacion', 'descripcion'],
       filtros: [
-        { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },
+        { key: 'id_cliente', label: 'Cliente', options: clientesFiltro, buscable: true },
         { key: 'fecha_creacion', label: 'Fecha de creación', type: 'rango' },
         { key: 'calc_abono_inicial', label: 'Abono inicial', options: ['Registrado', 'Pendiente'] },
         { key: 'calc_vigente', label: 'Vigencia', options: ['Vigente', 'Vencida'] },
       ],
       defaults: { productos: [], insumos: [], descripcion: '', imagen_diseno: '', fecha_creacion: hoyISO() },
-      resumen: [
-        <KpiCard key="a" label="Cotizaciones aprobadas" value={cotizaciones.length} icon="clipboard" tono="info" />,
-        <KpiCard key="b" label="Valor cotizado" value={cotizaciones.reduce((s, p) => s + p.calc_total, 0)} prefix="C$ " icon="coin" tono="primary" />,
-        <KpiCard key="c" label="Con abono inicial" value={cotizaciones.filter((p) => p.calc_abonos).length} icon="dollar" tono="success" />,
-      ],
       columnas: [
         { key: 'id', label: 'Código', mobile: 'title', render: (r) => <span className="cell-main">{r.calc_codigo}</span> },
         { key: 'calc_cliente', label: 'Cliente', mobile: 'meta' },
@@ -466,17 +459,12 @@ export default function Pedidos() {
       searchKeys: ['calc_codigo', 'calc_cliente', 'calc_productos_txt', 'estado', 'fecha_inicio', 'descripcion'],
       filtros: [
         { key: 'estado', label: 'Estado', options: [EN_PROCESO, FALTA_PAGO] },
-        { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },
+        { key: 'id_cliente', label: 'Cliente', options: clientesFiltro, buscable: true },
         { key: 'fecha_inicio', label: 'Fecha de inicio', type: 'rango' },
       ],
       defaults: { productos: [], insumos: [], descripcion: '', imagen_diseno: '', fecha_inicio: hoyISO(), abono_monto: '', abono_metodo: 'Efectivo', abono_comprobante: '' },
       /* La edicion solo aplica mientras el pedido se elabora. */
       puedeEditarFila: (r) => r.estado === EN_PROCESO,
-      resumen: [
-        <KpiCard key="a" label="Pedidos en proceso" value={pedidos.filter((p) => p.estado === EN_PROCESO).length} icon="package" tono="warning" />,
-        <KpiCard key="b" label="Con pago pendiente" value={pedidos.filter((p) => p.estado === FALTA_PAGO).length} icon="alert" tono="error" />,
-        <KpiCard key="c" label="Saldo por cobrar" value={pedidos.reduce((s, p) => s + p.calc_saldo, 0)} prefix="C$ " icon="coin" tono="primary" />,
-      ],
       columnas: [
         { key: 'id', label: 'Código', mobile: 'title', render: (r) => <span className="cell-main">{r.calc_codigo}</span> },
         { key: 'calc_cliente', label: 'Cliente', mobile: 'meta' },
@@ -588,16 +576,9 @@ export default function Pedidos() {
       searchKeys: ['calc_codigo', 'calc_cliente', 'calc_productos_txt', 'calc_fecha_venta', 'fecha_entrega', 'descripcion'],
       filtros: [
         { key: 'estado', label: 'Estado', options: [{ value: COMPLETADO, label: 'Pendiente de entrega' }, { value: ENTREGADO, label: ENTREGADO }] },
-        { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },
+        { key: 'id_cliente', label: 'Cliente', options: clientesFiltro, buscable: true },
         { key: 'calc_fecha_venta', label: 'Fecha de venta', type: 'rango' },
         { key: 'fecha_entrega', label: 'Fecha de entrega', type: 'rango' },
-      ],
-      /* La venta suma cuando el pedido terminado queda pagado, aunque todavia
-         no se haya entregado. */
-      resumen: [
-        <KpiCard key="a" label="Ventas del mes" value={ventas.filter((p) => p.calc_fecha_venta.startsWith(mesActual)).reduce((s, p) => s + p.calc_total, 0)} prefix="C$ " icon="coin" tono="success" />,
-        <KpiCard key="b" label="Total vendido" value={ventas.reduce((s, p) => s + p.calc_total, 0)} prefix="C$ " icon="chart" tono="primary" />,
-        <KpiCard key="c" label="Pendientes de entrega" value={ventas.filter((p) => p.estado === COMPLETADO).length} icon="truck" tono="warning" />,
       ],
       columnas: [
         { key: 'id', label: 'Código', mobile: 'title', render: (r) => <span className="cell-main">{r.calc_codigo}</span> },

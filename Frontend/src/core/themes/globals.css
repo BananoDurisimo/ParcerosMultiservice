@@ -355,7 +355,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 340px; }
 .search-wrap .ico { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-sec); pointer-events: none; }
-.search-wrap .input { padding-left: 34px; border-radius: 99px; }
+.search-wrap .input { padding-left: 40px; border-radius: 99px; }
+/* Filtro con buscador: misma altura que los demas desplegables del filtro. */
+.filtro-buscable .ss-input { min-height: 34px; padding-top: 6px; padding-bottom: 6px; }
 
 .switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
 .switch input { position: absolute; opacity: 0; pointer-events: none; }

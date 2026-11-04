@@ -1438,10 +1438,6 @@ img.footer-logo { border: 1px solid rgba(255,255,255,.12); }
   .ins-linea.sin-precio.con-defectos { grid-template-columns: 1fr 1fr 34px; }
 }
 
-/* Cantidad de un insumo de longitud con su unidad a elegir (yd, cm, m). */
-.cant-longitud { display: flex; gap: 4px; min-width: 0; }
-.cant-longitud .input { flex: 1; min-width: 0; }
-.cant-longitud .select { flex: none; width: 64px; min-height: 34px; padding: 6px 24px 6px 9px; background-position: calc(100% - 14px) 14px, calc(100% - 9px) 14px; }
 
 /* --- Tooltip del menu lateral contraido --- */
 .sb-tip {

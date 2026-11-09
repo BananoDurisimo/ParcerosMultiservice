@@ -2,7 +2,6 @@ import CrudPage from '@core/widgets/CrudPage.jsx';
 import EstadoCell from '@core/widgets/ui/EstadoCell.jsx';
 import Badge from '@core/widgets/ui/Badge.jsx';
 import MiniTabla from '@core/widgets/ui/MiniTabla.jsx';
-import HistorialRegistro from '@core/widgets/ui/HistorialRegistro.jsx';
 import PermisosField from '@presentation/widgets/configuracion/PermisosField.jsx';
 import Icon from '@core/widgets/Icon.jsx';
 import { useData } from '@presentation/blocs/DataContext.jsx';
@@ -64,9 +63,6 @@ export default function Roles() {
           { label: 'Estado', render: (u) => <Badge>{u.estado}</Badge> },
         ]}
       />
-
-      <h3 className="det-section">Historial de modificaciones</h3>
-      <HistorialRegistro tabla="rol" id={r.id} vacio="El rol no tiene modificaciones registradas." />
     </div>
   );
 

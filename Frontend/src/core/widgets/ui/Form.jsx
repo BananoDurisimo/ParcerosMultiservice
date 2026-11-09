@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Icon from '@core/widgets/Icon.jsx';
 import { money, fecha, hoyISO } from '@core/utils/formato.js';
-import { leerArchivo, esImagen, esPdf } from '@core/utils/archivos.js';
+import { leerArchivo, esImagen, esPdf, EN_SERVIDOR } from '@core/utils/archivos.js';
 
 /**
  * Las opciones de un select, multiselect o editor de líneas se declaran como
@@ -94,7 +94,7 @@ function ArchivoField({ f, value, error, onChange, readOnly, label }) {
         {esImagen(value) ? (
           <img className="file-preview" src={value} alt={f.label} />
         ) : value ? (
-          <span className="file-drop-txt"><Icon name="receipt" size={22} /> {nombre || (esPdf(value) ? 'Documento PDF adjunto' : 'Archivo adjunto')}</span>
+          <span className="file-drop-txt"><Icon name="receipt" size={22} /> {nombre || (value === EN_SERVIDOR ? 'Archivo guardado: se conserva si no sube otro' : esPdf(value) ? 'Documento PDF adjunto' : 'Archivo adjunto')}</span>
         ) : (
           <span className="file-drop-txt">
             <Icon name="upload" size={22} />

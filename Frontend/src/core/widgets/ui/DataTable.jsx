@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Icon from '@core/widgets/Icon.jsx';
 import Pagination from '@core/widgets/ui/Pagination.jsx';
 import { normOpciones, normTexto } from '@core/widgets/ui/Form.jsx';
@@ -12,10 +12,13 @@ import { normOpciones, normTexto } from '@core/widgets/ui/Form.jsx';
  * Un filtro es un desplegable `{ key, label, options }` o un rango de fechas
  * `{ key, label, type: 'rango' }` (desde / hasta).
  *
- * `onExportar(formato, filas, filtros)`: muestra «Exportar» (PDF o Excel) y
- * «Reporte». Recibe las filas que la tabla tiene en ese momento -con la
- * busqueda, los filtros y el orden aplicados, de todas las paginas- y la
- * descripcion de lo aplicado ([['Estado', 'Recibida'], …]).
+ * `onExportar(filas, filtros)`: muestra «Exportar a Excel». Recibe las filas
+ * que la tabla tiene en ese momento -con la busqueda, los filtros y el orden
+ * aplicados, de todas las paginas- y la descripcion de lo aplicado
+ * ([['Estado', 'Recibida'], …]).
+ *
+ * `soloVer(fila)`: la fila solo admite «Ver detalle» (p. ej. un registro
+ * anulado ya no se edita, no cambia de estado ni se elimina).
  */
 export default function DataTable({
   columns,
@@ -35,6 +38,7 @@ export default function DataTable({
   puedeEditarFila = () => true,
   /* Botones propios del modulo junto a "Ver detalle" y "Editar". */
   accionesExtra,
+  soloVer = () => false,
   onExportar,
   emptyText = 'No hay registros que coincidan con la búsqueda.',
 }) {
@@ -43,16 +47,6 @@ export default function DataTable({
   const [sort, setSort] = useState({ key: null, dir: 'asc' });
   const [page, setPage] = useState(1);
   const [openFilters, setOpenFilters] = useState(false);
-  const [menuExportar, setMenuExportar] = useState(false);
-  const refExportar = useRef(null);
-
-  /* Un clic fuera cierra el menu de exportacion. */
-  useEffect(() => {
-    if (!menuExportar) return undefined;
-    const fuera = (e) => { if (!refExportar.current?.contains(e.target)) setMenuExportar(false); };
-    document.addEventListener('mousedown', fuera);
-    return () => document.removeEventListener('mousedown', fuera);
-  }, [menuExportar]);
 
   /* Un rango con la fecha final antes de la inicial no se aplica. */
   const rangoInvalido = (v) => !!v?.desde && !!v?.hasta && v.hasta < v.desde;
@@ -116,7 +110,7 @@ export default function DataTable({
     });
     return out;
   };
-  const exportar = (formato) => { setMenuExportar(false); onExportar(formato, filtered, descripcionFiltros()); };
+  const exportar = () => onExportar(filtered, descripcionFiltros());
 
   const toggleSort = (key) =>
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
@@ -126,14 +120,16 @@ export default function DataTable({
   const mValue = columns.find((c) => c.mobile === 'value');
 
   const hayAcciones = !!(onView || onEdit || onDelete || accionesExtra);
-  const acciones = (r) => (
+  const acciones = (r) => (soloVer(r) ? (
+    onView && <button className="icon-btn is-view" onClick={() => onView(r)} title="Ver detalle"><Icon name="eye" size={16} /></button>
+  ) : (
     <>
       {onView && <button className="icon-btn is-view" onClick={() => onView(r)} title="Ver detalle"><Icon name="eye" size={16} /></button>}
       {onEdit && puedeEditarFila(r) && <button className="icon-btn is-edit" onClick={() => onEdit(r)} title="Editar"><Icon name="edit" size={16} /></button>}
       {accionesExtra && accionesExtra(r)}
       {onDelete && <button className="icon-btn is-delete" onClick={() => onDelete(r)} title="Eliminar"><Icon name="trash" size={16} /></button>}
     </>
-  );
+  ));
 
   return (
     <div className="card">
@@ -152,25 +148,12 @@ export default function DataTable({
         <div className="grow" />
 
         {onExportar && (
-          <>
-            <div className="dropdown" ref={refExportar}>
-              <button className="btn btn-sm" onClick={() => setMenuExportar((v) => !v)} aria-haspopup="menu" aria-expanded={menuExportar} title="Descargar lo que muestra la tabla">
-                <Icon name="download" size={15} /> Exportar <Icon name="chevD" size={13} />
-              </button>
-              {menuExportar && (
-                <div className="dropdown-menu" role="menu">
-                  <div className="caption" style={{ padding: '6px 11px 8px' }}>
-                    {filtered.length} {entidad}{activos || q.trim() ? ' (con los filtros aplicados)' : ''}
-                  </div>
-                  <button className="dropdown-item" role="menuitem" onClick={() => exportar('pdf')}><Icon name="receipt" size={16} /> Exportar a PDF</button>
-                  <button className="dropdown-item" role="menuitem" onClick={() => exportar('excel')}><Icon name="chart" size={16} /> Exportar a Excel</button>
-                </div>
-              )}
-            </div>
-            <button className="btn btn-sm btn-info" onClick={() => exportar('reporte')} title="Reporte en PDF con indicadores, resumen y detalle">
-              <Icon name="chart" size={15} /> Reporte
-            </button>
-          </>
+          <button
+            className="btn btn-sm btn-info" onClick={exportar}
+            title={`Reporte en Excel: ${filtered.length} ${entidad}${activos || q.trim() ? ' (con los filtros aplicados)' : ''}, con detalle y resumen`}
+          >
+            <Icon name="download" size={15} /> Exportar a Excel
+          </button>
         )}
 
         {onCreate && (

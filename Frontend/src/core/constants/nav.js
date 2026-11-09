@@ -10,7 +10,6 @@ export const NAV = [
     items: [
       { to: '/app/roles', icon: 'shield', label: 'Roles', permiso: 'Roles' },
       { to: '/app/usuarios', icon: 'user', label: 'Usuarios', permiso: 'Usuarios' },
-      { to: '/app/movimientos', icon: 'history', label: 'Movimientos', permiso: 'Movimientos' },
     ],
   },
   {
@@ -19,7 +18,7 @@ export const NAV = [
       { to: '/app/categorias-insumo', icon: 'category', label: 'Categorías de insumo', permiso: 'Categorías de insumo' },
       { to: '/app/insumos', icon: 'package', label: 'Insumos', permiso: 'Insumos' },
       { to: '/app/proveedores', icon: 'truck', label: 'Proveedores', permiso: 'Proveedores' },
-      { to: '/app/compras', icon: 'cart', label: 'Compras', permiso: 'Compras' },
+      { to: '/app/compras', icon: 'cart', label: 'Órdenes de pedido', permiso: 'Órdenes de pedido' },
       /* Los productos base (prenda + talla + tela) hacen parte del proceso de Compras. */
       { to: '/app/categorias-producto', icon: 'category', label: 'Categorías de producto', permiso: 'Categorías de producto' },
       { to: '/app/productos', icon: 'shirt', label: 'Productos', permiso: 'Productos' },
@@ -47,7 +46,7 @@ export const NAV = [
 /** Barra inferior movil (punto 4c): maximo 5 accesos. */
 export const BOTTOM = [
   { to: '/app', icon: 'home', label: 'Inicio', end: true },
-  { to: '/app/compras', icon: 'cart', label: 'Compras', permiso: 'Compras' },
+  { to: '/app/compras', icon: 'cart', label: 'Órdenes', permiso: 'Órdenes de pedido' },
   { to: '/app/abonos', icon: 'dollar', label: 'Abonos', permiso: 'Abonos' },
   { to: '/app/pedidos', icon: 'clipboard', label: 'Pedidos', permiso: ['Cotizaciones', 'Pedidos', 'Ventas'] },
   { to: '/app/cuenta', icon: 'user', label: 'Cuenta' },

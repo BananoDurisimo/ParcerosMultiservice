@@ -8,7 +8,9 @@ import { ESTADOS_REGISTRO } from '@core/constants/catalogos.js';
 import { money, fecha } from '@core/utils/formato.js';
 import { PAISES, PAIS_POR_DEFECTO } from '@core/constants/paises.js';
 
-/** Tabla `proveedor`: nombre, telefono, pais, id_tipo_insumo (el tipo de
+const TIPOS_PROVEEDOR = ['Persona natural', 'Persona jurídica'];
+
+/** Tabla `proveedor`: nombre, tipo_proveedor (natural o juridica), telefono, pais, id_tipo_insumo (el tipo de
  *  insumo que suministra) y estado. Los datos que se pedian antes (NIT,
  *  correo, direccion, persona de contacto) se conservan en la base de datos,
  *  pero ya no se piden ni se muestran. */
@@ -21,6 +23,7 @@ export default function Proveedores() {
     <div>
       <div className="detail-grid">
         <div className="detail-item"><div className="dl">Proveedor</div><div className="dv">{r.nombre}</div></div>
+        <div className="detail-item"><div className="dl">Tipo de proveedor</div><div className="dv">{r.tipo_proveedor}</div></div>
         <div className="detail-item"><div className="dl">Teléfono</div><div className="dv">{r.telefono || '—'}</div></div>
         <div className="detail-item"><div className="dl">País</div><div className="dv">{r.pais || '—'}</div></div>
         <div className="detail-item"><div className="dl">Tipo de insumo que suministra</div><div className="dv">{r.calc_tipo_insumo}</div></div>
@@ -38,12 +41,13 @@ export default function Proveedores() {
         ]}
       />
 
-      <h3 className="det-section">Historial de compras</h3>
+      <h3 className="det-section">Órdenes de pedido</h3>
       <MiniTabla
         filas={db.compras.filter((c) => c.id_proveedor === r.id).sort((a, b) => b.fecha.localeCompare(a.fecha))}
-        vacio="No se han registrado compras a este proveedor."
+        vacio="No se han registrado órdenes de pedido a este proveedor."
         columnas={[
-          { label: 'Compra', render: (c) => c.calc_codigo },
+          { label: 'Orden', render: (c) => c.calc_codigo },
+          { label: 'Factura', render: (c) => c.numero_factura || '—' },
           { label: 'Fecha', render: (c) => fecha(c.fecha) },
           { label: 'Insumos', render: (c) => <span className="caption">{c.calc_insumos_txt}</span> },
           { label: 'Total', align: 'right', render: (c) => <span className="money">{money(c.calc_total)}</span> },
@@ -63,32 +67,34 @@ export default function Proveedores() {
       renderDetalle={detalle}
       entidad="proveedores"
       singular="proveedor"
-      searchKeys={['nombre', 'telefono', 'pais', 'calc_tipo_insumo']}
+      searchKeys={['nombre', 'tipo_proveedor', 'telefono', 'pais', 'calc_tipo_insumo']}
       eliminacion={{
         validar: (r) => (r.calc_compras > 0
-          ? `${r.nombre} tiene ${r.calc_compras} compra(s) registradas. Para conservar el historial, desactívelo en lugar de eliminarlo.`
+          ? `${r.nombre} tiene ${r.calc_compras} orden(es) de pedido registradas. Para conservar el historial, desactívelo en lugar de eliminarlo.`
           : null),
       }}
       filtros={[
+        { key: 'tipo_proveedor', label: 'Tipo de proveedor', options: TIPOS_PROVEEDOR },
         { key: 'id_tipo_insumo', label: 'Tipo de insumo', options: tipos },
         { key: 'pais', label: 'País', options: paisesUsados },
         { key: 'estado', label: 'Estado', options: ESTADOS_REGISTRO },
       ]}
-      defaults={{ estado: 'Activo', pais: PAIS_POR_DEFECTO }}
+      defaults={{ estado: 'Activo', pais: PAIS_POR_DEFECTO, tipo_proveedor: 'Persona jurídica' }}
       columnas={[
-        { key: 'nombre', label: 'Proveedor', mobile: 'title', render: (r) => <span className="cell-main">{r.nombre}</span> },
+        { key: 'nombre', label: 'Proveedor', mobile: 'title', render: (r) => <div><div className="cell-main">{r.nombre}</div><div className="caption">{r.tipo_proveedor}</div></div> },
         { key: 'telefono', label: 'Teléfono', mobile: 'meta', render: (r) => <span className="muted row" style={{ gap: 6 }}><Icon name="phone" size={14} /> {r.telefono || '—'}</span> },
         { key: 'pais', label: 'País', mobile: 'meta', render: (r) => <span className="muted row" style={{ gap: 6 }}><Icon name="pin" size={14} /> {r.pais || '—'}</span> },
         { key: 'calc_tipo_insumo', label: 'Tipo de insumo', mobile: 'meta', render: (r) => <span className="badge badge-info">{r.calc_tipo_insumo}</span> },
-        { key: 'calc_compras', label: 'Compras', align: 'center', mobile: 'value', render: (r) => <span className="badge badge-neutral">{r.calc_compras}</span> },
+        { key: 'calc_compras', label: 'Órdenes', align: 'center', mobile: 'value', render: (r) => <span className="badge badge-neutral">{r.calc_compras}</span> },
         { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="proveedores" modulo="Proveedores" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[
         { name: 'nombre', label: 'Nombre del proveedor', type: 'text', required: true, noSpecial: true, unique: true, maxLength: 80, full: true },
+        { name: 'tipo_proveedor', label: 'Tipo de proveedor', type: 'select', options: TIPOS_PROVEEDOR, required: true, full: true },
         { name: 'telefono', label: 'Teléfono', type: 'tel', required: true, placeholder: 'Ej.: 2278 4410' },
         { name: 'pais', label: 'País', type: 'select', options: PAISES, required: true, buscarPlaceholder: 'Buscar país…' },
         { name: 'id_tipo_insumo', label: 'Tipo de insumo', type: 'select', options: tipos, required: true, full: true, hint: 'Lo que suministra este proveedor.' },
-        { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Un proveedor inactivo conserva su historial de compras, pero ya no se propone para compras nuevas.' },
+        { name: 'estado', label: 'Estado', type: 'switch', full: true, soloEditar: true, hint: 'Un proveedor inactivo conserva sus órdenes de pedido, pero ya no se propone para órdenes nuevas.' },
       ]}
     />
   );

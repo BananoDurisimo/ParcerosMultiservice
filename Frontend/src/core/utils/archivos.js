@@ -4,7 +4,12 @@
  *
  * No hay servidor de archivos: lo que el usuario sube se guarda como data URL
  * dentro del registro (columnas ruta_imagen_diseno y ruta_comprobante).
+ *
+ * GET /api/datos no trae los adjuntos: el registro llega con EN_SERVIDOR en
+ * su lugar y el archivo se descarga al abrirlo (useArchivo de DataContext).
+ * Al guardar, un campo que sigue en EN_SERVIDOR no se envia: se conserva.
  */
+export const EN_SERVIDOR = 'archivo:en-servidor';
 
 /* --------------------------------------------------------------
    Ver y descargar

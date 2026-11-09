@@ -7,15 +7,18 @@
  * - `modulos` son los permisos que dan acceso a la coleccion. Crear exige
  *   "Agregar", modificar exige "Editar", "Cambiar estado" o "Anular" y
  *   eliminar exige "Eliminar" en alguno de ellos.
+ * - `archivo`: columna con un adjunto (data URL de hasta 5 MB). No viaja en
+ *   GET /api/datos ni en las respuestas de escritura: se pide aparte con
+ *   GET /api/archivos/:coleccion/:id y exige alguna de sus `acciones`.
  */
 export const COLECCIONES = {
   clientes: {
     tabla: 'cliente', pk: 'id_cliente', modulos: ['Clientes'],
-    campos: ['id_tipo_documento', 'nombre', 'documento', 'telefono', 'correo', 'direccion', 'activo'],
+    campos: ['id_tipo_documento', 'pais', 'nombre', 'documento', 'telefono', 'correo', 'direccion', 'activo'],
   },
   proveedores: {
     tabla: 'proveedor', pk: 'id_proveedor', modulos: ['Proveedores'],
-    campos: ['id_tipo_insumo', 'nombre', 'telefono', 'pais', 'activo'],
+    campos: ['id_tipo_insumo', 'tipo_proveedor', 'nombre', 'telefono', 'pais', 'activo'],
   },
   insumos: {
     tabla: 'insumo', pk: 'id_insumo', modulos: ['Insumos'],
@@ -27,16 +30,18 @@ export const COLECCIONES = {
     campos: ['id_rol', 'id_tipo_documento', 'correo_empresarial', 'nombre_empleado', 'documento', 'telefono', 'cargo', 'fecha_ingreso', 'activo'],
   },
   compras: {
-    tabla: 'compra', pk: 'id_compra', modulos: ['Compras'],
-    campos: ['id_proveedor', 'id_estado_compra', 'fecha', 'fecha_entrega', 'motivo_anulacion'],
+    tabla: 'compra', pk: 'id_compra', modulos: ['Órdenes de pedido'],
+    campos: ['id_proveedor', 'id_estado_compra', 'numero_factura', 'fecha', 'fecha_entrega', 'motivo_anulacion'],
   },
   pedidos: {
     tabla: 'pedido', pk: 'id_pedido', modulos: ['Cotizaciones', 'Pedidos', 'Ventas', 'Abonos'],
     campos: ['id_cliente', 'id_estado_pedido', 'id_vendedor', 'fecha_creacion', 'fecha_inicio', 'fecha_entrega', 'descripcion', 'ruta_imagen_diseno'],
+    archivo: { columna: 'ruta_imagen_diseno', acciones: ['Ver diseño', 'Descargar diseño', 'Descargar cotización', 'Ver detalle'] },
   },
   abonos: {
     tabla: 'abono', pk: 'id_abono', modulos: ['Abonos', 'Cotizaciones', 'Pedidos', 'Ventas'],
     campos: ['id_pedido', 'id_metodo_pago', 'monto', 'fecha', 'ruta_comprobante', 'anulado', 'motivo_anulacion'],
+    archivo: { columna: 'ruta_comprobante', acciones: ['Ver comprobante', 'Descargar comprobante', 'Ver detalle'] },
   },
   tipos_insumo: {
     tabla: 'tipo_insumo', pk: 'id_tipo_insumo', modulos: ['Categorías de insumo'],

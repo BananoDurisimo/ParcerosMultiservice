@@ -4,14 +4,14 @@ import CrudPage from '@core/widgets/CrudPage.jsx';
 import KpiCard from '@core/widgets/ui/KpiCard.jsx';
 import Icon from '@core/widgets/Icon.jsx';
 import ConfirmDialog from '@core/widgets/ui/ConfirmDialog.jsx';
-import { useDescargas, ComprobanteModal } from '@presentation/widgets/ventas/Archivos.jsx';
+import { useDescargas, ComprobanteModal, ImagenAdjunta } from '@presentation/widgets/ventas/Archivos.jsx';
 import MontoAbono from '@presentation/widgets/ventas/MontoAbono.jsx';
 import { errorMonto } from '@domain/usecases/abonos.js';
 import { useData } from '@presentation/blocs/DataContext.jsx';
 import { consumoPedido } from '@domain/usecases/pedidos.js';
 import { useAuth } from '@presentation/blocs/AuthContext.jsx';
 import { useToast } from '@presentation/blocs/ToastContext.jsx';
-import { esImagen, esPdf } from '@core/utils/archivos.js';
+import { esPdf } from '@core/utils/archivos.js';
 import { agrupar } from '@core/utils/exportar.js';
 import {
   METODOS_PAGO,
@@ -352,7 +352,7 @@ export default function Abonos() {
               <div className="dv stack" style={{ gap: 8 }}>
                 {!r.url_comprobante ? 'Sin comprobante adjunto' : (
                   <>
-                    {esImagen(r.url_comprobante) && <img className="file-preview" src={r.url_comprobante} alt="Comprobante del abono" />}
+                    <ImagenAdjunta coleccion="abonos" registro={r} campo="url_comprobante" className="file-preview" alt="Comprobante del abono" />
                     {esPdf(r.url_comprobante) && <span>Documento PDF</span>}
                     <BotonesComprobante r={r} />
                   </>

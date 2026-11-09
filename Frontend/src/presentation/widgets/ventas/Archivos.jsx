@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Icon from '@core/widgets/Icon.jsx';
 import Modal from '@core/widgets/ui/Modal.jsx';
 import MiniTabla from '@core/widgets/ui/MiniTabla.jsx';
-import { useData } from '@presentation/blocs/DataContext.jsx';
+import { useData, useArchivo } from '@presentation/blocs/DataContext.jsx';
 import { useToast } from '@presentation/blocs/ToastContext.jsx';
 import { descargarArchivo, esImagen, esPdf } from '@core/utils/archivos.js';
 import { money, fecha } from '@core/utils/formato.js';
@@ -11,16 +11,31 @@ import { money, fecha } from '@core/utils/formato.js';
  *  del registro (PED-0004-diseno.png, AB-0012-comprobante.pdf). */
 export function useDescargas() {
   const toast = useToast();
+  const { resolverArchivo } = useData();
+  const bajar = async (col, r, campo, nombre) => {
+    try {
+      return await descargarArchivo(await resolverArchivo(col, r, campo), nombre);
+    } catch {
+      return false;
+    }
+  };
   return {
     descargarDiseno: async (r) => {
-      const ok = await descargarArchivo(r.imagen_diseno, `${r.calc_codigo}-mockup`);
+      const ok = await bajar('pedidos', r, 'imagen_diseno', `${r.calc_codigo}-mockup`);
       if (!ok) toast.error('No fue posible descargar el mockup. Intente nuevamente.', 'Error de descarga');
     },
     descargarComprobante: async (a) => {
-      const ok = await descargarArchivo(a.url_comprobante, `${a.calc_codigo}-comprobante`);
+      const ok = await bajar('abonos', a, 'url_comprobante', `${a.calc_codigo}-comprobante`);
       if (!ok) toast.error('No fue posible descargar el comprobante. Intente nuevamente.', 'Error de descarga');
     },
   };
+}
+
+/** Imagen de un adjunto que se descarga al mostrarla. */
+export function ImagenAdjunta({ coleccion, registro, campo, className, alt }) {
+  const { archivo, cargando } = useArchivo(coleccion, registro, campo);
+  if (cargando) return <p className="caption">Cargando la imagen…</p>;
+  return esImagen(archivo) ? <img className={className} src={archivo} alt={alt} /> : null;
 }
 
 /** Vista ampliada del diseño aprobado por el cliente. */
@@ -47,7 +62,7 @@ export function DisenoModal({ registro: r, onClose, puedeDescargar }) {
       {r && (
         <div>
           {r.imagen_diseno
-            ? <img className="diseno-full" src={r.imagen_diseno} alt={`Mockup de ${r.calc_codigo}`} />
+            ? <ImagenAdjunta coleccion="pedidos" registro={r} campo="imagen_diseno" className="diseno-full" alt={`Mockup de ${r.calc_codigo}`} />
             : <p className="caption">El registro no tiene imagen del mockup.</p>}
           <h3 className="det-section">Descripción de la personalización</h3>
           <div className="pedido-desc">{r.descripcion || '—'}</div>
@@ -65,7 +80,7 @@ export function DisenoModal({ registro: r, onClose, puedeDescargar }) {
  */
 export function ComprobanteModal({ abono: a, onClose, puedeDescargar }) {
   const { descargarComprobante } = useDescargas();
-  const archivo = a?.url_comprobante || '';
+  const { archivo, cargando } = useArchivo('abonos', a, 'url_comprobante', !!a);
   /* Los navegadores no muestran un PDF guardado como data URL dentro de la
      pagina: se convierte en blob mientras el modal esta abierto. */
   const [pdf, setPdf] = useState('');
@@ -91,7 +106,7 @@ export function ComprobanteModal({ abono: a, onClose, puedeDescargar }) {
       footer={
         <>
           <button className="btn" onClick={onClose}>Cerrar</button>
-          {puedeDescargar && archivo && (
+          {puedeDescargar && a?.url_comprobante && (
             <button className="btn btn-primary" onClick={() => descargarComprobante(a)}>
               <Icon name="download" size={16} /> Descargar comprobante
             </button>
@@ -110,7 +125,8 @@ export function ComprobanteModal({ abono: a, onClose, puedeDescargar }) {
           {esPdf(archivo) && (pdf
             ? <iframe className="comprobante-pdf" src={pdf} title={`Comprobante del abono ${a.calc_codigo}`} />
             : <p className="caption">Cargando el documento…</p>)}
-          {!archivo && <p className="caption">El abono no tiene comprobante adjunto.</p>}
+          {cargando && <p className="caption">Cargando el comprobante…</p>}
+          {!cargando && !archivo && <p className="caption">El abono no tiene comprobante adjunto.</p>}
         </div>
       )}
     </Modal>

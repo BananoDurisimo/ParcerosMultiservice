@@ -12,13 +12,6 @@ export const login = async (req, res, next) => {
 
 export const me = (req, res) => res.json({ user: req.user });
 
-export const logout = async (req, res, next) => {
-  try {
-    await auth.cerrarSesion(req.user);
-    res.status(204).end();
-  } catch (e) { next(e); }
-};
-
 export const cambiarClave = async (req, res, next) => {
   try {
     validarCambioClave(req.body);

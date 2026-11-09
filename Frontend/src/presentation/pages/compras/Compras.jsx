@@ -11,7 +11,7 @@ import { agrupar } from '@core/utils/exportar.js';
 
 const unidadDe = (i) => i?.calc_abreviatura || i?.calc_unidad || '';
 
-/** Tabla `compra` (id_proveedor, fecha, fecha_entrega, estado) con su detalle
+/** Modulo «Órdenes de pedido»: tabla `compra` (id_proveedor, numero_factura, fecha, fecha_entrega, estado) con su detalle
  *  detalle_compra_insumo (id_insumo, cantidad, precio_unitario).
  *
  *  Una compra mueve el inventario: al quedar "Recibida" sus lineas ingresan a
@@ -63,23 +63,24 @@ export default function Compras() {
   };
   const exportacion = {
     columnas: [
-      { titulo: 'Compra', valor: (r) => codigo(r), ancho: 62 },
+      { titulo: 'Orden', valor: (r) => codigo(r), ancho: 62 },
+      { titulo: 'N.º de factura', valor: (r) => r.numero_factura || '—', ancho: 80 },
       { titulo: 'Proveedor', valor: (r) => r.calc_proveedor, ancho: 140 },
-      { titulo: 'Fecha de realización', valor: (r) => fecha(r.fecha), ancho: 80 },
+      { titulo: 'Fecha de compra', valor: (r) => fecha(r.fecha), ancho: 80 },
       { titulo: 'Fecha de entrega', valor: (r) => fecha(r.fecha_entrega), ancho: 80 },
       { titulo: 'Insumos', valor: (r) => r.calc_insumos_txt || '—', ancho: 200 },
       { titulo: 'Total', valor: (r) => (r.estado === COMPRA_ANULADA ? 0 : r.calc_total), tipo: 'dinero', ancho: 90, total: true },
       { titulo: 'Estado', valor: (r) => r.estado, ancho: 70 },
     ],
     indicadores: (filas) => [
-      { etiqueta: 'Compras', valor: filas.length, tipo: 'numero', nota: `${filas.length - vigentes(filas).length} anulada(s)` },
+      { etiqueta: 'Órdenes de pedido', valor: filas.length, tipo: 'numero', nota: `${filas.length - vigentes(filas).length} anulada(s)` },
       { etiqueta: 'Total comprado', valor: suma(vigentes(filas), (r) => r.calc_total), tipo: 'dinero', nota: 'sin las anuladas' },
       { etiqueta: 'Recibidas', valor: filas.filter((r) => r.estado === 'Recibida').length, tipo: 'numero' },
       { etiqueta: 'En tránsito', valor: filas.filter((r) => r.estado === 'En tránsito').length, tipo: 'numero', nota: 'pendientes de llegar' },
     ],
     grupos: (filas) => [
-      { titulo: 'Por proveedor', columnas: ['Proveedor', 'Compras', 'Total'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(vigentes(filas), (r) => r.calc_proveedor, (r) => r.calc_total) },
-      { titulo: 'Por estado', columnas: ['Estado', 'Compras', 'Total'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.estado, (r) => (r.estado === COMPRA_ANULADA ? 0 : r.calc_total)) },
+      { titulo: 'Por proveedor', columnas: ['Proveedor', 'Órdenes', 'Total'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(vigentes(filas), (r) => r.calc_proveedor, (r) => r.calc_total) },
+      { titulo: 'Por estado', columnas: ['Estado', 'Órdenes', 'Total'], tipos: ['texto', 'numero', 'dinero'], filas: agrupar(filas, (r) => r.estado, (r) => (r.estado === COMPRA_ANULADA ? 0 : r.calc_total)) },
       { titulo: 'Insumos comprados', columnas: ['Insumo', 'Cantidad', 'Total'], tipos: ['texto', 'numero', 'dinero'], filas: porInsumo(filas) },
     ],
   };
@@ -87,9 +88,10 @@ export default function Compras() {
   const detalle = (r) => (
     <div>
       <div className="detail-grid">
-        <div className="detail-item"><div className="dl">Compra</div><div className="dv">{codigo(r)}</div></div>
+        <div className="detail-item"><div className="dl">Orden de pedido</div><div className="dv">{codigo(r)}</div></div>
+        <div className="detail-item"><div className="dl">N.º de factura</div><div className="dv">{r.numero_factura || '—'}</div></div>
         <div className="detail-item"><div className="dl">Proveedor</div><div className="dv">{r.calc_proveedor}</div></div>
-        <div className="detail-item"><div className="dl">Fecha de realización</div><div className="dv">{fecha(r.fecha)}</div></div>
+        <div className="detail-item"><div className="dl">Fecha de compra</div><div className="dv">{fecha(r.fecha)}</div></div>
         <div className="detail-item"><div className="dl">Fecha de entrega</div><div className="dv">{fecha(r.fecha_entrega)}</div></div>
         <div className="detail-item"><div className="dl">Estado</div><div className="dv"><Badge>{r.estado}</Badge></div></div>
         {r.estado === COMPRA_ANULADA && (
@@ -98,27 +100,27 @@ export default function Compras() {
       </div>
 
       <h3 className="det-section">Insumos adquiridos</h3>
-      <ItemsView lineas={r.detalle_insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" totalLabel="Total de la compra" unidad={unidad} />
+      <ItemsView lineas={r.detalle_insumos || []} opciones={insumos} itemKey="id_insumo" itemLabel="Insumo" totalLabel="Total de la orden" unidad={unidad} />
     </div>
   );
 
   return (
     <CrudPage
-      titulo="Compras"
-      subtitulo="Registro de compras de insumos a proveedores, con su fecha de realización y de entrega."
+      titulo="Órdenes de pedido"
+      subtitulo="Órdenes de pedido de insumos a proveedores, con su factura, fecha de compra y de entrega."
       icono="cart"
-      modulo="Compras"
+      modulo="Órdenes de pedido"
       coleccion="compras"
-      entidad="compras"
-      singular="compra"
-      searchKeys={['calc_proveedor', 'calc_insumos_txt']}
+      entidad="órdenes de pedido"
+      singular="orden de pedido"
+      searchKeys={['calc_codigo', 'numero_factura', 'calc_proveedor', 'calc_insumos_txt']}
       filtros={[
         { key: 'id_proveedor', label: 'Proveedor', options: proveedores },
         { key: 'calc_insumos', label: 'Insumo adquirido', options: insumosComprados },
-        { key: 'fecha', label: 'Fecha de realización', type: 'rango' },
+        { key: 'fecha', label: 'Fecha de compra', type: 'rango' },
         { key: 'estado', label: 'Estado', options: ESTADOS_COMPRA },
       ]}
-      defaults={{ detalle_insumos: [], estado: 'En tránsito', fecha: hoyISO(), fecha_entrega: '' }}
+      defaults={{ detalle_insumos: [], estado: 'En tránsito', numero_factura: '', fecha: hoyISO(), fecha_entrega: '' }}
       etiquetaRegistro={codigo}
       /* Las compras no se eliminan: quedan en el historial y, si hay que darlas
          de baja, se anulan (018). */
@@ -132,23 +134,23 @@ export default function Compras() {
         enAcciones: true,
         validar: (r) => {
           const faltan = insumosGastados(r);
-          return faltan ? `Los insumos de la compra ${codigo(r)} ya se usaron en producción (${faltan}): no se puede anular.` : null;
+          return faltan ? `Los insumos de la orden ${codigo(r)} ya se usaron en producción (${faltan}): no se puede anular.` : null;
         },
-        mensaje: (r) => `La compra ${codigo(r)} de ${r.calc_proveedor} quedará anulada: se conserva en el listado y en el historial, pero deja de sumar en los totales de compras.${r.estado === 'Recibida' ? ' Como ya fue recibida, sus insumos se retirarán del inventario.' : ''} No se puede deshacer.`,
+        mensaje: (r) => `La orden de pedido ${codigo(r)} de ${r.calc_proveedor} quedará anulada: se conserva en el listado, pero deja de sumar en los totales.${r.estado === 'Recibida' ? ' Como ya fue recibida, sus insumos se retirarán del inventario.' : ''} No se puede deshacer.`,
       }}
       /* Datos de la compra a la izquierda e insumos a la derecha. */
       columnasInvertidas
       resumen={[
-        <KpiCard key="a" label="Compras del mes" value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={stats.tendencias.compras} />,
-        <KpiCard key="b" label="Compras registradas" value={db.compras.length} icon="clipboard" tono="info" />,
+        <KpiCard key="a" label="Órdenes del mes" value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={stats.tendencias.compras} />,
+        <KpiCard key="b" label="Órdenes registradas" value={db.compras.length} icon="clipboard" tono="info" />,
         <KpiCard key="c" label="En tránsito" value={db.compras.filter((c) => c.estado === 'En tránsito').length} icon="truck" tono="warning" />,
       ]}
       renderDetalle={detalle}
       exportacion={exportacion}
       columnas={[
-        { key: 'id', label: 'Compra', mobile: 'title', render: (r) => <span className="cell-main">{codigo(r)}</span> },
+        { key: 'id', label: 'Orden', mobile: 'title', render: (r) => <div><div className="cell-main">{codigo(r)}</div><div className="caption">{r.numero_factura ? `Factura ${r.numero_factura}` : 'Sin factura'}</div></div> },
         { key: 'calc_proveedor', label: 'Proveedor', mobile: 'meta', render: (r) => r.calc_proveedor },
-        { key: 'fecha', label: 'Fecha de realización', mobile: 'meta', render: (r) => <span className="caption">{fecha(r.fecha)}</span> },
+        { key: 'fecha', label: 'Fecha de compra', mobile: 'meta', render: (r) => <span className="caption">{fecha(r.fecha)}</span> },
         { key: 'fecha_entrega', label: 'Fecha de entrega', render: (r) => <span className="caption">{fecha(r.fecha_entrega)}</span> },
         { key: 'calc_lineas', label: 'Insumos', align: 'center', render: (r) => <span className="badge badge-neutral">{r.calc_lineas}</span> },
         { key: 'calc_total', label: 'Total', align: 'right', mobile: 'value', render: (r) => <span className="money">{money(r.calc_total)}</span> },
@@ -161,7 +163,7 @@ export default function Compras() {
             <EstadoCell
               row={r}
               coleccion="compras"
-              modulo="Compras"
+              modulo="Órdenes de pedido"
               nombre={codigo(r)}
               options={ESTADOS_COMPRA_ACTIVOS}
               comoLista
@@ -172,21 +174,25 @@ export default function Compras() {
         },
       ]}
       campos={[
-        { name: 'sec_datos', type: 'custom', full: true, render: () => <div className="form-section"><Icon name="clipboard" size={15} /> Datos de la compra</div> },
+        { name: 'sec_datos', type: 'custom', full: true, render: () => <div className="form-section"><Icon name="clipboard" size={15} /> Datos de la orden</div> },
         { name: 'id_proveedor', label: 'Proveedor', type: 'select', options: proveedores, required: true, full: true, buscarPlaceholder: 'Buscar proveedor…' },
         {
           name: 'estado', label: 'Estado', type: 'select', options: ESTADOS_COMPRA_ACTIVOS, required: true, full: true,
           hint: 'Al marcarla como recibida, sus insumos ingresan a las existencias.',
         },
-        { name: 'fecha', label: 'Fecha de realización', type: 'date', required: true, maxHoy: true },
+        {
+          name: 'numero_factura', label: 'Número de factura', type: 'text', required: true, maxLength: 30,
+          placeholder: 'Ej.: FAC-001245', hint: 'El número que trae la factura del proveedor.',
+        },
+        { name: 'fecha', label: 'Fecha de compra', type: 'date', required: true, maxHoy: true, hint: 'El día en que se compró.' },
         {
           name: 'fecha_entrega', label: 'Fecha de entrega', type: 'date',
           hint: 'Opcional: complétela cuando el pedido llegue.',
         },
         {
-          name: 'detalle_insumos', label: 'Insumos que se compran', type: 'items', required: true, col: 'izq',
+          name: 'detalle_insumos', label: 'Insumos de la orden', type: 'items', required: true, col: 'izq',
           itemKey: 'id_insumo', itemLabel: 'Insumo', options: insumos, decimales: true,
-          precioSugerido: precioInsumo, unidad, totalLabel: 'Total de la compra',
+          precioSugerido: precioInsumo, unidad, totalLabel: 'Total de la orden',
           hint: 'Indique la cantidad y lo que se pagó por cada insumo. Al elegirlo se sugiere el precio de su última compra; puede ajustarlo.',
         },
       ]}
@@ -195,7 +201,7 @@ export default function Compras() {
           return { estado: 'Una compra recibida no puede volver a «En tránsito». Si hubo un error, anúlela.' };
         }
         if (v.fecha && v.fecha_entrega && v.fecha_entrega < v.fecha) {
-          return { fecha_entrega: 'La fecha de entrega no puede ser anterior a la fecha de la compra.' };
+          return { fecha_entrega: 'La fecha de entrega no puede ser anterior a la fecha de compra.' };
         }
         if (v.estado === 'Recibida' && v.fecha_entrega && v.fecha_entrega > hoyISO()) {
           return { fecha_entrega: 'Una compra recibida no puede tener la fecha de entrega en el futuro.' };

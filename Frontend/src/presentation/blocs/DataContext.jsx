@@ -3,6 +3,7 @@ import { leerToken } from '@data/datasources/sesionLocal.js';
 import * as datosRepo from '@data/repositories/datosRepository.js';
 import * as authRepo from '@data/repositories/authRepository.js';
 import { aServidor } from '@data/mappers/adaptador.js';
+import { EN_SERVIDOR } from '@core/utils/archivos.js';
 import { VACIO } from '@data/models/colecciones.js';
 import { useToast } from '@presentation/blocs/ToastContext.jsx';
 import {
@@ -13,14 +14,9 @@ import {
   COTIZACION,
   EN_PROCESO,
   FALTA_PAGO,
-  COMPLETADO,
-  ENTREGADO,
   COMPRA_ANULADA,
 } from '@core/constants/catalogos.js';
-import { MODULOS_AUDITADOS, ETIQUETA_ACCION } from '@core/constants/movimientos.js';
-import { camposCambiados } from '@domain/usecases/movimientos.js';
 import {
-  etiquetaFila,
   codigoCompra,
   codigoPedido,
   codigoAbono,
@@ -64,7 +60,7 @@ export function DataProvider({ children }) {
      Cada escritura se ve en pantalla al instante y se envia a la API en una
      cola, una tras otra y en el mismo orden. Al vaciarse la cola se vuelve a
      leer todo, para tomar lo que calcula la base de datos (ids definitivos,
-     existencias, historial). Si el servidor rechaza un cambio, se avisa y se
+     existencias). Si el servidor rechaza un cambio, se avisa y se
      recargan los datos, con lo que la pantalla vuelve a lo guardado.
 
      Solo la primera carga (al iniciar sesion o al abrir la pagina) muestra
@@ -155,7 +151,7 @@ export function DataProvider({ children }) {
     return max + 1;
   }, []);
 
-  /* Cada cambio se ve al instante; existencias e historial los recalcula la
+  /* Cada cambio se ve al instante; las existencias las recalcula la
      base de datos y llegan con la recarga que sigue a la cola. */
   const create = useCallback((col, row) => {
     const creado = { ...row, id: row.id ?? nuevoId(col) };
@@ -168,14 +164,32 @@ export function DataProvider({ children }) {
     return creado;
   }, [nuevoId, aplicar, sincronizar]);
 
+  /* --------------------------------------------------------------
+     Adjuntos (diseño y comprobante): se descargan al abrirlos y quedan en
+     memoria, para no volver a pedirlos en la misma sesion.
+     -------------------------------------------------------------- */
+  const archivos = useRef(new Map());
+  const resolverArchivo = useCallback((col, r, campo) => {
+    const v = r?.[campo] || '';
+    if (v !== EN_SERVIDOR) return Promise.resolve(v);
+    const k = `${col}:${r.id}`;
+    if (!archivos.current.has(k)) {
+      archivos.current.set(k, datosRepo.cargarArchivo(col, r.id).catch((e) => { archivos.current.delete(k); throw e; }));
+    }
+    return archivos.current.get(k);
+  }, []);
+
   const update = useCallback((col, id, patch) => {
     const previo = rawRef.current[col].find((r) => r.id === id);
     if (!previo) return;
+    /* Un adjunto nuevo reemplaza al que estaba en memoria. */
+    if ('imagen_diseno' in patch || 'url_comprobante' in patch) archivos.current.delete(`${col}:${id}`);
     sincronizar(() => datosRepo.actualizarRegistro(col, sid(col, id), cuerpo(col, { ...previo, ...patch })));
     aplicar((d) => ({ ...d, [col]: d[col].map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
   }, [aplicar, sincronizar, sid]);
 
   const remove = useCallback((col, id) => {
+    archivos.current.delete(`${col}:${id}`);
     sincronizar(() => datosRepo.eliminarRegistro(col, sid(col, id)));
     aplicar((d) => ({ ...d, [col]: d[col].filter((r) => r.id !== id) }));
   }, [aplicar, sincronizar, sid]);
@@ -205,7 +219,6 @@ export function DataProvider({ children }) {
     const insumosM = porId(raw.insumos);
     const proveedoresM = porId(raw.proveedores);
     const clientesM = porId(raw.clientes);
-    const usuariosM = porId(raw.usuarios);
     const tallasM = porId(raw.tallas);
     const categoriasM = porId(raw.categorias_producto);
 
@@ -273,11 +286,10 @@ export function DataProvider({ children }) {
       const total = redondear(totalProductos + totalInsumos);
       const abonos = abonosPorPedido.get(p.id) || [];
       const abonado = redondear(suma(abonos, (a) => a.monto));
-      /* La venta cuenta desde que el pedido terminado queda pagado
-         («Pedido completado»), no desde la entrega: su fecha es la ultima vez
-         que llego a ese estado (si se anulo un abono pudo volver atras). */
-      const vendido = p.estado === COMPLETADO || p.estado === ENTREGADO;
-      const pagado = [...(p.historial_estados || [])].reverse().find((h) => h.estado === COMPLETADO)?.fecha;
+      /* Abonar es vender: el registro cuenta como venta desde su primer abono
+         vigente, y esa es su fecha de venta. */
+      const vendido = abonos.length > 0;
+      const primerAbono = abonos.map((a) => a.fecha).filter(Boolean).sort()[0];
       return {
         ...p,
         calc_codigo: codigoPedido(p.id),
@@ -289,7 +301,7 @@ export function DataProvider({ children }) {
         calc_abonos: abonos.length,
         calc_abono_inicial: abonos.length ? 'Registrado' : 'Pendiente',
         calc_vendido: vendido,
-        calc_fecha_venta: vendido ? (pagado || p.fecha_entrega || p.fecha_inicio || '') : '',
+        calc_fecha_venta: vendido ? (primerAbono || p.fecha_inicio || '') : '',
         /* Una cotizacion vale hasta el 31 de diciembre del año en que se creo;
            vencida, ya no recibe abonos ni pasa a pedido (la base de datos
            tambien lo impide, 013). */
@@ -329,15 +341,6 @@ export function DataProvider({ children }) {
     const productosPorCategoria = cuenta(raw.productos, 'id_categoria_producto');
     const pedidosPorProducto = new Map();
     raw.pedidos.forEach((p) => (p.productos || []).forEach((l) => pedidosPorProducto.set(l.id_producto, (pedidosPorProducto.get(l.id_producto) || 0) + 1)));
-
-    /* Nombre con que se muestra el registro afectado de un movimiento. */
-    const registroMovimiento = (m) => {
-      if (m.tabla === 'compra') return codigoCompra(m.id_registro);
-      if (m.tabla === 'pedido') return codigoPedido(m.id_registro);
-      if (m.tabla === 'abono') return codigoAbono(m.id_registro);
-      const e = etiquetaFila(m.valor_nuevo || m.valor_anterior || {});
-      return e === '—' ? `#${m.id_registro}` : e;
-    };
 
     return {
       // catálogos
@@ -392,25 +395,6 @@ export function DataProvider({ children }) {
 
       pedidos,
       abonos,
-
-      /* Historial: solo lectura. Se resuelve el modulo, el responsable y el
-         registro afectado (el nombre sale del propio JSON guardado, porque la
-         fila original pudo haberse eliminado). */
-      movimientos: raw.movimientos.map((m) => {
-        const u = usuariosM.get(m.id_usuario);
-        const cambios = camposCambiados(m.valor_anterior, m.valor_nuevo);
-        return {
-          ...m,
-          calc_modulo: MODULOS_AUDITADOS[m.tabla] || m.tabla,
-          calc_accion: ETIQUETA_ACCION[m.accion] || m.accion,
-          calc_usuario: u?.nombre_empleado || 'Sistema',
-          calc_alias: u?.correo_empresarial || '—',
-          calc_registro: registroMovimiento(m),
-          calc_cambios: cambios,
-          calc_total_cambios: cambios.length,
-          calc_fecha: m.fecha_cambio.slice(0, 10),
-        };
-      }),
     };
   }, [raw]);
 
@@ -488,7 +472,7 @@ export function DataProvider({ children }) {
 
     const enRango = (f, r) => !!f && f >= r.desde && f <= r.hasta;
     const pedidosDe = (r) => db.pedidos.filter((p) => p.estado !== COTIZACION && enRango(p.fecha_inicio, r));
-    /* Ventas: pedidos terminados y pagados, por la fecha en que se pagaron. */
+    /* Ventas: registros con abono, por la fecha de su primer abono. */
     const ventasDe = (r) => db.pedidos.filter((p) => p.calc_vendido && enRango(p.calc_fecha_venta, r));
     const comprasDe = (r) => db.compras.filter((c) => enRango(c.fecha, r) && c.estado !== COMPRA_ANULADA);
     const abonosDe = (r) => db.abonos.filter((a) => a.estado !== 'Anulado' && enRango(a.fecha, r));
@@ -604,9 +588,9 @@ export function DataProvider({ children }) {
       .forEach((c) =>
         out.push({
           id: 'cmp' + c.id,
-          permiso: 'Compras',
+          permiso: 'Órdenes de pedido',
           tipo: 'success',
-          titulo: 'Compra en tránsito',
+          titulo: 'Orden de pedido en tránsito',
           texto: `${c.calc_codigo} — ${c.calc_proveedor}.`,
           tiempo: 'Ayer',
         })
@@ -617,7 +601,7 @@ export function DataProvider({ children }) {
   return (
     <DataContext.Provider
       value={{
-        db, opciones, create, update, remove, nuevoId, faltantes, expandirReceta, stats, getStats, notificaciones,
+        db, opciones, create, update, remove, nuevoId, faltantes, expandirReceta, stats, getStats, notificaciones, resolverArchivo,
         solicitarRecuperacion, enlaceValido, restablecerClave,
         estadoDatos, errorDatos, cargar, vaciar, sincronizando,
       }}
@@ -628,3 +612,23 @@ export function DataProvider({ children }) {
 }
 
 export const useData = () => useContext(DataContext);
+
+/**
+ * Adjunto de un registro listo para mostrar: { archivo, cargando }.
+ * `activo = false` (p. ej. un modal cerrado) no descarga nada.
+ */
+export function useArchivo(col, r, campo, activo = true) {
+  const { resolverArchivo } = useData();
+  const v = r?.[campo] || '';
+  const [archivo, setArchivo] = useState(v === EN_SERVIDOR ? null : v);
+  useEffect(() => {
+    if (v !== EN_SERVIDOR) { setArchivo(v); return undefined; }
+    if (!activo) return undefined;
+    let vigente = true;
+    setArchivo(null);
+    resolverArchivo(col, r, campo).then((a) => vigente && setArchivo(a)).catch(() => vigente && setArchivo(''));
+    return () => { vigente = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [col, r?.id, v, activo]);
+  return { archivo: archivo || '', cargando: v === EN_SERVIDOR && archivo === null };
+}

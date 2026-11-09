@@ -11,12 +11,18 @@
  *  ruta_imagen_diseno        ->  imagen_diseno
  *  ruta_comprobante          ->  url_comprobante
  *  NULL                      ->  '' (los formularios trabajan con texto)
+ *  tiene_diseno/comprobante  ->  EN_SERVIDOR (el adjunto se pide al abrirlo)
  */
 
 import { PK } from '@data/models/colecciones.js';
+import { EN_SERVIDOR } from '@core/utils/archivos.js';
 
 const estado = (activo) => (activo === false ? 'Inactivo' : 'Activo');
 const texto = (v) => (v === null || v === undefined ? '' : v);
+/* Adjunto que llega sin contenido: solo se sabe si existe. */
+const adjunto = (existe) => (existe ? EN_SERVIDOR : '');
+/* Un adjunto sin cambios no se envia (undefined no viaja en el JSON). */
+const subir = (v) => (v === EN_SERVIDOR ? undefined : v);
 const nombrePorId = (lista, campo, id) => lista.find((x) => x[campo] === id)?.nombre ?? '';
 const idPorNombre = (lista, campo, nombre) => lista.find((x) => x.nombre === nombre)?.[campo] ?? null;
 
@@ -66,7 +72,7 @@ function aFrontend(col, f, cat) {
       return {
         ...base, id_cliente: f.id_cliente, estado: nombrePorId(cat.estados_pedido, 'id_estado_pedido', f.id_estado_pedido),
         fecha_creacion: texto(f.fecha_creacion), fecha_inicio: texto(f.fecha_inicio), fecha_entrega: texto(f.fecha_entrega),
-        descripcion: texto(f.descripcion), imagen_diseno: texto(f.ruta_imagen_diseno),
+        descripcion: texto(f.descripcion), imagen_diseno: adjunto(f.tiene_diseno),
         productos: (f.productos || []).map((l) => {
           const cantidad = Number(l.cantidad);
           const precio = Number(l.precio_unitario);
@@ -85,7 +91,7 @@ function aFrontend(col, f, cat) {
     case 'abonos':
       return {
         ...base, id_pedido: f.id_pedido, monto: Number(f.monto), fecha: texto(f.fecha),
-        metodo_pago: nombrePorId(cat.metodos_pago, 'id_metodo_pago', f.id_metodo_pago), url_comprobante: texto(f.ruta_comprobante),
+        metodo_pago: nombrePorId(cat.metodos_pago, 'id_metodo_pago', f.id_metodo_pago), url_comprobante: adjunto(f.tiene_comprobante),
         estado: f.anulado ? 'Anulado' : 'Vigente', motivo_anulacion: texto(f.motivo_anulacion),
       };
     case 'categorias_producto':
@@ -169,7 +175,7 @@ export function aServidor(col, r, cat, sid) {
       return {
         id_cliente: sid('clientes', r.id_cliente), id_estado_pedido: idPorNombre(cat.estados_pedido, 'id_estado_pedido', r.estado),
         fecha_creacion: r.fecha_creacion, fecha_inicio: r.fecha_inicio, fecha_entrega: r.fecha_entrega,
-        descripcion: r.descripcion, ruta_imagen_diseno: r.imagen_diseno,
+        descripcion: r.descripcion, ruta_imagen_diseno: subir(r.imagen_diseno),
         productos: (r.productos || []).map((l) => ({
           id_producto: sid('productos', l.id_producto), cantidad: l.cantidad, precio_unitario: l.precio_unitario, defectuosas: Number(l.defectuosas) || 0,
         })),
@@ -179,7 +185,7 @@ export function aServidor(col, r, cat, sid) {
     case 'abonos':
       return {
         id_pedido: sid('pedidos', r.id_pedido), id_metodo_pago: idPorNombre(cat.metodos_pago, 'id_metodo_pago', r.metodo_pago),
-        monto: r.monto, fecha: r.fecha, ruta_comprobante: r.url_comprobante,
+        monto: r.monto, fecha: r.fecha, ruta_comprobante: subir(r.url_comprobante),
         anulado: r.estado === 'Anulado', motivo_anulacion: r.motivo_anulacion,
       };
     case 'categorias_producto':

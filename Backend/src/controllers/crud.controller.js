@@ -6,6 +6,13 @@ import { validarCreacion, validarEliminacion } from '../validators/crud.validato
 
 /* POST /api/:coleccion, PUT /api/:coleccion/:id y DELETE /api/:coleccion/:id. */
 
+/* La fila guardada sin su adjunto: el frontend ya lo tiene y pesa hasta 5 MB. */
+const sinArchivo = (cfg, fila) => {
+  if (!cfg.archivo || !fila) return fila;
+  const { [cfg.archivo.columna]: _, ...resto } = fila;
+  return resto;
+};
+
 const modeloDe = (coleccion) => {
   const cfg = COLECCIONES[coleccion];
   if (!cfg) throw new HttpError(404, 'Ruta no encontrada.');
@@ -18,7 +25,7 @@ export const crear = async (req, res, next) => {
     const cfg = modeloDe(coleccion);
     if (!puede(req.user, cfg.modulos, AGREGAR)) throw prohibido();
     validarCreacion(coleccion, req.body);
-    res.status(201).json(await crud.crear(coleccion, cfg, req.body, req.user));
+    res.status(201).json(sinArchivo(cfg, await crud.crear(coleccion, cfg, req.body, req.user)));
   } catch (e) { next(e); }
 };
 
@@ -33,7 +40,7 @@ export const modificar = async (req, res, next) => {
       if (coleccion !== 'usuarios' || id !== req.user.id_usuario) throw prohibido();
       campos = PERFIL;
     }
-    res.json(await crud.modificar(coleccion, cfg, id, req.body, req.user, campos));
+    res.json(sinArchivo(cfg, await crud.modificar(coleccion, cfg, id, req.body, req.user, campos)));
   } catch (e) { next(e); }
 };
 

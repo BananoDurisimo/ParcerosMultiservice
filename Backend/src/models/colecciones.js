@@ -7,6 +7,9 @@
  * - `modulos` son los permisos que dan acceso a la coleccion. Crear exige
  *   "Agregar", modificar exige "Editar", "Cambiar estado" o "Anular" y
  *   eliminar exige "Eliminar" en alguno de ellos.
+ * - `archivo`: columna con un adjunto (data URL de hasta 5 MB). No viaja en
+ *   GET /api/datos ni en las respuestas de escritura: se pide aparte con
+ *   GET /api/archivos/:coleccion/:id y exige alguna de sus `acciones`.
  */
 export const COLECCIONES = {
   clientes: {
@@ -33,10 +36,12 @@ export const COLECCIONES = {
   pedidos: {
     tabla: 'pedido', pk: 'id_pedido', modulos: ['Cotizaciones', 'Pedidos', 'Ventas', 'Abonos'],
     campos: ['id_cliente', 'id_estado_pedido', 'id_vendedor', 'fecha_creacion', 'fecha_inicio', 'fecha_entrega', 'descripcion', 'ruta_imagen_diseno'],
+    archivo: { columna: 'ruta_imagen_diseno', acciones: ['Ver diseño', 'Descargar diseño', 'Descargar cotización', 'Ver detalle'] },
   },
   abonos: {
     tabla: 'abono', pk: 'id_abono', modulos: ['Abonos', 'Cotizaciones', 'Pedidos', 'Ventas'],
     campos: ['id_pedido', 'id_metodo_pago', 'monto', 'fecha', 'ruta_comprobante', 'anulado', 'motivo_anulacion'],
+    archivo: { columna: 'ruta_comprobante', acciones: ['Ver comprobante', 'Descargar comprobante', 'Ver detalle'] },
   },
   tipos_insumo: {
     tabla: 'tipo_insumo', pk: 'id_tipo_insumo', modulos: ['Categorías de insumo'],

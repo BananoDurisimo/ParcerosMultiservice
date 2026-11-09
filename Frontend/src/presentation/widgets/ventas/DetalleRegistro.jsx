@@ -3,7 +3,7 @@ import Badge from '@core/widgets/ui/Badge.jsx';
 import MiniTabla from '@core/widgets/ui/MiniTabla.jsx';
 import { ItemsView } from '@core/widgets/ui/Form.jsx';
 import { useData } from '@presentation/blocs/DataContext.jsx';
-import { TablaAbonos, useDescargas } from '@presentation/widgets/ventas/Archivos.jsx';
+import { TablaAbonos, useDescargas, ImagenAdjunta } from '@presentation/widgets/ventas/Archivos.jsx';
 import { gastoInsumos, defectosInsumos, sumarLineas } from '@domain/usecases/pedidos.js';
 import { ESTADOS_PEDIDO, FALTA_PAGO } from '@core/constants/catalogos.js';
 import { money, fecha } from '@core/utils/formato.js';
@@ -116,7 +116,7 @@ export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
       {r.imagen_diseno ? (
         /* La imagen centrada y sus botones debajo. */
         <div className="mockup-detalle">
-          <img className="diseno-thumb" src={r.imagen_diseno} alt={`Diseño de ${r.calc_codigo}`} />
+          <ImagenAdjunta coleccion="pedidos" registro={r} campo="imagen_diseno" className="diseno-thumb" alt={`Diseño de ${r.calc_codigo}`} />
           <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
             {acciones.verDiseno && (
               <button className="btn btn-sm" onClick={() => onVerDiseno(r)}><Icon name="image" size={15} /> Ver mockup</button>

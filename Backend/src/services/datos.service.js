@@ -1,4 +1,5 @@
 import { query } from '../config/db.js';
+import { HttpError, noEncontrado } from '../errors/HttpError.js';
 
 /*
  * GET /api/datos
@@ -7,6 +8,11 @@ import { query } from '../config/db.js';
  * peticion: el servidor de Render tarda en despertar y varias peticiones
  * seguidas multiplicarian la espera. Devuelve las tablas con sus nombres de
  * la base de datos; el frontend las traduce en src/data/mappers/adaptador.js.
+ *
+ * Los adjuntos (diseño del pedido y comprobante del abono) no viajan aqui:
+ * solo `tiene_diseno` / `tiene_comprobante`. Son data URL de hasta 5 MB y el
+ * frontend vuelve a pedir estos datos tras cada cambio; enviarlos cada vez
+ * agotaba la transferencia del servidor. Se piden con obtenerArchivo().
  */
 const CONSULTAS = {
   permisos: 'SELECT * FROM permiso ORDER BY id_permiso',
@@ -53,7 +59,8 @@ const CONSULTAS = {
     FROM producto pr ORDER BY pr.id_producto DESC`,
 
   pedidos: `
-    SELECT p.*,
+    SELECT p.id_pedido, p.id_cliente, p.id_estado_pedido, p.id_vendedor, p.fecha_creacion, p.fecha_inicio,
+      p.fecha_entrega, p.descripcion, COALESCE(p.ruta_imagen_diseno, '') <> '' AS tiene_diseno,
       COALESCE((SELECT json_agg(json_build_object('id_insumo', d.id_insumo, 'cantidad', d.cantidad, 'precio_unitario', d.precio_unitario, 'de_receta', d.de_receta, 'defectuosas', d.defectuosas) ORDER BY d.id_insumo)
                 FROM detalle_pedido_insumo d WHERE d.id_pedido = p.id_pedido), '[]') AS insumos,
       COALESCE((SELECT json_agg(json_build_object('id_producto', d.id_producto, 'cantidad', d.cantidad, 'precio_unitario', d.precio_unitario, 'defectuosas', d.defectuosas) ORDER BY d.id_producto)
@@ -62,7 +69,10 @@ const CONSULTAS = {
                 FROM historial_estado_pedido h WHERE h.id_pedido = p.id_pedido), '[]') AS historial
     FROM pedido p ORDER BY p.id_pedido DESC`,
 
-  abonos: 'SELECT * FROM abono ORDER BY id_abono DESC',
+  abonos: `
+    SELECT id_abono, id_pedido, id_metodo_pago, monto, fecha, anulado, motivo_anulacion,
+      COALESCE(ruta_comprobante, '') <> '' AS tiene_comprobante
+    FROM abono ORDER BY id_abono DESC`,
 };
 
 /** Todas las consultas en paralelo: { permisos: [...], roles: [...], ... }. */
@@ -70,4 +80,12 @@ export async function obtenerDatos() {
   const nombres = Object.keys(CONSULTAS);
   const resultados = await Promise.all(nombres.map((n) => query(CONSULTAS[n])));
   return Object.fromEntries(nombres.map((n, i) => [n, resultados[i].rows]));
+}
+
+/** GET /api/archivos/:coleccion/:id: el adjunto de un registro ('' si no tiene). */
+export async function obtenerArchivo(cfg, id) {
+  if (!cfg?.archivo) throw new HttpError(404, 'Ruta no encontrada.');
+  const { rows: [fila] } = await query(`SELECT ${cfg.archivo.columna} AS archivo FROM ${cfg.tabla} WHERE ${cfg.pk}=$1`, [id]);
+  if (!fila) throw noEncontrado();
+  return { archivo: fila.archivo || '' };
 }

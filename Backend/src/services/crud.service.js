@@ -7,8 +7,7 @@ import { notificarEstadoPedido } from './correo.service.js';
 
 /*
  * Escritura de todos los modulos. Cada operacion corre en una transaccion con
- * el usuario de la peticion, para que los triggers de auditoria e inventario
- * lo registren.
+ * el usuario de la peticion, para que los triggers de inventario lo registren.
  */
 
 const insertar = async (db, cfg, data) => {

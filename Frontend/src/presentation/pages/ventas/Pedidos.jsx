@@ -82,7 +82,7 @@ const conSubtotal = (l) => {
 const listaFaltantes = (faltan) => faltan.map((f) => `${f.nombre} (se piden ${f.pide} y hay ${f.hay})`).join('; ');
 
 export default function Pedidos() {
-  const { db, opciones, create, update, remove, nuevoId, faltantes, expandirReceta } = useData();
+  const { db, opciones, create, update, remove, nuevoId, faltantes, expandirReceta, resolverArchivo } = useData();
   const { puede, puedeAccion } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
@@ -118,7 +118,8 @@ export default function Pedidos() {
   /* PDF de la cotizacion para entregar al cliente. */
   const bajarCotizacion = async (r) => {
     try {
-      await descargarCotizacion(r, db);
+      /* El mockup va dentro del PDF: se descarga antes si no esta en memoria. */
+      await descargarCotizacion({ ...r, imagen_diseno: await resolverArchivo('pedidos', r, 'imagen_diseno') }, db);
       toast.success(`Se descargó la cotización ${r.calc_codigo}.`, 'Cotización lista');
     } catch {
       toast.error('No fue posible generar el PDF de la cotización. Intente nuevamente.', 'Error de descarga');

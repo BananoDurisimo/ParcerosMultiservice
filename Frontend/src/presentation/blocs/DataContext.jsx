@@ -3,6 +3,7 @@ import { leerToken } from '@data/datasources/sesionLocal.js';
 import * as datosRepo from '@data/repositories/datosRepository.js';
 import * as authRepo from '@data/repositories/authRepository.js';
 import { aServidor } from '@data/mappers/adaptador.js';
+import { EN_SERVIDOR } from '@core/utils/archivos.js';
 import { VACIO } from '@data/models/colecciones.js';
 import { useToast } from '@presentation/blocs/ToastContext.jsx';
 import {
@@ -163,14 +164,32 @@ export function DataProvider({ children }) {
     return creado;
   }, [nuevoId, aplicar, sincronizar]);
 
+  /* --------------------------------------------------------------
+     Adjuntos (diseño y comprobante): se descargan al abrirlos y quedan en
+     memoria, para no volver a pedirlos en la misma sesion.
+     -------------------------------------------------------------- */
+  const archivos = useRef(new Map());
+  const resolverArchivo = useCallback((col, r, campo) => {
+    const v = r?.[campo] || '';
+    if (v !== EN_SERVIDOR) return Promise.resolve(v);
+    const k = `${col}:${r.id}`;
+    if (!archivos.current.has(k)) {
+      archivos.current.set(k, datosRepo.cargarArchivo(col, r.id).catch((e) => { archivos.current.delete(k); throw e; }));
+    }
+    return archivos.current.get(k);
+  }, []);
+
   const update = useCallback((col, id, patch) => {
     const previo = rawRef.current[col].find((r) => r.id === id);
     if (!previo) return;
+    /* Un adjunto nuevo reemplaza al que estaba en memoria. */
+    if ('imagen_diseno' in patch || 'url_comprobante' in patch) archivos.current.delete(`${col}:${id}`);
     sincronizar(() => datosRepo.actualizarRegistro(col, sid(col, id), cuerpo(col, { ...previo, ...patch })));
     aplicar((d) => ({ ...d, [col]: d[col].map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
   }, [aplicar, sincronizar, sid]);
 
   const remove = useCallback((col, id) => {
+    archivos.current.delete(`${col}:${id}`);
     sincronizar(() => datosRepo.eliminarRegistro(col, sid(col, id)));
     aplicar((d) => ({ ...d, [col]: d[col].filter((r) => r.id !== id) }));
   }, [aplicar, sincronizar, sid]);
@@ -582,7 +601,7 @@ export function DataProvider({ children }) {
   return (
     <DataContext.Provider
       value={{
-        db, opciones, create, update, remove, nuevoId, faltantes, expandirReceta, stats, getStats, notificaciones,
+        db, opciones, create, update, remove, nuevoId, faltantes, expandirReceta, stats, getStats, notificaciones, resolverArchivo,
         solicitarRecuperacion, enlaceValido, restablecerClave,
         estadoDatos, errorDatos, cargar, vaciar, sincronizando,
       }}
@@ -593,3 +612,23 @@ export function DataProvider({ children }) {
 }
 
 export const useData = () => useContext(DataContext);
+
+/**
+ * Adjunto de un registro listo para mostrar: { archivo, cargando }.
+ * `activo = false` (p. ej. un modal cerrado) no descarga nada.
+ */
+export function useArchivo(col, r, campo, activo = true) {
+  const { resolverArchivo } = useData();
+  const v = r?.[campo] || '';
+  const [archivo, setArchivo] = useState(v === EN_SERVIDOR ? null : v);
+  useEffect(() => {
+    if (v !== EN_SERVIDOR) { setArchivo(v); return undefined; }
+    if (!activo) return undefined;
+    let vigente = true;
+    setArchivo(null);
+    resolverArchivo(col, r, campo).then((a) => vigente && setArchivo(a)).catch(() => vigente && setArchivo(''));
+    return () => { vigente = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [col, r?.id, v, activo]);
+  return { archivo: archivo || '', cargando: v === EN_SERVIDOR && archivo === null };
+}

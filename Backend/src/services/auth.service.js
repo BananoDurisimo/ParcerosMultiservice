@@ -12,10 +12,8 @@ const ERROR_LOGIN = 'Correo o contraseña incorrectos.';
 const ENLACE_INVALIDO = 'El enlace no es válido o ha vencido. Solicite uno nuevo.';
 
 const normalizar = (correo) => String(correo || '').trim().toLowerCase();
-const registrarAcceso = (idUsuario, correo, resultado) =>
-  query('INSERT INTO acceso(id_usuario,correo,resultado) VALUES($1,$2,$3)', [idUsuario, correo, resultado]);
 
-/** Valida las credenciales, registra el acceso y entrega el token de la sesion. */
+/** Valida las credenciales y entrega el token de la sesion. */
 export async function iniciarSesion(correoIngresado, contrasena) {
   const correo = normalizar(correoIngresado);
   const { rows } = await query(
@@ -26,20 +24,11 @@ export async function iniciarSesion(correoIngresado, contrasena) {
   );
   const user = rows[0];
   const claveOk = user && (await bcrypt.compare(String(contrasena || ''), user.contrasena_hash));
-  if (!claveOk) {
-    await registrarAcceso(user?.id_usuario || null, correo, 'LOGIN_FALLIDO');
-    throw new HttpError(401, ERROR_LOGIN);
-  }
-  if (!user.activo || !user.rol_activo) {
-    await registrarAcceso(user.id_usuario, correo, 'LOGIN_FALLIDO');
-    throw new HttpError(403, 'El usuario está inactivo. Contacte al administrador.');
-  }
-  await registrarAcceso(user.id_usuario, correo, 'LOGIN');
+  if (!claveOk) throw new HttpError(401, ERROR_LOGIN);
+  if (!user.activo || !user.rol_activo) throw new HttpError(403, 'El usuario está inactivo. Contacte al administrador.');
   const token = jwt.sign({ sub: user.id_usuario }, env.jwtSecret, { expiresIn: '8h' });
   return { token, user: { id: user.id_usuario, nombre: user.nombre_empleado, correo: user.correo_empresarial, rol: user.rol } };
 }
-
-export const cerrarSesion = (usuario) => registrarAcceso(usuario.id_usuario, usuario.correo_empresarial, 'LOGOUT');
 
 /** Cambio de contrasena del propio usuario (Mi cuenta). */
 export async function cambiarClave(idUsuario, actual, nueva) {

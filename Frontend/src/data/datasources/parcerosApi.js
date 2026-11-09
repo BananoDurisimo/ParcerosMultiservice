@@ -10,7 +10,6 @@ export const actualizar = (col, id, cuerpo) => api('PUT', `/${col}/${id}`, cuerp
 export const eliminar = (col, id) => api('DELETE', `/${col}/${id}`);
 
 export const iniciarSesion = (correo, contrasena) => api('POST', '/auth/login', { correo, contrasena });
-export const cerrarSesion = () => api('POST', '/auth/logout');
 export const cambiarClave = (actual, nueva) => api('PUT', '/auth/clave', { actual, nueva });
 export const solicitarRecuperacion = (correo) => api('POST', '/auth/recuperar', { correo });
 export const validarEnlace = async (token) => (await api('GET', `/auth/recuperar/${encodeURIComponent(token)}`)).valido;

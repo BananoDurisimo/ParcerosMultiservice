@@ -2,8 +2,9 @@
 -- 019 · Ajustes de modulos
 --
 -- 1. Se retira el modulo Movimientos: se quitan los triggers de auditoria,
---    la tabla `movimientos` (con su historial) y el permiso con sus
---    privilegios (las asignaciones a los roles se borran en cascada, 008).
+--    la tabla `movimientos` (con su historial), la tabla `acceso` (registro
+--    de inicios y cierres de sesion, que solo se mostraba ahi) y el permiso
+--    con sus privilegios (las asignaciones a los roles se borran en cascada, 008).
 -- 2. El modulo Compras pasa a llamarse «Órdenes de pedido».
 -- 3. Proveedor con tipo: persona natural o persona juridica.
 -- 4. Compra (orden de pedido) con numero de factura.
@@ -15,6 +16,7 @@ BEGIN;
 -- 1. Movimientos
 DROP FUNCTION IF EXISTS auditar() CASCADE;
 DROP TABLE IF EXISTS movimientos;
+DROP TABLE IF EXISTS acceso;
 DELETE FROM privilegio pr USING permiso p WHERE p.id_permiso = pr.id_permiso AND p.nombre = 'Movimientos';
 DELETE FROM permiso WHERE nombre = 'Movimientos';
 

@@ -10,9 +10,6 @@ export async function iniciarSesion(correo, contrasena) {
   return r;
 }
 
-/** El registro del cierre en el servidor no debe frenar la salida. */
-export const registrarCierre = () => remoto.cerrarSesion().catch(() => {});
-
 export const cambiarClave = (actual, nueva) => remoto.cambiarClave(actual, nueva);
 export const solicitarRecuperacion = (correo) => remoto.solicitarRecuperacion(correo);
 export const validarEnlace = (token) => remoto.validarEnlace(token);

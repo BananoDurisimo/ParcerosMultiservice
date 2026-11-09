@@ -46,8 +46,7 @@ export function AuthProvider({ children }) {
   }, [db, idSesion]);
 
 
-  /** Inicia sesion contra la API y carga los datos. El servidor registra el
-   *  acceso (exitoso o fallido) en la tabla `acceso`. */
+  /** Inicia sesion contra la API y carga los datos. */
   const login = useCallback(async (correo, clave) => {
     try {
       const r = await authRepo.iniciarSesion(correo, clave);
@@ -59,10 +58,8 @@ export function AuthProvider({ children }) {
     }
   }, [cargar]);
 
-  const logout = useCallback(() => {
-    authRepo.registrarCierre();
-    cerrarLocal();
-  }, [cerrarLocal]);
+  /* El token no tiene estado en el servidor: cerrar sesion es borrarlo aqui. */
+  const logout = useCallback(() => cerrarLocal(), [cerrarLocal]);
 
   /** Cambio de la propia contrasena (Mi cuenta). */
   const cambiarClave = useCallback(

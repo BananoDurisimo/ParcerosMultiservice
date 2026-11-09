@@ -69,7 +69,6 @@ Todas, salvo `health` y `login`, requieren `Authorization: Bearer <token>`.
 | `GET` | `/api/health` | Estado del servicio |
 | `POST` | `/api/auth/login` | `{ correo, contrasena }` → `{ token, user }` |
 | `GET` | `/api/auth/me` | Usuario de la sesión con sus acciones por módulo |
-| `POST` | `/api/auth/logout` | Registra el cierre de sesión |
 | `PUT` | `/api/auth/clave` | `{ actual, nueva }`: cambio de la propia contraseña |
 | `GET` | `/api/datos` | Todas las tablas que usa el frontend en una sola respuesta |
 | `POST` | `/api/{coleccion}` | Crear |

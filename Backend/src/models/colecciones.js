@@ -11,11 +11,11 @@
 export const COLECCIONES = {
   clientes: {
     tabla: 'cliente', pk: 'id_cliente', modulos: ['Clientes'],
-    campos: ['id_tipo_documento', 'nombre', 'documento', 'telefono', 'correo', 'direccion', 'activo'],
+    campos: ['id_tipo_documento', 'pais', 'nombre', 'documento', 'telefono', 'correo', 'direccion', 'activo'],
   },
   proveedores: {
     tabla: 'proveedor', pk: 'id_proveedor', modulos: ['Proveedores'],
-    campos: ['id_tipo_insumo', 'nombre', 'telefono', 'pais', 'activo'],
+    campos: ['id_tipo_insumo', 'tipo_proveedor', 'nombre', 'telefono', 'pais', 'activo'],
   },
   insumos: {
     tabla: 'insumo', pk: 'id_insumo', modulos: ['Insumos'],
@@ -27,8 +27,8 @@ export const COLECCIONES = {
     campos: ['id_rol', 'id_tipo_documento', 'correo_empresarial', 'nombre_empleado', 'documento', 'telefono', 'cargo', 'fecha_ingreso', 'activo'],
   },
   compras: {
-    tabla: 'compra', pk: 'id_compra', modulos: ['Compras'],
-    campos: ['id_proveedor', 'id_estado_compra', 'fecha', 'fecha_entrega', 'motivo_anulacion'],
+    tabla: 'compra', pk: 'id_compra', modulos: ['Órdenes de pedido'],
+    campos: ['id_proveedor', 'id_estado_compra', 'numero_factura', 'fecha', 'fecha_entrega', 'motivo_anulacion'],
   },
   pedidos: {
     tabla: 'pedido', pk: 'id_pedido', modulos: ['Cotizaciones', 'Pedidos', 'Ventas', 'Abonos'],

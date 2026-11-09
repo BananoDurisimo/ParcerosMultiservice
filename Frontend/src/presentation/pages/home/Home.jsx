@@ -57,18 +57,18 @@ const LINEAS = [
 ];
 
 const PASOS = [
-  { icon: 'send', t: 'Cotice', d: 'Cuéntenos qué necesita por WhatsApp y le agendamos una cita.' },
+  { icon: 'send', t: 'Contáctenos', d: 'Cuéntenos qué necesita por WhatsApp y le agendamos una cita.' },
   { icon: 'sparkle', t: 'Apruebe el diseño', d: 'Elaboramos la propuesta gráfica sin costo y le mostramos una prueba digital.' },
   { icon: 'coin', t: 'Confirme con el 50%', d: 'Con el abono inicial reservamos los insumos y arranca la producción.' },
   { icon: 'truck', t: 'Reciba sus prendas', d: 'Entre 7 y 12 días hábiles.' },
 ];
 
 const FAQ = [
-  { q: '¿Cuál es el tiempo de entrega?', a: 'Entre 7 y 12 días hábiles después de aprobado el diseño y registrado el abono inicial. En temporada alta le confirmamos la fecha exacta en la cotización.' },
+  { q: '¿Cuál es el tiempo de entrega?', a: 'Entre 7 y 12 días hábiles después de aprobado el diseño y registrado el abono inicial. En temporada alta le confirmamos la fecha exacta al confirmar su pedido.' },
   { q: '¿Cuál es la cantidad mínima de pedido?', a: 'No hay cantidad minima de prendas que puedas pedir' },
   { q: '¿Cómo se realiza el pago?', a: 'Con un abono del 50% o también puedes pagar el 100% se confirma el pedido y se reservan los insumos; el saldo se cancela contra entrega. Aceptamos efectivo, transferencia y tarjeta.' },
   { q: '¿Puedo enviar mi propio diseño?', a: 'Sí. Recibimos su arte en formato vectorial o de alta resolución y le enviamos una prueba digital antes de producir.' },
-  { q: '¿Puedo seguir el estado de mi pedido?', a: 'Sí. Cada pedido queda registrado en el sistema y puede pedir su estado,le informamos su avance: cotización aprobada, en proceso, completado y entregado.' },
+  { q: '¿Puedo seguir el estado de mi pedido?', a: 'Sí. Cada pedido queda registrado en el sistema y puede consultar su estado; le informamos su avance: diseño aprobado, en proceso, completado y entregado.' },
 ];
 
 /** Encabezado de seccion: antetitulo, titulo y descripcion. */
@@ -146,7 +146,7 @@ export default function Home() {
             </p>
             <div className="lp-cta lp-rise" style={{ '--d': '240ms' }}>
               <a className="btn lp-btn-wa" href={waLink()} target="_blank" rel="noreferrer">
-                <Icon name="whatsapp" size={17} /> Cotice por WhatsApp
+                <Icon name="whatsapp" size={17} /> Contáctenos por WhatsApp
               </a>
               <a className="btn lp-btn-ghost" href="#galeria">Ver productos <Icon name="chevR" size={15} /></a>
             </div>
@@ -176,8 +176,8 @@ export default function Home() {
                 <div className="lp-cat-body">
                   <h3>{p.t}</h3>
                   <p>{p.d}</p>
-                  <a href={waLink(`Hola, quiero cotizar ${p.t.toLowerCase()}.`)} target="_blank" rel="noreferrer">
-                    Cotizar <Icon name="chevR" size={14} />
+                  <a href={waLink(`Hola, quiero información sobre ${p.t.toLowerCase()}.`)} target="_blank" rel="noreferrer">
+                    Contáctenos <Icon name="chevR" size={14} />
                   </a>
                 </div>
               </article>
@@ -203,8 +203,8 @@ export default function Home() {
                   <ul>
                     {l.puntos.map((p) => <li key={p}><Icon name="checkC" size={18} /> {p}</li>)}
                   </ul>
-                  <a className="btn btn-primary" href={waLink(`Hola, quiero cotizar ${l.t.toLowerCase()}.`)} target="_blank" rel="noreferrer">
-                    Cotice ya <Icon name="chevR" size={15} />
+                  <a className="btn btn-primary" href={waLink(`Hola, quiero información sobre ${l.t.toLowerCase()}.`)} target="_blank" rel="noreferrer">
+                    Contáctenos <Icon name="chevR" size={15} />
                   </a>
                 </div>
               </article>
@@ -220,7 +220,7 @@ export default function Home() {
           <span className="lp-kicker">Solamente los campeones nos prefieren</span>
           <h2>Más de 8 años vistiendo <span>a los mejores</span></h2>
           <a className="btn lp-btn-wa" href={waLink()} target="_blank" rel="noreferrer">
-            <Icon name="whatsapp" size={17} /> Cotice ya
+            <Icon name="whatsapp" size={17} /> Contáctenos ya
           </a>
         </div>
       </section>
@@ -350,7 +350,7 @@ export default function Home() {
       {/* 10. Información de contacto */}
       <section className="section" id="contacto">
         <div className="lp-wrap">
-          <Titulo kicker="Hablemos" texto="Escríbanos o visítenos; con gusto le preparamos una cotización sin compromiso.">
+          <Titulo kicker="Hablemos" texto="Escríbanos o visítenos; con gusto atendemos su solicitud sin compromiso.">
             Información de contacto
           </Titulo>
 

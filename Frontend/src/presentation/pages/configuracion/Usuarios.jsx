@@ -39,13 +39,12 @@ export default function Usuarios() {
     return errs;
   };
 
-  /* Los movimientos guardan quien los hizo: un usuario con acciones en el
-     historial se desactiva, para no perder la trazabilidad. */
+  /* Un vendedor con registros de venta se desactiva, para no perder quien vendio. */
   const validarEliminar = (r) => {
     if (r.id === user?.id) return 'No puede eliminar el usuario con el que inició sesión.';
-    const acciones = db.movimientos.filter((m) => m.id_usuario === r.id).length;
-    return acciones
-      ? `${r.nombre_empleado} tiene ${acciones} acción(es) en el historial de movimientos. Para conservar la trazabilidad, desactívelo en lugar de eliminarlo.`
+    const pedidos = db.pedidos.filter((p) => p.id_vendedor === r.id).length;
+    return pedidos
+      ? `${r.nombre_empleado} es vendedor de ${pedidos} cotización(es), pedido(s) o venta(s). Desactívelo en lugar de eliminarlo.`
       : null;
   };
 

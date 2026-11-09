@@ -25,7 +25,7 @@ const ETIQUETA_PERIODO = {
    tiene algun permiso del proceso de ventas, y los de compras quien tiene
    alguno del proceso de compras. El Administrador y el Gerente tienen todos. */
 const PERMISOS_VENTAS = ['Cotizaciones', 'Pedidos', 'Ventas', 'Abonos'];
-const PERMISOS_COMPRAS = ['Compras', 'Insumos', 'Proveedores'];
+const PERMISOS_COMPRAS = ['Órdenes de pedido', 'Insumos', 'Proveedores'];
 
 /** Cabecera comun de cada tarjeta de grafico: titulo + tipo de grafico. */
 function CabeceraGrafico({ titulo, tipo, tono = 'neutral' }) {
@@ -82,7 +82,7 @@ export default function Dashboard() {
 
   const series = [
     verVentas && { name: 'Ventas', color: 'var(--primary)', data: stats.serie.ventas },
-    verCompras && { name: 'Compras', color: 'var(--success)', data: stats.serie.compras },
+    verCompras && { name: 'Órdenes de pedido', color: 'var(--success)', data: stats.serie.compras },
   ].filter(Boolean);
 
   return (
@@ -124,7 +124,7 @@ export default function Dashboard() {
       {/* ---------- KPI: la variación se calcula contra el período anterior ---------- */}
       <div className="kpi-grid stagger">
         {verVentas && <KpiCard label={`Ventas ${et.periodo}`} value={stats.ventasMes} prefix="C$ " icon="coin" tono="success" trend={t.ventas} trendLabel={et.comparado} />}
-        {verCompras && <KpiCard label={`Compras ${et.periodo}`} value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={t.compras} trendLabel={et.comparado} />}
+        {verCompras && <KpiCard label={`Órdenes de pedido ${et.periodo}`} value={stats.comprasMes} prefix="C$ " icon="cart" tono="primary" trend={t.compras} trendLabel={et.comparado} />}
         {verVentas && <KpiCard label="Abonos por cobrar" value={stats.porCobrar} prefix="C$ " icon="dollar" tono="warning" trend={t.recaudado} trendLabel={`recaudo ${et.comparado}`} />}
         {verVentas && <KpiCard label="Pedidos activos" value={stats.pedidosActivos} icon="clipboard" tono="info" trend={t.pedidos} trendLabel={et.comparado} />}
         {verCompras && <KpiCard label="Insumos bajo su mínimo" value={stats.bajoStock.length} icon="package" tono="error" />}
@@ -145,7 +145,7 @@ export default function Dashboard() {
         )}
         {verCompras && (
           <div className="card chart-box" key="tipo">
-            <CabeceraGrafico titulo="Compras por tipo de insumo" tipo="Dona" tono="warning" />
+            <CabeceraGrafico titulo="Órdenes de pedido por tipo de insumo" tipo="Dona" tono="warning" />
             {stats.comprasPorCategoria.length > 0 ? (
               <DonutChart data={stats.comprasPorCategoria} />
             ) : (

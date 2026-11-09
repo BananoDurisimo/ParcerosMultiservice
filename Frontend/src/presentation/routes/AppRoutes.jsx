@@ -11,7 +11,6 @@ import Cuenta from '@presentation/pages/auth/Cuenta.jsx';
 import Dashboard from '@presentation/pages/dashboard/Dashboard.jsx';
 import Roles from '@presentation/pages/configuracion/Roles.jsx';
 import Usuarios from '@presentation/pages/configuracion/Usuarios.jsx';
-import Movimientos from '@presentation/pages/configuracion/Movimientos.jsx';
 import CategoriasInsumo from '@presentation/pages/compras/CategoriasInsumo.jsx';
 import Insumos from '@presentation/pages/compras/Insumos.jsx';
 import Proveedores from '@presentation/pages/compras/Proveedores.jsx';
@@ -43,7 +42,6 @@ export default function AppRoutes() {
           {/* Configuracion */}
           <Route path="roles" element={<Roles />} />
           <Route path="usuarios" element={<Usuarios />} />
-          <Route path="movimientos" element={<Movimientos />} />
 
           {/* Compras */}
           <Route path="categorias-insumo" element={<CategoriasInsumo />} />

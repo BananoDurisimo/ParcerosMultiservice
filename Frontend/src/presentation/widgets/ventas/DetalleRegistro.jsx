@@ -1,6 +1,5 @@
 import Icon from '@core/widgets/Icon.jsx';
 import Badge from '@core/widgets/ui/Badge.jsx';
-import HistorialRegistro from '@core/widgets/ui/HistorialRegistro.jsx';
 import MiniTabla from '@core/widgets/ui/MiniTabla.jsx';
 import { ItemsView } from '@core/widgets/ui/Form.jsx';
 import { useData } from '@presentation/blocs/DataContext.jsx';
@@ -156,9 +155,6 @@ export default function DetalleRegistro({ r, onVerDiseno, acciones }) {
           </div>
         ))}
       </div>
-
-      <h3 className="det-section">Historial de cambios</h3>
-      <HistorialRegistro tabla="pedido" id={r.id} />
     </div>
   );
 }

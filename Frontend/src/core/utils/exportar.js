@@ -1,13 +1,14 @@
 /**
- * Exportacion de los listados a Excel (.xlsx) y PDF, y reporte en PDF.
+ * Exportacion de los listados y reportes a Excel (.xlsx), y la base de PDF
+ * que usa la cotizacion (core/utils/cotizacionPdf.js).
  *
  * Sin librerias: el proyecto no usa dependencias de terceros. El .xlsx es un
  * zip (sin comprimir) de XML escrito a mano y el PDF se arma con las fuentes
  * estandar Helvetica, asi que no hay nada que instalar.
  *
- * Los tres formatos reciben el mismo documento, armado por cada modulo con
- * las filas que la tabla muestra en ese momento (busqueda y filtros
- * aplicados), de modo que lo exportado coincide con lo que se ve:
+ * Cada modulo arma el documento con las filas que la tabla muestra en ese
+ * momento (busqueda y filtros aplicados), de modo que lo exportado coincide
+ * con lo que se ve:
  *
  *   {
  *     titulo: 'Abonos',                 // nombre del modulo
@@ -15,21 +16,19 @@
  *     filtros: [['Búsqueda', 'ana'], …], // lo aplicado en la tabla
  *     columnas: [{ titulo, valor(fila), tipo: 'texto'|'dinero'|'numero', ancho, total }],
  *     filas: [...],
- *     indicadores: [{ etiqueta, valor, tipo, nota }],          // solo reporte y hoja Resumen
+ *     indicadores: [{ etiqueta, valor, tipo, nota }],          // hoja Resumen
  *     grupos: [{ titulo, columnas: [...], tipos: [...], filas: [[...]] }], // idem
  *   }
  *
- * - Exportar (PDF o Excel): la tabla tal cual, con la fila de totales.
- * - Reporte (PDF): encabezado, filtros, indicadores, resumen agrupado
- *   (por estado, por metodo de pago, por proveedor…) y el detalle.
+ * El libro trae la hoja «Detalle» (la tabla con encabezado, filtros de
+ * columna y fila de totales) y, si el modulo los da, la hoja «Resumen» con
+ * los indicadores y las agrupaciones (por estado, por metodo de pago…).
  */
 
 export const dinero = (n) => 'C$ ' + Number(n || 0).toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const numero = (n) => Number(n || 0).toLocaleString('es-NI', { maximumFractionDigits: 3 });
 const generadoTxt = (d) =>
   `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-const formatear = (v, tipo) => (tipo === 'dinero' ? dinero(v) : tipo === 'numero' ? numero(v) : v === null || v === undefined || v === '' ? '—' : String(v));
-const esNumerica = (tipo) => tipo === 'dinero' || tipo === 'numero';
 
 const slug = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const fechaArchivo = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -105,8 +104,53 @@ const esc = (s) => String(s).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g
 /** 0 -> A, 25 -> Z, 26 -> AA… */
 export const letra = (i) => (i >= 26 ? letra(Math.floor(i / 26) - 1) : '') + String.fromCharCode(65 + (i % 26));
 
-/** Hoja a partir de filas de celdas: texto, numero o { v, s, f: formula }; `s` es el estilo. */
-function hoja(filas, anchos, congelar) {
+/* Estilos (indice de cellXfs). Las celdas de las tablas llevan borde fino. */
+const S = { ENCABEZADO: 1, DINERO: 2, TOTAL_DINERO: 3, TOTAL_TEXTO: 4, TITULO: 5, NEGRITA: 6, NUMERO: 7, TOTAL_NUMERO: 8, TEXTO: 9, NOTA: 10 };
+const ESTILOS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+  '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+  '<numFmts count="2"><numFmt numFmtId="164" formatCode="&quot;C$&quot;\\ #,##0.00"/><numFmt numFmtId="165" formatCode="#,##0.###"/></numFmts>' +
+  '<fonts count="5"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font>' +
+  '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="16"/><color rgb="FF2563EB"/><name val="Calibri"/></font>' +
+  '<font><sz val="10"/><color rgb="FF6B7280"/><name val="Calibri"/></font></fonts>' +
+  '<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+  '<fill><patternFill patternType="solid"><fgColor rgb="FF2563EB"/><bgColor indexed="64"/></patternFill></fill>' +
+  '<fill><patternFill patternType="solid"><fgColor rgb="FFEFF4FF"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+  '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
+  '<border><left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right><top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom><diagonal/></border></borders>' +
+  '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+  '<cellXfs count="11"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+  '<xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+  '<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>' +
+  '<xf numFmtId="164" fontId="1" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' +
+  '<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>' +
+  '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+  '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+  '<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>' +
+  '<xf numFmtId="165" fontId="1" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' +
+  '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>' +
+  '<xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>' +
+  '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+
+const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+
+/** Celda de una tabla segun su tipo: los importes y cantidades van como numero. */
+const celda = (v, tipo) => (tipo === 'dinero' ? { v: Number(v || 0), s: S.DINERO }
+  : tipo === 'numero' ? { v: Number(v || 0), s: S.NUMERO }
+    : { v: v === null || v === undefined || v === '' ? '—' : String(v), s: S.TEXTO });
+
+/** Ancho de columna (en caracteres) a partir de lo que va a mostrar. */
+const largo = (v, tipo) => String(tipo === 'dinero' ? dinero(v) : tipo === 'numero' ? numero(v) : v ?? '').length;
+const anchoColumna = (titulo, valores, tipo) =>
+  Math.max(10, Math.min(60, Math.max(String(titulo).length, ...valores.map((v) => largo(v, tipo))) + 3));
+
+/**
+ * Hoja a partir de filas de celdas (texto, numero o { v, s, f: formula }).
+ * `altos`: { fila: alto }; `filtro`: rango con filtros de columna;
+ * `combinar`: rangos de celdas combinadas; `congelar`: filas fijas arriba.
+ */
+function hoja(filas, { anchos, congelar = 0, filtro, combinar = [], altos = {}, activa = false }) {
   const xml = filas.map((fila, r) => {
     const celdas = fila.map((c, i) => {
       if (c === null || c === undefined || c === '') return '';
@@ -119,88 +163,98 @@ function hoja(filas, anchos, congelar) {
         ? `<c r="${ref}"${estilo}><v>${v}</v></c>`
         : `<c r="${ref}"${estilo} t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
     }).join('');
-    return `<row r="${r + 1}">${celdas}</row>`;
+    const alto = altos[r] ? ` ht="${altos[r]}" customHeight="1"` : '';
+    return `<row r="${r + 1}"${alto}>${celdas}</row>`;
   }).join('');
-  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-    `<sheetViews><sheetView workbookViewId="0" showGridLines="${congelar ? 1 : 0}">${congelar ? `<pane ySplit="${congelar}" topLeftCell="A${congelar + 1}" activePane="bottomLeft" state="frozen"/>` : ''}</sheetView></sheetViews>` +
+  const panel = congelar ? `<pane ySplit="${congelar}" topLeftCell="A${congelar + 1}" activePane="bottomLeft" state="frozen"/>` : '';
+  return XML +
+    `<worksheet xmlns="${NS}">` +
+    `<sheetViews><sheetView workbookViewId="0"${activa ? ' tabSelected="1"' : ''}>${panel}</sheetView></sheetViews>` +
+    '<sheetFormatPr defaultRowHeight="18"/>' +
     `<cols>${anchos.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>` +
-    `<sheetData>${xml}</sheetData></worksheet>`;
+    `<sheetData>${xml}</sheetData>` +
+    (filtro ? `<autoFilter ref="${filtro}"/>` : '') +
+    (combinar.length ? `<mergeCells count="${combinar.length}">${combinar.map((m) => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>` : '') +
+    '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>' +
+    '<pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/>' +
+    '</worksheet>';
 }
 
-/* Estilos: 1 encabezado · 2 dinero · 3 total (dinero) · 4 total (texto) · 5 titulo · 6 negrita · 7 numero · 8 total (numero) */
-const ESTILOS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-  '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-  '<numFmts count="2"><numFmt numFmtId="164" formatCode="&quot;C$&quot;\\ #,##0.00"/><numFmt numFmtId="165" formatCode="#,##0.###"/></numFmts>' +
-  '<fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font>' +
-  '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="16"/><color rgb="FF2563EB"/><name val="Calibri"/></font></fonts>' +
-  '<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
-  '<fill><patternFill patternType="solid"><fgColor rgb="FF2563EB"/><bgColor indexed="64"/></patternFill></fill>' +
-  '<fill><patternFill patternType="solid"><fgColor rgb="FFEFF4FF"/><bgColor indexed="64"/></patternFill></fill></fills>' +
-  '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
-  '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-  '<cellXfs count="9"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
-  '<xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>' +
-  '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
-  '<xf numFmtId="164" fontId="1" fillId="3" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1"/>' +
-  '<xf numFmtId="0" fontId="1" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/>' +
-  '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
-  '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
-  '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
-  '<xf numFmtId="165" fontId="1" fillId="3" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1"/></cellXfs>' +
-  '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
-
-const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
-const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
-
-const celda = (v, tipo) => (tipo === 'dinero' ? { v: Number(v || 0), s: 2 } : tipo === 'numero' ? { v: Number(v || 0), s: 7 } : (v ?? ''));
-
-/** Libro con la hoja «Datos» (las columnas de la tabla, con fila de totales
- *  como formula) y, si el modulo los da, la hoja «Resumen» con los
- *  indicadores y las agrupaciones. */
+/** Libro con la hoja «Detalle» y, si el modulo los da, la hoja «Resumen». */
 export function libroXlsx(doc) {
   const n = doc.filas.length;
+  const nc = doc.columnas.length;
+  const ultima = letra(Math.max(nc, 2) - 1);
   const sumas = totales(doc);
-  const ENCAB = 4; // titulo, generado, filtros, encabezado de columnas
+  const tipos = doc.columnas.map((c) => c.tipo);
+  const ENCAB = 5; // titulo, generado, filtros, renglon en blanco y encabezado de columnas
+  const valores = doc.filas.map((f) => doc.columnas.map((c) => c.valor(f)));
   const datos = [
-    [{ v: `Parceros Multiservice · ${doc.titulo}`, s: 5 }],
-    [`Generado: ${generadoTxt(doc.generado)} · ${n} registro(s)`],
-    [doc.filtros?.length ? `Filtros: ${doc.filtros.map(([k, v]) => `${k}: ${v}`).join(' · ')}` : 'Sin filtros: todos los registros'],
-    doc.columnas.map((c) => ({ v: c.titulo, s: 1 })),
-    ...doc.filas.map((f) => doc.columnas.map((c) => celda(c.valor(f), c.tipo))),
+    [{ v: `Parceros Multiservice · ${doc.titulo}`, s: S.TITULO }],
+    [{ v: `Generado: ${generadoTxt(doc.generado)} · ${n} registro(s)`, s: S.NOTA }],
+    [{ v: doc.filtros?.length ? `Filtros: ${doc.filtros.map(([k, v]) => `${k}: ${v}`).join(' · ')}` : 'Sin filtros: todos los registros', s: S.NOTA }],
+    [],
+    doc.columnas.map((c) => ({ v: c.titulo, s: S.ENCABEZADO })),
+    ...valores.map((fila) => fila.map((v, i) => celda(v, tipos[i]))),
   ];
   if (sumas.some((x) => x !== null)) {
     datos.push(doc.columnas.map((c, i) => {
-      if (i === 0 && sumas[0] === null) return { v: 'TOTAL', s: 4 };
-      if (sumas[i] === null) return { v: '', s: 4 };
+      if (i === 0 && sumas[0] === null) return { v: 'TOTAL', s: S.TOTAL_TEXTO };
+      if (sumas[i] === null) return { v: '', s: S.TOTAL_TEXTO };
       const col = letra(i);
-      return { f: `SUM(${col}${ENCAB + 1}:${col}${Math.max(ENCAB + n, ENCAB + 1)})`, v: sumas[i], s: c.tipo === 'dinero' ? 3 : 8 };
+      return { f: `SUBTOTAL(9,${col}${ENCAB + 1}:${col}${Math.max(ENCAB + n, ENCAB + 1)})`, v: sumas[i], s: c.tipo === 'dinero' ? S.TOTAL_DINERO : S.TOTAL_NUMERO };
     }));
   }
-  const anchos = doc.columnas.map((c) => Math.max(10, Math.min(48, Math.round((c.ancho || 80) / 5.2))));
+  const anchos = doc.columnas.map((c, i) => anchoColumna(c.titulo, valores.map((f) => f[i]), tipos[i]));
+  const rangoTabla = `A${ENCAB}:${letra(nc - 1)}${ENCAB + Math.max(n, 1)}`;
 
-  const hojas = [{ nombre: 'Datos', xml: hoja(datos, anchos, ENCAB) }];
+  const hojas = [{
+    nombre: 'Detalle',
+    filtro: rangoTabla,
+    xml: hoja(datos, {
+      anchos, congelar: ENCAB, filtro: rangoTabla, activa: true,
+      combinar: [`A1:${ultima}1`, `A2:${ultima}2`, `A3:${ultima}3`], altos: { 0: 26, [ENCAB - 1]: 30 },
+    }),
+  }];
+
   if (doc.indicadores?.length || doc.grupos?.length) {
-    const resumen = [[{ v: 'Parceros Multiservice', s: 5 }], [{ v: `Reporte de ${doc.titulo.toLowerCase()}`, s: 6 }], []];
+    const resumen = [[{ v: `Parceros Multiservice · Reporte de ${doc.titulo.toLowerCase()}`, s: S.TITULO }], [{ v: `Generado: ${generadoTxt(doc.generado)}`, s: S.NOTA }], []];
+    const altos = { 0: 26 };
+    /* Ancho de cada columna: el texto mas largo que recibe. */
+    const largos = [0, 0, 0];
+    const medir = (vals, tiposFila = []) => vals.forEach((v, i) => { if (i < largos.length) largos[i] = Math.max(largos[i], largo(v, tiposFila[i])); });
     if (doc.indicadores?.length) {
-      resumen.push([{ v: 'Indicador', s: 1 }, { v: 'Valor', s: 1 }]);
-      doc.indicadores.forEach((k) => resumen.push([k.etiqueta, celda(k.valor, k.tipo)]));
+      resumen.push([{ v: 'Indicador', s: S.ENCABEZADO }, { v: 'Valor', s: S.ENCABEZADO }, { v: 'Nota', s: S.ENCABEZADO }]);
+      altos[resumen.length - 1] = 24;
+      doc.indicadores.forEach((k) => {
+        medir([k.etiqueta, k.valor, k.nota], [null, k.tipo]);
+        resumen.push([{ v: k.etiqueta, s: S.TEXTO }, celda(k.valor, k.tipo), { v: k.nota || '', s: S.TEXTO }]);
+      });
       resumen.push([]);
     }
     (doc.grupos || []).forEach((g) => {
-      resumen.push([{ v: g.titulo, s: 6 }]);
-      resumen.push(g.columnas.map((t) => ({ v: t, s: 1 })));
-      g.filas.forEach((f) => resumen.push(f.map((v, i) => celda(v, g.tipos?.[i]))));
+      resumen.push([{ v: g.titulo, s: S.NEGRITA }]);
+      resumen.push(g.columnas.map((t) => ({ v: t, s: S.ENCABEZADO })));
+      altos[resumen.length - 1] = 24;
+      medir(g.columnas);
+      g.filas.forEach((f) => {
+        medir(f, g.tipos);
+        resumen.push(f.map((v, i) => celda(v, g.tipos?.[i])));
+      });
       resumen.push([]);
     });
-    hojas.unshift({ nombre: 'Resumen', xml: hoja(resumen, [40, 22, 22, 22], 0) });
+    hojas.push({ nombre: 'Resumen', xml: hoja(resumen, { anchos: largos.map((l) => Math.max(14, Math.min(60, l + 3))), altos }) });
   }
 
+  /* Excel guarda el rango de los filtros de columna como un nombre oculto. */
+  const absoluto = (rango) => rango.replace(/([A-Z]+)(\d+)/g, '$$$1$$$2');
+  const filtros = hojas.map((h, i) => (h.filtro
+    ? `<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${h.nombre}'!${absoluto(h.filtro)}</definedName>`
+    : '')).join('');
   const archivos = {
     '[Content_Types].xml': `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${hojas.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
     '_rels/.rels': `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
-    'xl/workbook.xml': `${XML}<workbook xmlns="${NS}" xmlns:r="${REL}"><sheets>${hojas.map((h, i) => `<sheet name="${h.nombre}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>`,
+    'xl/workbook.xml': `${XML}<workbook xmlns="${NS}" xmlns:r="${REL}"><bookViews><workbookView activeTab="0"/></bookViews><sheets>${hojas.map((h, i) => `<sheet name="${h.nombre}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets>${filtros ? `<definedNames>${filtros}</definedNames>` : ''}</workbook>`,
     'xl/_rels/workbook.xml.rels': `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${hojas.map((_, i) => `<Relationship Id="rId${i + 1}" Type="${REL}/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}<Relationship Id="rId${hojas.length + 1}" Type="${REL}/styles" Target="styles.xml"/></Relationships>`,
     'xl/styles.xml': ESTILOS,
   };
@@ -210,7 +264,7 @@ export function libroXlsx(doc) {
 
 export function exportarExcel(doc) {
   doc = { generado: new Date(), ...doc };
-  descargar(libroXlsx(doc), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', nombreArchivo(doc, 'listado', 'xlsx'));
+  descargar(libroXlsx(doc), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', nombreArchivo(doc, 'reporte', 'xlsx'));
 }
 
 /* ------------------------------------------------------------------ PDF */
@@ -235,8 +289,8 @@ const lit = (s) => [...s].map((c) => {
 const rgb = (hex) => [1, 3, 5].map((i) => (parseInt(hex.slice(i, i + 2), 16) / 255).toFixed(3)).join(' ');
 
 export const COLORES_PDF = { AZUL: '#2563EB', TEXTO: '#111827', GRIS: '#6B7280', CLARO: '#EFF4FF', ZEBRA: '#F8FAFC', LINEA: '#D1D5DB' };
-const { AZUL, TEXTO, GRIS, CLARO, ZEBRA, LINEA } = COLORES_PDF;
-const W = 842, H = 595, M = 36, ALTO_FILA = 18, LIMITE = H - 46;
+const { TEXTO, LINEA } = COLORES_PDF;
+const W = 842, H = 595;
 
 /** Parte un texto en renglones que caben en `max` puntos (respeta los saltos de linea). */
 export const envolver = (s, max, t = 9, neg = false) =>
@@ -316,137 +370,10 @@ export function documentoPdf({ ancho: AW = W, alto: AH = H } = {}) {
   return { nueva, rect, linea, texto, registrarImagen, imagen, armar, ancho: AW, alto: AH };
 }
 
-/** Hoja A4 horizontal con cursor vertical y salto de pagina automatico. */
-function lienzo(doc, subtitulo) {
-  const d = documentoPdf();
-  const { nueva, rect, texto } = d;
-
-  /* Encabezado de la primera pagina: sin fondos de color, para no gastar
-     tinta al imprimir. Titulo en azul y una linea de color debajo. */
-  nueva();
-  texto('Parceros Multiservice', M, 38, { t: 20, neg: true, color: AZUL });
-  texto(subtitulo, M, 56, { t: 11, color: GRIS });
-  texto(`Generado: ${generadoTxt(doc.generado)}`, W - M, 38, { t: 9, color: GRIS, der: true });
-  texto(`${doc.filas.length} registro(s)`, W - M, 56, { t: 9, color: GRIS, der: true });
-  d.linea(M, 68, W - M, 68, AZUL, 1.5);
-  texto('FILTROS APLICADOS', M, 96, { t: 7.5, color: GRIS, neg: true });
-  texto(doc.filtros?.length ? doc.filtros.map(([k, v]) => `${k}: ${v}`).join('   ·   ') : 'Ninguno: se incluyen todos los registros.', M, 110, { t: 10, ancho: W - 2 * M });
-  let y = 126;
-
-  /** Tabla paginada con encabezado repetido. Los anchos se ajustan al de la pagina. */
-  const tabla = (titulo, columnas, filas, { tipos = [], pie = null, vacio = 'No hay registros para los filtros aplicados.' } = {}) => {
-    const base = columnas.map((c) => c.ancho || 80);
-    const escala = (W - 2 * M) / base.reduce((a, b) => a + b, 0);
-    const anchos = base.map((w) => w * escala);
-    const alinear = (i) => (esNumerica(tipos[i]) ? 'r' : 'l');
-    const cabecera = () => {
-      /* Cabecera de tabla en contorno: texto azul entre dos lineas. */
-      d.linea(M, y, W - M, y, LINEA, 0.6);
-      d.linea(M, y + 20, W - M, y + 20, AZUL, 1.2);
-      let x = M;
-      columnas.forEach((c, i) => {
-        const w = anchos[i];
-        texto(c.titulo, alinear(i) === 'r' ? x + w - 6 : x + 6, y + 13.5, { t: 8.5, neg: true, color: AZUL, der: alinear(i) === 'r', ancho: w - 10 });
-        x += w;
-      });
-      y += 20;
-    };
-    const fila = (valores, fondo, negrita) => {
-      if (fondo) rect(M, y, W - 2 * M, ALTO_FILA, fondo);
-      let x = M;
-      valores.forEach((v, i) => {
-        const w = anchos[i];
-        const txt = v === null || v === undefined ? '' : formatear(v, tipos[i]);
-        texto(txt, alinear(i) === 'r' ? x + w - 6 : x + 6, y + 12, { t: 8, neg: negrita, der: alinear(i) === 'r', ancho: w - 10 });
-        x += w;
-      });
-      y += ALTO_FILA;
-    };
-
-    if (y + 60 > LIMITE) { nueva(); y = M; }
-    texto(titulo, M, y + 14, { t: 12, neg: true });
-    y += 22;
-    cabecera();
-    if (!filas.length) { texto(vacio, M + 6, y + 14, { t: 9.5, color: GRIS }); y += 22; }
-    filas.forEach((f, i) => {
-      if (y + ALTO_FILA > LIMITE) { nueva(); y = M; cabecera(); }
-      fila(f, i % 2 ? ZEBRA : null, false);
-    });
-    if (pie && filas.length) {
-      if (y + ALTO_FILA > LIMITE) { nueva(); y = M; }
-      fila(pie, CLARO, true);
-    }
-    y += 14;
-  };
-
-  /** Tarjetas de indicadores, cinco por renglon. */
-  const tarjetas = (lista) => {
-    const porFila = Math.min(5, lista.length);
-    const wt = (W - 2 * M - (porFila - 1) * 10) / porFila;
-    lista.forEach((k, i) => {
-      const col = i % porFila;
-      if (col === 0 && i) y += 68;
-      if (col === 0 && y + 58 > LIMITE) { nueva(); y = M; }
-      const x = M + col * (wt + 10);
-      rect(x, y, wt, 58, '#FFFFFF', LINEA);
-      texto(k.etiqueta.toUpperCase(), x + 10, y + 16, { t: 7.5, color: GRIS, neg: true, ancho: wt - 16 });
-      texto(formatear(k.valor, k.tipo), x + 10, y + 36, { t: 13.5, neg: true, ancho: wt - 16 });
-      if (k.nota) texto(k.nota, x + 10, y + 50, { t: 7.5, color: GRIS, ancho: wt - 16 });
-    });
-    y += 78;
-  };
-
-  /** Pie de pagina y armado del archivo. */
-  const cerrar = (pieTxt) => d.armar((i, total) => {
-    d.linea(M, H - 32, W - M, H - 32);
-    texto(`Parceros Multiservice · ${pieTxt}`, M, H - 18, { t: 8, color: GRIS });
-    texto(`Página ${i + 1} de ${total}`, W - M, H - 18, { t: 8, color: GRIS, der: true });
-  });
-
-  return { tabla, tarjetas, cerrar };
-}
-
-const detalle = (doc) => {
-  const sumas = totales(doc);
-  const tipos = doc.columnas.map((c) => c.tipo);
-  const pie = sumas.some((x) => x !== null) ? doc.columnas.map((_, i) => (sumas[i] !== null ? sumas[i] : i === 0 ? 'TOTAL' : '')) : null;
-  return { filas: doc.filas.map((f) => doc.columnas.map((c) => c.valor(f))), tipos, pie };
-};
-
-/** PDF del listado: la tabla con su fila de totales. */
-export function pdfListado(doc) {
-  const l = lienzo(doc, `Listado de ${doc.titulo.toLowerCase()}`);
-  const d = detalle(doc);
-  l.tabla(doc.titulo, doc.columnas, d.filas, { tipos: d.tipos, pie: d.pie });
-  return l.cerrar(`Listado de ${doc.titulo.toLowerCase()}`);
-}
-
-/** PDF del reporte: indicadores, resumen agrupado y detalle. */
-export function pdfReporte(doc) {
-  const l = lienzo(doc, `Reporte de ${doc.titulo.toLowerCase()}`);
-  if (doc.indicadores?.length) l.tarjetas(doc.indicadores);
-  (doc.grupos || []).forEach((g) => {
-    l.tabla(g.titulo, g.columnas.map((titulo, i) => ({ titulo, ancho: i === 0 ? 240 : 110 })), g.filas, { tipos: g.tipos || [], vacio: 'Sin datos.' });
-  });
-  const d = detalle(doc);
-  l.tabla(`Detalle de ${doc.titulo.toLowerCase()}`, doc.columnas, d.filas, { tipos: d.tipos, pie: d.pie });
-  return l.cerrar(`Reporte de ${doc.titulo.toLowerCase()}`);
-}
-
-export function exportarPdf(doc) {
-  doc = { generado: new Date(), ...doc };
-  descargar([pdfListado(doc)], 'application/pdf', nombreArchivo(doc, 'listado', 'pdf'));
-}
-
-export function generarReporte(doc) {
-  doc = { generado: new Date(), ...doc };
-  descargar([pdfReporte(doc)], 'application/pdf', nombreArchivo(doc, 'reporte', 'pdf'));
-}
-
 /* ------------------------------------------------------------ Agrupar */
 
 /**
- * Resumen agrupado para el reporte: una fila por valor de `clave(fila)` con
+ * Resumen agrupado para el reporte (hoja Resumen del Excel): una fila por valor de `clave(fila)` con
  * el numero de registros y la suma de `monto(fila)`, de mayor a menor.
  */
 export function agrupar(filas, clave, monto) {

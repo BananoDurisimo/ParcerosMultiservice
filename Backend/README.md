@@ -86,8 +86,7 @@ Colecciones: `clientes`, `proveedores`, `insumos`, `roles` (con `permisos` y
 - Cada escritura exige el privilegio del módulo en el servidor: crear necesita
   "Agregar", modificar "Editar", "Cambiar estado" o "Anular", y eliminar
   "Eliminar". Sin permiso sobre Usuarios, cada quien solo edita su perfil.
-- Las contraseñas se guardan con bcrypt y nunca salen de la base de datos ni
-  aparecen en el historial de movimientos.
+- Las contraseñas se guardan con bcrypt y nunca salen de la base de datos.
 - Cada escritura corre en una transacción con el usuario de la petición
   (`app.user_id`), que es el responsable que registran los triggers.
 

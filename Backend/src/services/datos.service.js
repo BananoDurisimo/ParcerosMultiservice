@@ -63,19 +63,6 @@ const CONSULTAS = {
     FROM pedido p ORDER BY p.id_pedido DESC`,
 
   abonos: 'SELECT * FROM abono ORDER BY id_abono DESC',
-
-  // Cambios de los registros y accesos al sistema en una sola lista.
-  movimientos: `
-    SELECT * FROM (
-      SELECT id_movimiento AS id, tabla, id_registro, accion, valor_anterior, valor_nuevo, id_usuario, fecha_cambio
-      FROM movimientos
-      UNION ALL
-      SELECT 1000000000 + id_acceso, 'acceso', id_usuario, resultado, NULL,
-             json_build_object('correo', correo, 'resultado',
-               CASE resultado WHEN 'LOGIN' THEN 'Ingreso exitoso' WHEN 'LOGOUT' THEN 'Sesión cerrada' ELSE 'Correo o contraseña incorrectos' END)::jsonb,
-             id_usuario, fecha
-      FROM acceso
-    ) t ORDER BY fecha_cambio DESC LIMIT 500`,
 };
 
 /** Todas las consultas en paralelo: { permisos: [...], roles: [...], ... }. */

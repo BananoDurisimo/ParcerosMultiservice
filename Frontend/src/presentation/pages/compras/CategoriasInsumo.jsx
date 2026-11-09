@@ -81,7 +81,6 @@ export default function CategoriasInsumo() {
         { key: 'nombre', label: 'Categoría', mobile: 'title', render: (r) => <span className="cell-main">{r.nombre}</span> },
         { key: 'descripcion', label: 'Descripción', mobile: 'meta', render: (r) => <span className="caption">{r.descripcion || '—'}</span> },
         { key: 'calc_insumos', label: 'Insumos', align: 'center', mobile: 'value', render: (r) => <span className="badge badge-info">{r.calc_insumos}</span> },
-        { key: 'calc_proveedores', label: 'Proveedores', align: 'center', render: (r) => <span className="badge badge-neutral">{r.calc_proveedores}</span> },
         { key: 'estado', label: 'Estado', mobile: 'meta', render: (r) => <EstadoCell row={r} coleccion="tipos_insumo" modulo="Categorías de insumo" options={ESTADOS_REGISTRO} /> },
       ]}
       campos={[

@@ -13,7 +13,7 @@
  *  NULL                      ->  '' (los formularios trabajan con texto)
  */
 
-import { PK, COLECCION_DE_TABLA } from '@data/models/colecciones.js';
+import { PK } from '@data/models/colecciones.js';
 
 const estado = (activo) => (activo === false ? 'Inactivo' : 'Activo');
 const texto = (v) => (v === null || v === undefined ? '' : v);
@@ -41,17 +41,17 @@ function aFrontend(col, f, cat) {
       };
     case 'proveedores':
       return {
-        ...base, nombre: f.nombre, id_tipo_insumo: f.id_tipo_insumo, telefono: texto(f.telefono),
-        pais: f.pais || 'Nicaragua', estado: estado(f.activo),
+        ...base, nombre: f.nombre, id_tipo_insumo: f.id_tipo_insumo, tipo_proveedor: f.tipo_proveedor || 'Persona jurídica',
+        telefono: texto(f.telefono), pais: f.pais || 'Nicaragua', estado: estado(f.activo),
       };
     case 'clientes':
       return {
-        ...base, nombre: f.nombre, tipodocumento: nombrePorId(cat.tipos_documento, 'id_tipo_documento', f.id_tipo_documento),
+        ...base, nombre: f.nombre, pais: f.pais || 'Nicaragua', tipodocumento: nombrePorId(cat.tipos_documento, 'id_tipo_documento', f.id_tipo_documento),
         documento: f.documento, telefono: texto(f.telefono), correo: f.correo, direccion: texto(f.direccion), estado: estado(f.activo),
       };
     case 'compras':
       return {
-        ...base, id_proveedor: f.id_proveedor, fecha: texto(f.fecha), fecha_entrega: texto(f.fecha_entrega), motivo_anulacion: texto(f.motivo_anulacion),
+        ...base, id_proveedor: f.id_proveedor, numero_factura: texto(f.numero_factura), fecha: texto(f.fecha), fecha_entrega: texto(f.fecha_entrega), motivo_anulacion: texto(f.motivo_anulacion),
         estado: nombrePorId(cat.estados_compra, 'id_estado_compra', f.id_estado_compra),
         detalle_insumos: (f.detalles || []).map((l) => ({ id_insumo: l.id_insumo, cantidad: Number(l.cantidad), precio_unitario: Number(l.precio_unitario) })),
       };
@@ -102,14 +102,6 @@ function aFrontend(col, f, cat) {
   }
 }
 
-/** Valores del historial con los mismos nombres de campo del frontend. */
-function valorHistorial(tabla, valor, cat) {
-  const col = COLECCION_DE_TABLA[tabla];
-  if (!valor || !col) return valor;
-  const { id, ...resto } = aFrontend(col, valor, cat);
-  return resto;
-}
-
 /** Respuesta de GET /api/datos -> estado inicial de DataContext. */
 export function deServidor(d) {
   const cat = {
@@ -134,15 +126,6 @@ export function deServidor(d) {
     tallas: lista('tallas'),
     categorias_producto: lista('categorias_producto'),
     productos: lista('productos'),
-    /* Cambios y accesos vienen de dos tablas: se numeran por fecha para que
-       el codigo MOV-0001… sea correlativo. */
-    movimientos: [...(d.movimientos || [])].reverse().map((m, i) => ({
-      ...m,
-      id: i + 1,
-      fecha_cambio: String(m.fecha_cambio).slice(0, 19),
-      valor_anterior: valorHistorial(m.tabla, m.valor_anterior, cat),
-      valor_nuevo: valorHistorial(m.tabla, m.valor_nuevo, cat),
-    })).reverse(),
   };
 }
 
@@ -169,17 +152,17 @@ export function aServidor(col, r, cat, sid) {
       };
     case 'proveedores':
       return {
-        id_tipo_insumo: r.id_tipo_insumo, nombre: r.nombre, telefono: r.telefono, pais: r.pais, activo,
+        id_tipo_insumo: r.id_tipo_insumo, tipo_proveedor: r.tipo_proveedor, nombre: r.nombre, telefono: r.telefono, pais: r.pais, activo,
       };
     case 'clientes':
       return {
-        id_tipo_documento: idPorNombre(cat.tipos_documento, 'id_tipo_documento', r.tipodocumento), nombre: r.nombre,
+        id_tipo_documento: idPorNombre(cat.tipos_documento, 'id_tipo_documento', r.tipodocumento), pais: r.pais, nombre: r.nombre,
         documento: r.documento, telefono: r.telefono, correo: r.correo, direccion: r.direccion, activo,
       };
     case 'compras':
       return {
         id_proveedor: sid('proveedores', r.id_proveedor), id_estado_compra: idPorNombre(cat.estados_compra, 'id_estado_compra', r.estado),
-        fecha: r.fecha, fecha_entrega: r.fecha_entrega, motivo_anulacion: r.motivo_anulacion,
+        numero_factura: r.numero_factura, fecha: r.fecha, fecha_entrega: r.fecha_entrega, motivo_anulacion: r.motivo_anulacion,
         detalles: (r.detalle_insumos || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad, precio_unitario: l.precio_unitario })),
       };
     case 'pedidos':

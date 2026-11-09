@@ -13,14 +13,9 @@ import {
   COTIZACION,
   EN_PROCESO,
   FALTA_PAGO,
-  COMPLETADO,
-  ENTREGADO,
   COMPRA_ANULADA,
 } from '@core/constants/catalogos.js';
-import { MODULOS_AUDITADOS, ETIQUETA_ACCION } from '@core/constants/movimientos.js';
-import { camposCambiados } from '@domain/usecases/movimientos.js';
 import {
-  etiquetaFila,
   codigoCompra,
   codigoPedido,
   codigoAbono,
@@ -64,7 +59,7 @@ export function DataProvider({ children }) {
      Cada escritura se ve en pantalla al instante y se envia a la API en una
      cola, una tras otra y en el mismo orden. Al vaciarse la cola se vuelve a
      leer todo, para tomar lo que calcula la base de datos (ids definitivos,
-     existencias, historial). Si el servidor rechaza un cambio, se avisa y se
+     existencias). Si el servidor rechaza un cambio, se avisa y se
      recargan los datos, con lo que la pantalla vuelve a lo guardado.
 
      Solo la primera carga (al iniciar sesion o al abrir la pagina) muestra
@@ -155,7 +150,7 @@ export function DataProvider({ children }) {
     return max + 1;
   }, []);
 
-  /* Cada cambio se ve al instante; existencias e historial los recalcula la
+  /* Cada cambio se ve al instante; las existencias las recalcula la
      base de datos y llegan con la recarga que sigue a la cola. */
   const create = useCallback((col, row) => {
     const creado = { ...row, id: row.id ?? nuevoId(col) };
@@ -205,7 +200,6 @@ export function DataProvider({ children }) {
     const insumosM = porId(raw.insumos);
     const proveedoresM = porId(raw.proveedores);
     const clientesM = porId(raw.clientes);
-    const usuariosM = porId(raw.usuarios);
     const tallasM = porId(raw.tallas);
     const categoriasM = porId(raw.categorias_producto);
 
@@ -273,11 +267,10 @@ export function DataProvider({ children }) {
       const total = redondear(totalProductos + totalInsumos);
       const abonos = abonosPorPedido.get(p.id) || [];
       const abonado = redondear(suma(abonos, (a) => a.monto));
-      /* La venta cuenta desde que el pedido terminado queda pagado
-         («Pedido completado»), no desde la entrega: su fecha es la ultima vez
-         que llego a ese estado (si se anulo un abono pudo volver atras). */
-      const vendido = p.estado === COMPLETADO || p.estado === ENTREGADO;
-      const pagado = [...(p.historial_estados || [])].reverse().find((h) => h.estado === COMPLETADO)?.fecha;
+      /* Abonar es vender: el registro cuenta como venta desde su primer abono
+         vigente, y esa es su fecha de venta. */
+      const vendido = abonos.length > 0;
+      const primerAbono = abonos.map((a) => a.fecha).filter(Boolean).sort()[0];
       return {
         ...p,
         calc_codigo: codigoPedido(p.id),
@@ -289,7 +282,7 @@ export function DataProvider({ children }) {
         calc_abonos: abonos.length,
         calc_abono_inicial: abonos.length ? 'Registrado' : 'Pendiente',
         calc_vendido: vendido,
-        calc_fecha_venta: vendido ? (pagado || p.fecha_entrega || p.fecha_inicio || '') : '',
+        calc_fecha_venta: vendido ? (primerAbono || p.fecha_inicio || '') : '',
         /* Una cotizacion vale hasta el 31 de diciembre del año en que se creo;
            vencida, ya no recibe abonos ni pasa a pedido (la base de datos
            tambien lo impide, 013). */
@@ -329,15 +322,6 @@ export function DataProvider({ children }) {
     const productosPorCategoria = cuenta(raw.productos, 'id_categoria_producto');
     const pedidosPorProducto = new Map();
     raw.pedidos.forEach((p) => (p.productos || []).forEach((l) => pedidosPorProducto.set(l.id_producto, (pedidosPorProducto.get(l.id_producto) || 0) + 1)));
-
-    /* Nombre con que se muestra el registro afectado de un movimiento. */
-    const registroMovimiento = (m) => {
-      if (m.tabla === 'compra') return codigoCompra(m.id_registro);
-      if (m.tabla === 'pedido') return codigoPedido(m.id_registro);
-      if (m.tabla === 'abono') return codigoAbono(m.id_registro);
-      const e = etiquetaFila(m.valor_nuevo || m.valor_anterior || {});
-      return e === '—' ? `#${m.id_registro}` : e;
-    };
 
     return {
       // catálogos
@@ -392,25 +376,6 @@ export function DataProvider({ children }) {
 
       pedidos,
       abonos,
-
-      /* Historial: solo lectura. Se resuelve el modulo, el responsable y el
-         registro afectado (el nombre sale del propio JSON guardado, porque la
-         fila original pudo haberse eliminado). */
-      movimientos: raw.movimientos.map((m) => {
-        const u = usuariosM.get(m.id_usuario);
-        const cambios = camposCambiados(m.valor_anterior, m.valor_nuevo);
-        return {
-          ...m,
-          calc_modulo: MODULOS_AUDITADOS[m.tabla] || m.tabla,
-          calc_accion: ETIQUETA_ACCION[m.accion] || m.accion,
-          calc_usuario: u?.nombre_empleado || 'Sistema',
-          calc_alias: u?.correo_empresarial || '—',
-          calc_registro: registroMovimiento(m),
-          calc_cambios: cambios,
-          calc_total_cambios: cambios.length,
-          calc_fecha: m.fecha_cambio.slice(0, 10),
-        };
-      }),
     };
   }, [raw]);
 
@@ -488,7 +453,7 @@ export function DataProvider({ children }) {
 
     const enRango = (f, r) => !!f && f >= r.desde && f <= r.hasta;
     const pedidosDe = (r) => db.pedidos.filter((p) => p.estado !== COTIZACION && enRango(p.fecha_inicio, r));
-    /* Ventas: pedidos terminados y pagados, por la fecha en que se pagaron. */
+    /* Ventas: registros con abono, por la fecha de su primer abono. */
     const ventasDe = (r) => db.pedidos.filter((p) => p.calc_vendido && enRango(p.calc_fecha_venta, r));
     const comprasDe = (r) => db.compras.filter((c) => enRango(c.fecha, r) && c.estado !== COMPRA_ANULADA);
     const abonosDe = (r) => db.abonos.filter((a) => a.estado !== 'Anulado' && enRango(a.fecha, r));
@@ -604,9 +569,9 @@ export function DataProvider({ children }) {
       .forEach((c) =>
         out.push({
           id: 'cmp' + c.id,
-          permiso: 'Compras',
+          permiso: 'Órdenes de pedido',
           tipo: 'success',
-          titulo: 'Compra en tránsito',
+          titulo: 'Orden de pedido en tránsito',
           texto: `${c.calc_codigo} — ${c.calc_proveedor}.`,
           tiempo: 'Ayer',
         })

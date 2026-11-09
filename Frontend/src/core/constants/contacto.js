@@ -7,7 +7,7 @@
 export const WHATSAPP = '50589920326';
 
 /** Enlace que abre WhatsApp con el mensaje ya escrito. */
-export const waLink = (mensaje = 'Hola, quiero cotizar uniformes personalizados.') =>
+export const waLink = (mensaje = 'Hola, quiero información sobre uniformes personalizados.') =>
   `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
 
 export const TELEFONO = { texto: '+505 8992 0326', href: 'tel:+50589920326' };

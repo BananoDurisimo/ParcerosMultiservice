@@ -66,7 +66,7 @@ import {
 const VISTAS = [
   { id: 'cotizaciones', label: 'Cotizaciones', permiso: 'Cotizaciones', icono: 'clipboard', paso: 'Paso 1', ayuda: 'Aprobadas por el cliente, sin iniciar' },
   { id: 'pedidos', label: 'Pedidos', permiso: 'Pedidos', icono: 'package', paso: 'Paso 2', ayuda: 'En elaboración o con pago pendiente' },
-  { id: 'ventas', label: 'Ventas', permiso: 'Ventas', icono: 'coin', paso: 'Paso 3', ayuda: 'Terminados y pagados: entrega y soportes' },
+  { id: 'ventas', label: 'Ventas', permiso: 'Ventas', icono: 'coin', paso: 'Paso 3', ayuda: 'Con abono registrado: cobro, entrega y soportes' },
 ];
 
 const TIPOS_DISENO = ['image/jpeg', 'image/png', 'image/webp'];
@@ -295,7 +295,8 @@ export default function Pedidos() {
 
   const cotizaciones = db.pedidos.filter((p) => p.estado === COTIZACION).map((p) => ({ ...p, calc_vigente: p.calc_vencida ? 'Vencida' : 'Vigente' }));
   const pedidos = db.pedidos.filter((p) => [EN_PROCESO, FALTA_PAGO].includes(p.estado));
-  const ventas = db.pedidos.filter((p) => [COMPLETADO, ENTREGADO].includes(p.estado));
+  /* Cada abono es una venta: el registro aparece aqui desde su primer abono vigente. */
+  const ventas = db.pedidos.filter((p) => p.calc_vendido);
   const mesActual = hoyISO().slice(0, 7);
   const cuantos = { cotizaciones: cotizaciones.length, pedidos: pedidos.length, ventas: ventas.length };
 
@@ -356,7 +357,7 @@ export default function Pedidos() {
     eliminacion,
     accionesExtra: (r) => (
       <>
-        {vista.id !== 'ventas' && puedeAbonar(r) && (
+        {puedeAbonar(r) && (
           <button className="icon-btn" style={{ color: 'var(--success)' }} onClick={() => irAAbonar(r)} title="Agregar abono">
             <Icon name="dollar" size={16} />
           </button>
@@ -578,7 +579,7 @@ export default function Pedidos() {
     ventas: {
       ...comun,
       titulo: 'Ventas',
-      subtitulo: 'Pedidos terminados y pagados: registro de la entrega y soportes de pago y de diseño.',
+      subtitulo: 'Registros con al menos un abono: cobro del saldo, entrega y soportes de pago y de diseño.',
       filas: ventas,
       entidad: 'ventas',
       singular: 'venta',
@@ -587,17 +588,16 @@ export default function Pedidos() {
       conEliminar: false,
       searchKeys: ['calc_codigo', 'calc_cliente', 'calc_productos_txt', 'calc_fecha_venta', 'fecha_entrega', 'descripcion'],
       filtros: [
-        { key: 'estado', label: 'Estado', options: [{ value: COMPLETADO, label: 'Pendiente de entrega' }, { value: ENTREGADO, label: ENTREGADO }] },
+        { key: 'estado', label: 'Estado', options: [EN_PROCESO, FALTA_PAGO, { value: COMPLETADO, label: 'Pendiente de entrega' }, ENTREGADO] },
         { key: 'id_cliente', label: 'Cliente', options: clientesFiltro },
         { key: 'calc_fecha_venta', label: 'Fecha de venta', type: 'rango' },
         { key: 'fecha_entrega', label: 'Fecha de entrega', type: 'rango' },
       ],
-      /* La venta suma cuando el pedido terminado queda pagado, aunque todavia
-         no se haya entregado. */
+      /* La venta suma desde el primer abono, aunque falte cobrar el saldo. */
       resumen: [
         <KpiCard key="a" label="Ventas del mes" value={ventas.filter((p) => p.calc_fecha_venta.startsWith(mesActual)).reduce((s, p) => s + p.calc_total, 0)} prefix="C$ " icon="coin" tono="success" />,
         <KpiCard key="b" label="Total vendido" value={ventas.reduce((s, p) => s + p.calc_total, 0)} prefix="C$ " icon="chart" tono="primary" />,
-        <KpiCard key="c" label="Pendientes de entrega" value={ventas.filter((p) => p.estado === COMPLETADO).length} icon="truck" tono="warning" />,
+        <KpiCard key="c" label="Saldo por cobrar" value={ventas.reduce((s, p) => s + p.calc_saldo, 0)} prefix="C$ " icon="alert" tono="warning" />,
       ],
       columnas: [
         { key: 'id', label: 'Código', mobile: 'title', render: (r) => <span className="cell-main">{r.calc_codigo}</span> },

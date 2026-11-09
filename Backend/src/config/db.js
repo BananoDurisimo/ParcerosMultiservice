@@ -17,7 +17,7 @@ export const query = (text, params) => pool.query(text, params);
 
 /**
  * Ejecuta `fn(client)` dentro de una transaccion en la que `app.user_id` es
- * el usuario de la peticion. Asi los triggers de auditoria y de inventario
+ * el usuario de la peticion. Asi los triggers de inventario
  * registran al responsable correcto: la variable vive solo en esta
  * transaccion y en esta conexion, no se filtra a otras peticiones.
  */

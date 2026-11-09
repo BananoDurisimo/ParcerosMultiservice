@@ -40,12 +40,12 @@ export default function Insumos() {
       .slice(0, 5);
 
   /* Movimientos de inventario del insumo: entradas por compras recibidas,
-     salidas por pedidos en produccion y ajustes hechos a mano en el formulario. */
+     salidas por pedidos en produccion. */
   const movimientosInventario = (i) => {
     const out = [];
     db.compras.filter((c) => c.estado === 'Recibida').forEach((c) =>
       (c.detalle_insumos || []).filter((l) => l.id_insumo === i.id).forEach((l) =>
-        out.push({ fecha: c.fecha_entrega || c.fecha, tipo: 'Entrada', origen: `Compra ${c.calc_codigo}`, cantidad: l.cantidad })
+        out.push({ fecha: c.fecha_entrega || c.fecha, tipo: 'Entrada', origen: `Orden ${c.calc_codigo}`, cantidad: l.cantidad })
       )
     );
     db.pedidos.filter((p) => consumeInventario(p.estado)).forEach((p) =>
@@ -53,12 +53,6 @@ export default function Insumos() {
         out.push({ fecha: p.fecha_inicio, tipo: 'Salida', origen: `Pedido ${p.calc_codigo}`, cantidad: -l.cantidad })
       )
     );
-    db.movimientos
-      .filter((m) => m.tabla === 'insumo' && m.id_registro === i.id && m.accion === 'UPDATE' && m.calc_cambios.some((c) => c.campo === 'stock'))
-      .forEach((m) => {
-        const n = Number(m.valor_nuevo.stock) - Number(m.valor_anterior.stock);
-        out.push({ fecha: m.calc_fecha, tipo: 'Ajuste manual', origen: m.calc_usuario, cantidad: n });
-      });
     return out.sort((a, b) => b.fecha.localeCompare(a.fecha)).map((x, k) => ({ ...x, id: k }));
   };
 
@@ -113,12 +107,12 @@ export default function Insumos() {
           </div>
         )}
 
-        <h3 className="det-section">Últimas compras asociadas</h3>
+        <h3 className="det-section">Últimas órdenes de pedido</h3>
         <MiniTabla
           filas={ultimasCompras(r)}
-          vacio="Este insumo no figura en ninguna compra."
+          vacio="Este insumo no figura en ninguna orden de pedido."
           columnas={[
-            { label: 'Compra', render: (x) => x.compra.calc_codigo },
+            { label: 'Orden', render: (x) => x.compra.calc_codigo },
             { label: 'Fecha', render: (x) => fecha(x.compra.fecha) },
             { label: 'Proveedor', render: (x) => x.compra.calc_proveedor },
             { label: 'Cantidad', align: 'right', render: (x) => `${x.cantidad} ${r.calc_abreviatura}` },

@@ -7,13 +7,12 @@ import { useAuth, iniciales } from '@presentation/blocs/AuthContext.jsx';
 import { useTheme } from '@presentation/blocs/ThemeContext.jsx';
 import { useToast } from '@presentation/blocs/ToastContext.jsx';
 import { useData } from '@presentation/blocs/DataContext.jsx';
-import { fecha, fechaHora } from '@core/utils/formato.js';
+import { fecha } from '@core/utils/formato.js';
 
 const TABS = [
   { id: 'perfil', label: 'Mi perfil', icon: 'user' },
   { id: 'seguridad', label: 'Seguridad', icon: 'lock' },
   { id: 'preferencias', label: 'Preferencias', icon: 'settings' },
-  { id: 'actividad', label: 'Actividad', icon: 'refresh' },
 ];
 
 export default function Cuenta() {
@@ -34,12 +33,6 @@ export default function Cuenta() {
   const [claves, setClaves] = useState({ actual: '', nueva: '', repetir: '' });
   const [errs, setErrs] = useState({});
   const [notifs, setNotifs] = useState({ stock: true, pedidos: true, abonos: true, correo: false });
-
-  /* Ultimos cambios que este usuario registro en el historial de movimientos. */
-  const actividad = db.movimientos
-    .filter((m) => m.id_usuario === user?.id)
-    .sort((a, b) => b.fecha_cambio.localeCompare(a.fecha_cambio))
-    .slice(0, 6);
 
   const guardarPerfil = (e) => {
     e.preventDefault();
@@ -235,24 +228,6 @@ export default function Cuenta() {
               ))}
             </div>
           </div>
-        </div>
-      )}
-
-      {tab === 'actividad' && (
-        <div className="card card-pad anim-in">
-          <h2 style={{ marginBottom: 14 }}>Actividad reciente</h2>
-          {actividad.length === 0 ? (
-            <p className="caption">Aún no registra cambios en el historial de movimientos.</p>
-          ) : (
-            <div className="timeline">
-              {actividad.map((m) => (
-                <div className="tl-item done" key={m.id}>
-                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{m.calc_accion} en {m.calc_modulo}</div>
-                  <div className="caption">{m.calc_registro} · {fechaHora(m.fecha_cambio)}</div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 

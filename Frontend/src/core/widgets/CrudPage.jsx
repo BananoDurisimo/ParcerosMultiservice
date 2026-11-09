@@ -5,7 +5,7 @@ import DataTable from '@core/widgets/ui/DataTable.jsx';
 import Modal from '@core/widgets/ui/Modal.jsx';
 import ConfirmDialog from '@core/widgets/ui/ConfirmDialog.jsx';
 import { Field, ItemsEditor, normOpciones, validar } from '@core/widgets/ui/Form.jsx';
-import { exportarPdf, exportarExcel, generarReporte } from '@core/utils/exportar.js';
+import { exportarExcel } from '@core/utils/exportar.js';
 import { useData } from '@presentation/blocs/DataContext.jsx';
 import { useAuth } from '@presentation/blocs/AuthContext.jsx';
 import { useToast } from '@presentation/blocs/ToastContext.jsx';
@@ -42,9 +42,12 @@ import { AGREGAR, EDITAR, VER_DETALLE, CAMBIAR_ESTADO, ANULAR, ELIMINAR, EXPORTA
  * `?nuevo=1` en la direccion (accesos rapidos del inicio) se abre el
  * formulario de agregar vacio.
  *
- * `exportacion` (privilegio «Exportar»): agrega a la tabla «Exportar» (PDF o
- * Excel) y «Reporte». { columnas, indicadores(filas), grupos(filas) } con el
+ * `exportacion` (privilegio «Exportar»): agrega a la tabla «Exportar a Excel»
+ * (detalle y resumen). { columnas, indicadores(filas), grupos(filas) } con el
  * formato de core/utils/exportar.js; las filas son las que muestra la tabla.
+ *
+ * Un registro anulado solo se consulta: su fila y su detalle ya no ofrecen
+ * editar, cambiar de estado, anular ni eliminar.
  */
 export default function CrudPage({
   titulo,
@@ -115,7 +118,7 @@ export default function CrudPage({
   const [eliminar, setEliminar] = useState(null);
 
   /* Anular no borra la fila: solo cambia su estado, de modo que el documento
-     siga apareciendo en los listados y en el historial de movimientos. Como es
+     siga apareciendo en los listados. Como es
      una baja y no una etapa mas, el valor de anulacion no figura entre las
      opciones del campo: se llega a el por el boton, con confirmacion. */
   const campoAnulacion = anulacion?.campo || 'estado';
@@ -349,29 +352,23 @@ export default function CrudPage({
       />
     );
   };
-  const editable = (r) => puedeEditar && puedeEditarFila(r);
+  const editable = (r) => puedeEditar && puedeEditarFila(r) && !estaAnulado(r);
 
-  const exportar = (formato, filasTabla, filtrosTabla) => {
+  const exportar = (filasTabla, filtrosTabla) => {
     if (!filasTabla.length) {
       toast.warning(`No hay ${entidad} para exportar con la búsqueda y los filtros actuales.`, 'Nada que exportar');
       return;
     }
-    const doc = {
+    exportarExcel({
       titulo,
       archivo: entidad,
       filtros: filtrosTabla,
       columnas: exportacion.columnas,
       filas: filasTabla,
-      ...(formato === 'pdf' ? {} : {
-        indicadores: exportacion.indicadores?.(filasTabla) || [],
-        grupos: exportacion.grupos?.(filasTabla) || [],
-      }),
-    };
-    if (formato === 'pdf') exportarPdf(doc);
-    else if (formato === 'excel') exportarExcel(doc);
-    else generarReporte(doc);
-    const que = { pdf: 'el PDF', excel: 'el Excel', reporte: 'el reporte' }[formato];
-    toast.success(`Se generó ${que} con ${filasTabla.length} ${entidad}.`, formato === 'reporte' ? 'Reporte generado' : 'Exportación lista');
+      indicadores: exportacion.indicadores?.(filasTabla) || [],
+      grupos: exportacion.grupos?.(filasTabla) || [],
+    });
+    toast.success(`Se generó el Excel con ${filasTabla.length} ${entidad}.`, 'Reporte generado');
   };
 
   return (
@@ -409,6 +406,7 @@ export default function CrudPage({
         onEdit={puedeEditar ? abrirEditar : undefined}
         puedeEditarFila={puedeEditarFila}
         onDelete={puedeEliminar ? pedirEliminar : undefined}
+        soloVer={estaAnulado}
         accionesExtra={anulacion?.enAcciones && puedeAccion(modulo, ANULAR)
           ? (r) => (
             <>
@@ -480,7 +478,7 @@ export default function CrudPage({
         size={renderDetalle || campos.some((c) => c.type === 'items') ? 'lg' : ''}
         footer={
           <>
-            {actual && puedeEliminar && (
+            {actual && puedeEliminar && !estaAnulado(actual) && (
               <button className="btn btn-danger" style={{ marginRight: 'auto' }} onClick={() => pedirEliminar(actual)}>
                 <Icon name="trash" size={16} /> Eliminar
               </button>
@@ -570,7 +568,7 @@ export default function CrudPage({
                   onChange={(e) => { setMotivoAnulacion(e.target.value); setErrMotivo(''); }}
                 />
                 <span className="caption row" style={{ justifyContent: 'space-between' }}>
-                  <span>Queda registrado en el documento y en el historial.</span><span>{motivoAnulacion.length}/300</span>
+                  <span>Queda registrado en el documento.</span><span>{motivoAnulacion.length}/300</span>
                 </span>
                 {errMotivo && <span className="field-error"><Icon name="alert" size={12} /> {errMotivo}</span>}
               </div>

@@ -4,14 +4,14 @@ import { useData } from '@presentation/blocs/DataContext.jsx';
 
 /** Procesos del menu lateral: los permisos se agrupan igual que los modulos. */
 const GRUPOS = [
-  { titulo: 'Configuración', modulos: ['Roles', 'Usuarios', 'Movimientos'] },
-  { titulo: 'Compras', modulos: ['Categorías de insumo', 'Insumos', 'Proveedores', 'Compras', 'Categorías de producto', 'Productos'] },
+  { titulo: 'Configuración', modulos: ['Roles', 'Usuarios'] },
+  { titulo: 'Compras', modulos: ['Categorías de insumo', 'Insumos', 'Proveedores', 'Órdenes de pedido', 'Categorías de producto', 'Productos'] },
   { titulo: 'Ventas', modulos: ['Clientes', 'Cotizaciones', 'Pedidos', 'Ventas', 'Abonos'] },
 ];
 
 const ICONO = {
-  Roles: 'shield', Usuarios: 'user', Movimientos: 'history',
-  'Categorías de insumo': 'category', Insumos: 'package', Proveedores: 'truck', Compras: 'cart',
+  Roles: 'shield', Usuarios: 'user',
+  'Categorías de insumo': 'category', Insumos: 'package', Proveedores: 'truck', 'Órdenes de pedido': 'cart',
   'Categorías de producto': 'category', Productos: 'shirt',
   Clientes: 'users', Cotizaciones: 'clipboard', Pedidos: 'box', Ventas: 'coin', Abonos: 'dollar',
 };

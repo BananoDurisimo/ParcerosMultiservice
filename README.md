@@ -115,10 +115,9 @@ y usuarios se crean desde Configuración → Roles y Usuarios.
 | `/app` | Dashboard con KPIs y gráficos |
 | `/app/roles` | Roles y permisos |
 | `/app/usuarios` | Usuarios |
-| `/app/movimientos` | Movimientos (historial de cambios de todos los módulos) |
 | `/app/insumos` | Insumos y control de existencias |
 | `/app/proveedores` | Proveedores |
-| `/app/compras` | Compras de insumos a proveedores |
+| `/app/compras` | Órdenes de pedido de insumos a proveedores (con número de factura) |
 | `/app/categorias-producto` | Categorías de producto (tipo de prenda) |
 | `/app/productos` | Productos base (prenda + talla + tela) con precio de venta y receta de insumos |
 | `/app/clientes` | Clientes |
@@ -128,7 +127,7 @@ y usuarios se crean desde Configuración → Roles y Usuarios.
 
 **Mobile** — el layout es responsive; por debajo de 900px el sidebar se convierte en
 drawer y aparece la barra inferior con los 5 accesos definidos en la guía:
-Inicio, Compras, Abonos, Pedidos y Cuenta. Las tablas se transforman en listas.
+Inicio, Órdenes, Abonos, Pedidos y Cuenta. Las tablas se transforman en listas.
 
 ---
 
@@ -141,20 +140,17 @@ Inicio, Compras, Abonos, Pedidos y Cuenta. Las tablas se transforman en listas.
   (permisos) y las acciones que puede hacer en cada uno (privilegios: agregar, editar,
   ver detalle, cambiar estado, anular, eliminar, ver/descargar diseño o comprobante). Los
   botones de cada pantalla aparecen solo si el rol tiene el privilegio.
-- **Registro, consulta, edición, cambio de estado y eliminación** en todos los módulos
-  (menos el historial de movimientos, que es la auditoría). Eliminar pide confirmación y
-  se impide cuando otros registros dependen de la fila (un cliente con pedidos, un rol con
-  usuarios…): en esos casos se inactiva, y las compras además se pueden anular.
+- **Registro, consulta, edición, cambio de estado y eliminación** en todos los módulos.
+  Eliminar pide confirmación y se impide cuando otros registros dependen de la fila (un
+  cliente con pedidos, un rol con usuarios…): en esos casos se inactiva, y las órdenes de
+  pedido y los abonos además se pueden anular. Un registro anulado solo se consulta.
 - **Llaves foráneas con buscador** en todos los formularios (cliente, proveedor, insumo,
   rol, pedido) y validación de todos los campos al confirmar.
 - **Cotizaciones, pedidos y ventas** son el mismo registro: la cotización guarda insumos,
   descripción e imagen del diseño; el primer abono (50% o total) la pasa a pedido en
-  proceso; al terminarlo queda en «falta pago» o «completado» según el saldo; y la entrega
-  se registra en Ventas. Máximo dos abonos por pedido.
-- **Historial de movimientos** (Configuración → Movimientos): cada alta y cambio hecho en
-  el sistema queda registrado con el responsable, la fecha y hora y el detalle campo por
-  campo de `valor_anterior` frente a `valor_nuevo`, junto con los inicios de sesión, los
-  intentos fallidos y los cierres de sesión.
+  proceso; al terminarlo queda en «falta pago» o «completado» según el saldo. Abonar es
+  vender: desde su primer abono el registro aparece en Ventas, donde se cobra el saldo y se
+  registra la entrega.
 - **Estados editables desde el listado**: cada estado (y el rol del usuario o el método
   de pago del abono) se cambia directamente en la fila de la tabla o de la lista móvil,
   sin abrir el detalle ni el formulario. Componente `ui/EstadoCell.jsx`.
@@ -189,11 +185,12 @@ Inicio, Compras, Abonos, Pedidos y Cuenta. Las tablas se transforman en listas.
   En la cotización o el pedido se agregan productos (se cobra su precio) y el sistema
   calcula solo los insumos de la receta, que descuentan inventario sin cobrarse aparte;
   la personalización (estampados, colores…) se agrega como insumos con su precio.
-- **Exportar y reporte por módulo** (cotizaciones, pedidos, ventas, abonos, insumos y
-  compras; privilegio «Exportar»): «Exportar» descarga la tabla a PDF o Excel y «Reporte»
-  genera un PDF con indicadores, resumen agrupado y detalle. Ambos usan lo que muestra la
-  tabla (búsqueda y filtros aplicados) y se generan en el navegador, sin librerías
-  (`core/utils/exportar.js`).
+- **Reporte en Excel por módulo** (cotizaciones, pedidos, ventas, abonos, insumos y
+  órdenes de pedido; privilegio «Exportar»): «Exportar a Excel» descarga un libro con la
+  hoja «Detalle» (encabezado, filtros de columna y totales) y la hoja «Resumen»
+  (indicadores y agrupaciones). Usa lo que muestra la tabla (búsqueda y filtros aplicados)
+  y se genera en el navegador, sin librerías (`core/utils/exportar.js`). La cotización se
+  sigue descargando en PDF.
 - **Trazabilidad del pedido** en línea de tiempo con los cinco estados de la ficha.
 
 ---
@@ -232,13 +229,13 @@ Backend/
 Frontend/
 ├─ src/
 │  ├─ core/                 Recursos compartidos por toda la aplicación
-│  │  ├─ constants/         Catálogos (estados, colores), privilegios, movimientos,
+│  │  ├─ constants/         Catálogos (estados, colores), privilegios,
 │  │  │                     menú (nav.js), países y datos de contacto
 │  │  ├─ errors/            ErrorApi (error de la API con su campo)
 │  │  ├─ network/           cliente.js: HTTP contra la API con el token de la sesión
 │  │  ├─ themes/            globals.css: tokens de color claro / oscuro, tipografía y componentes
 │  │  ├─ utils/             Formato (dinero, fechas, códigos), archivos adjuntos,
-│  │  │                     exportación a PDF / Excel y PDF de la cotización
+│  │  │                     reporte en Excel y PDF de la cotización
 │  │  └─ widgets/           Componentes reutilizables: CrudPage, Icon, Logo, Splash,
 │  │                        ui/ (DataTable, Modal, Form, EstadoCell…) y charts/ (SVG)
 │  ├─ data/                 Capa de datos
@@ -249,7 +246,7 @@ Frontend/
 │  ├─ domain/               Reglas de negocio sin React
 │  │  ├─ entities/ · repositories/ · exceptions/
 │  │  └─ usecases/          Pedidos (consumo de inventario, líneas, totales), abonos
-│  │                        (monto), movimientos (cambios campo a campo) y periodos del dashboard
+│  │                        (monto) y periodos del dashboard
 │  ├─ presentation/         Capa de presentación
 │  │  ├─ blocs/             Estado global: AuthContext, DataContext, ThemeContext,
 │  │  │                     ToastContext, AppProviders y hooks

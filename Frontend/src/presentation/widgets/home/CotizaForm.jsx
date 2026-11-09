@@ -9,7 +9,7 @@ const VACIO = { nombre: '', tipo: '', cantidad: '', telefono: '', mensaje: '' };
 /* Limites del formulario: mensajes cortos y claros en WhatsApp. */
 const MAX = { nombre: 80, telefono: 20, digitos: 15, prendas: 1000, mensaje: 500 };
 
-/* Cotizaciones por dia desde este navegador. No hay backend, asi que el conteo
+/* Solicitudes por dia desde este navegador. No hay backend, asi que el conteo
    vive en localStorage y se reinicia al cambiar la fecha. */
 const LIMITE_COTIZACIONES = 3;
 const KEY = 'parceros-cotizaciones';
@@ -25,7 +25,7 @@ const guardarEnviadas = (n) => {
 };
 
 /**
- * Formulario de cotizacion. No hay backend que lo reciba: arma el mensaje y lo
+ * Formulario de contacto. No hay backend que lo reciba: arma el mensaje y lo
  * abre en WhatsApp para que el cliente lo envie. Solo se guarda cuantas envio hoy.
  */
 export default function CotizaForm() {
@@ -46,7 +46,7 @@ export default function CotizaForm() {
     const previas = leerEnviadas();
     if (previas >= LIMITE_COTIZACIONES) {
       setEnviadas(previas);
-      toast.error(`Alcanzó el límite de ${LIMITE_COTIZACIONES} cotizaciones por día. Puede volver a cotizar mañana.`, 'Cotización');
+      toast.error(`Alcanzó el límite de ${LIMITE_COTIZACIONES} solicitudes por día. Puede enviar otra mañana.`, 'Contacto');
       return;
     }
     const n = {};
@@ -64,7 +64,7 @@ export default function CotizaForm() {
     if (Object.keys(n).length) return;
 
     const texto = [
-      `Hola, soy ${f.nombre.trim()} y quiero cotizar: ${f.tipo}.`,
+      `Hola, soy ${f.nombre.trim()} y quiero información sobre: ${f.tipo}.`,
       f.cantidad && `Cantidad aproximada: ${f.cantidad} prendas.`,
       `Teléfono: ${f.telefono.trim()}.`,
       f.mensaje.trim() && `Detalles: ${f.mensaje.trim()}`,
@@ -72,7 +72,7 @@ export default function CotizaForm() {
     window.open(waLink(texto), '_blank', 'noopener');
     guardarEnviadas(previas + 1);
     setEnviadas(previas + 1);
-    toast.success('Abrimos WhatsApp con su solicitud lista para enviar.', 'Cotización');
+    toast.success('Abrimos WhatsApp con su solicitud lista para enviar.', 'Contacto');
     setF(VACIO);
   };
 
@@ -80,7 +80,7 @@ export default function CotizaForm() {
 
   return (
     <form className="card lp-form" onSubmit={enviar} noValidate>
-      <h3>¡Cotice ya!</h3>
+      <h3>¡Contáctenos!</h3>
       <p className="caption">Su uniforme ideal está a un mensaje de distancia. Cuéntenos qué necesita.</p>
 
       <div className="form-grid">
@@ -120,8 +120,8 @@ export default function CotizaForm() {
       </button>
       <p className="caption" style={{ marginTop: 8, textAlign: 'center' }}>
         {restantes
-          ? `Puede enviar hasta ${LIMITE_COTIZACIONES} cotizaciones por día. Le quedan ${restantes}.`
-          : `Alcanzó el límite de ${LIMITE_COTIZACIONES} cotizaciones por día. Puede volver a cotizar mañana.`}
+          ? `Puede enviar hasta ${LIMITE_COTIZACIONES} solicitudes por día. Le quedan ${restantes}.`
+          : `Alcanzó el límite de ${LIMITE_COTIZACIONES} solicitudes por día. Puede enviar otra mañana.`}
       </p>
     </form>
   );

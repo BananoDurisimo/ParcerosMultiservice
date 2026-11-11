@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from '@presentation/widgets/layout/Sidebar.jsx';
 import TopBar from '@presentation/widgets/layout/TopBar.jsx';
@@ -91,7 +91,7 @@ export default function AppLayout() {
         <div className={`main ${collapsed ? 'is-wide' : ''}`}>
           <TopBar titulo={TITULOS[loc.pathname] || 'Parceros Multiservice'} onOpenMenu={() => setDrawer(true)} />
           <main className="content" key={loc.pathname}>
-            {permitido ? <Outlet /> : <SinAcceso />}
+            {permitido ? <Suspense fallback={<span className="carga-spinner" role="status" aria-label="Cargando" />}><Outlet /></Suspense> : <SinAcceso />}
           </main>
         </div>
       </div>

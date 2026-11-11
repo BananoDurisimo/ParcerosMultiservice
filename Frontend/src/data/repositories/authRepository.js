@@ -4,9 +4,9 @@ import { guardarToken } from '@data/datasources/sesionLocal.js';
 /* Repositorio de la sesion: la API valida y la sesion local guarda el token. */
 
 /** Inicia sesion y deja guardado el token: devuelve { token, user }. */
-export async function iniciarSesion(correo, contrasena) {
+export async function iniciarSesion(correo, contrasena, recordar = false) {
   const r = await remoto.iniciarSesion(String(correo).trim(), contrasena);
-  guardarToken(r.token);
+  guardarToken(r.token, recordar);
   return r;
 }
 

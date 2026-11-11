@@ -1,25 +1,29 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import AppLayout from '@presentation/widgets/layout/AppLayout.jsx';
 import NotFound from '@presentation/pages/NotFound.jsx';
 import Licencias from '@presentation/pages/Licencias.jsx';
-
 import Home from '@presentation/pages/home/Home.jsx';
-import Login from '@presentation/pages/auth/Login.jsx';
-import Recuperar from '@presentation/pages/auth/Recuperar.jsx';
-import Cuenta from '@presentation/pages/auth/Cuenta.jsx';
-import Dashboard from '@presentation/pages/dashboard/Dashboard.jsx';
-import Roles from '@presentation/pages/configuracion/Roles.jsx';
-import Usuarios from '@presentation/pages/configuracion/Usuarios.jsx';
-import CategoriasInsumo from '@presentation/pages/compras/CategoriasInsumo.jsx';
-import Insumos from '@presentation/pages/compras/Insumos.jsx';
-import Proveedores from '@presentation/pages/compras/Proveedores.jsx';
-import Compras from '@presentation/pages/compras/Compras.jsx';
-import Clientes from '@presentation/pages/ventas/Clientes.jsx';
-import Pedidos from '@presentation/pages/ventas/Pedidos.jsx';
-import Abonos from '@presentation/pages/ventas/Abonos.jsx';
-import CategoriasProducto from '@presentation/pages/productos/CategoriasProducto.jsx';
-import Productos from '@presentation/pages/productos/Productos.jsx';
+
+/* El sitio publico carga de inmediato; cada pantalla del sistema se descarga
+   la primera vez que se visita, para que la pagina de inicio no cargue con
+   el codigo de todos los modulos. */
+const Login = lazy(() => import('@presentation/pages/auth/Login.jsx'));
+const Recuperar = lazy(() => import('@presentation/pages/auth/Recuperar.jsx'));
+const Cuenta = lazy(() => import('@presentation/pages/auth/Cuenta.jsx'));
+const Dashboard = lazy(() => import('@presentation/pages/dashboard/Dashboard.jsx'));
+const Roles = lazy(() => import('@presentation/pages/configuracion/Roles.jsx'));
+const Usuarios = lazy(() => import('@presentation/pages/configuracion/Usuarios.jsx'));
+const CategoriasInsumo = lazy(() => import('@presentation/pages/compras/CategoriasInsumo.jsx'));
+const Insumos = lazy(() => import('@presentation/pages/compras/Insumos.jsx'));
+const Proveedores = lazy(() => import('@presentation/pages/compras/Proveedores.jsx'));
+const Compras = lazy(() => import('@presentation/pages/compras/Compras.jsx'));
+const Clientes = lazy(() => import('@presentation/pages/ventas/Clientes.jsx'));
+const Pedidos = lazy(() => import('@presentation/pages/ventas/Pedidos.jsx'));
+const Abonos = lazy(() => import('@presentation/pages/ventas/Abonos.jsx'));
+const CategoriasProducto = lazy(() => import('@presentation/pages/productos/CategoriasProducto.jsx'));
+const Productos = lazy(() => import('@presentation/pages/productos/Productos.jsx'));
 
 /**
  * Mapa de rutas. Cada bloque corresponde a un macroproceso (feature) y el
@@ -28,6 +32,7 @@ import Productos from '@presentation/pages/productos/Productos.jsx';
 export default function AppRoutes() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <Suspense fallback={null}>
       <Routes>
         {/* Publico */}
         <Route path="/" element={<Home />} />
@@ -65,6 +70,7 @@ export default function AppRoutes() {
         <Route path="/dashboard" element={<Navigate to="/app" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

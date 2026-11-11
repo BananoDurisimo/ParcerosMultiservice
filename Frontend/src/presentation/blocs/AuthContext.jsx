@@ -47,9 +47,9 @@ export function AuthProvider({ children }) {
 
 
   /** Inicia sesion contra la API y carga los datos. */
-  const login = useCallback(async (correo, clave) => {
+  const login = useCallback(async (correo, clave, recordar = false) => {
     try {
-      const r = await authRepo.iniciarSesion(correo, clave);
+      const r = await authRepo.iniciarSesion(correo, clave, recordar);
       setIdSesion(r.user.id);
       await cargar();
       return { ok: true, user: r.user };

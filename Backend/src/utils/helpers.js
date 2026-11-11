@@ -1,8 +1,12 @@
 import crypto from 'node:crypto';
 
-/** Cadenas vacias como NULL: el formulario envia '' en fechas y opcionales. */
+/** Cadenas sin espacios sobrantes y vacias como NULL: el formulario envia ''
+ *  en fechas y opcionales. */
 export const limpiar = (campos, body) =>
-  Object.fromEntries(campos.filter((k) => body[k] !== undefined).map((k) => [k, body[k] === '' ? null : body[k]]));
+  Object.fromEntries(campos.filter((k) => body[k] !== undefined).map((k) => {
+    const v = typeof body[k] === 'string' ? body[k].trim() : body[k];
+    return [k, v === '' ? null : v];
+  }));
 
 /** Huella SHA-256 en hexadecimal (los tokens de recuperacion se guardan asi). */
 export const sha256 = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');

@@ -82,7 +82,7 @@ const conSubtotal = (l) => {
 const listaFaltantes = (faltan) => faltan.map((f) => `${f.nombre} (se piden ${f.pide} y hay ${f.hay})`).join('; ');
 
 export default function Pedidos() {
-  const { db, opciones, create, update, remove, nuevoId, faltantes, expandirReceta, resolverArchivo } = useData();
+  const { db, opciones, create, update, remove, faltantes, expandirReceta, resolverArchivo } = useData();
   const { puede, puedeAccion } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
@@ -554,10 +554,10 @@ export default function Pedidos() {
           return;
         }
         /* El pedido nace cuando el cliente aprueba y paga en la misma visita:
-           se registra ya en proceso y con su abono inicial. */
-        const id = nuevoId('pedidos');
+           se registra ya en proceso y con su abono inicial, en una sola
+           operacion (si el abono no se puede guardar, tampoco el pedido). */
+        const total = totalLineas(lineas.productos, lineas.insumos);
         create('pedidos', {
-          id,
           id_cliente: d.id_cliente,
           estado: EN_PROCESO,
           fecha_creacion: d.fecha_inicio,
@@ -567,11 +567,10 @@ export default function Pedidos() {
           imagen_diseno: d.imagen_diseno,
           ...lineas,
           historial_estados: [{ estado: COTIZACION, fecha: d.fecha_inicio }, { estado: EN_PROCESO, fecha: d.fecha_inicio }],
-        });
-        const total = totalLineas(lineas.productos, lineas.insumos);
-        create('abonos', {
-          id_pedido: id, monto: Math.min(total, redondear(Number(d.abono_monto))), fecha: d.fecha_inicio,
-          metodo_pago: d.abono_metodo, url_comprobante: d.abono_comprobante || '',
+          abono_inicial: {
+            monto: Math.min(total, redondear(Number(d.abono_monto))), fecha: d.fecha_inicio,
+            metodo_pago: d.abono_metodo, url_comprobante: d.abono_comprobante || '',
+          },
         });
         toast.success('El registro de pedido se guardó correctamente.');
       },

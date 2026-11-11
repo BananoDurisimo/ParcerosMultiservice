@@ -15,13 +15,13 @@ import CotizaForm from '@presentation/widgets/home/CotizaForm.jsx';
 import useReveal from '@presentation/blocs/useReveal.js';
 
 /* Fotografia de referencia (Pexels, licencia libre). Ver assets/CREDITOS.md */
-import imgTaller from '@assets/home/taller.jpg';
+import imgTaller from '@assets/home/taller.webp';
 /* Fotografias propias del taller (publicaciones de la cuenta oficial) */
-import lineaFutbol from '@assets/home/linea-futbol.jpg';
-import lineaCiclismo from '@assets/home/linea-ciclismo.jpg';
-import prodFutbol from '@assets/home/prod-futbol.jpg';
-import prodPublicitario from '@assets/home/prod-publicitario.jpg';
-import prodCiclismo from '@assets/home/prod-ciclismo.jpg';
+import lineaFutbol from '@assets/home/linea-futbol.webp';
+import lineaCiclismo from '@assets/home/linea-ciclismo.webp';
+import prodFutbol from '@assets/home/prod-futbol.webp';
+import prodPublicitario from '@assets/home/prod-publicitario.webp';
+import prodCiclismo from '@assets/home/prod-ciclismo.webp';
 
 /** Secciones enlazadas desde la barra de navegacion publica. */
 const SECCIONES = [

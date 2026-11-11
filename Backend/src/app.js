@@ -5,6 +5,20 @@ import rutas from './routes/index.js';
 import { manejarErrores, rutaNoEncontrada } from './errors/errorHandler.js';
 
 const app = express();
+app.disable('x-powered-by');
+app.set('trust proxy', 1); // Render va detras de un proxy: req.ip es el cliente real
+/* Cabeceras de seguridad (sin dependencias): la API solo responde JSON. */
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+    'Cache-Control': 'no-store',
+    ...(req.secure ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' } : {}),
+  });
+  next();
+});
 /* Origenes permitidos: los de FRONTEND_URL (la pagina publicada) y siempre el
    servidor de desarrollo local, para poder probar el frontend en el equipo
    contra esta API sin tocar la configuracion. Sin FRONTEND_URL se permite todo. */

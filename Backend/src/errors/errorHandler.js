@@ -14,6 +14,7 @@ export const manejarErrores = (err, req, res, next) => {
     return res.status(err.status).json(err.campo ? { campo: err.campo, message: err.message } : { message: err.message });
   }
   if (err.type === 'entity.too.large') return res.status(413).json({ message: 'El archivo adjunto es demasiado grande.' });
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ message: 'La petición no es válida.' });
   switch (err.code) {
     case '23505': {
       const campo = err.detail?.match(CAMPO)?.[1];

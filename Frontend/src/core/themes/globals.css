@@ -800,7 +800,7 @@ table.tbl.tbl-compacta .icon-btn { width: 28px; height: 28px; }
 /* Logotipo de fondo, oscurecido para que el texto se lea por encima. */
 .auth-art::before,
 .auth-art::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-.auth-art::before { background: url('../../../assets/logo.jpg') center / contain no-repeat; opacity: .5; }
+.auth-art::before { background: url('../../../assets/logo.webp') center / contain no-repeat; opacity: .5; }
 .auth-art::after { background: linear-gradient(160deg, rgb(0 0 0 / .55), rgb(0 0 0 / .25) 45%, rgb(0 0 0 / .75)); }
 .auth-form-side { display: flex; align-items: center; justify-content: center; padding: 32px; background: var(--bg); }
 .auth-card { width: 100%; max-width: 388px; animation: fadeUp .5s var(--ease) both; }

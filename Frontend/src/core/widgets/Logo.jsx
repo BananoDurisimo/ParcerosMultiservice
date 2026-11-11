@@ -1,4 +1,4 @@
-import logo from '@assets/logo.jpg';
+import logo from '@assets/logo.webp';
 
 /**
  * Marca de la empresa. Unico punto donde se referencia el archivo del

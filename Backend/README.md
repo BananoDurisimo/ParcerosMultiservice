@@ -24,7 +24,7 @@ primer inicio de sesión (Mi cuenta > Seguridad).
 | Archivo | Contenido |
 |---|---|
 | `001_initial_schema.sql` | Tablas, vistas, kardex e historial |
-| `002_conexion_frontend.sql` | Auditoría corregida (id del registro y sin contraseña), adjuntos como `TEXT`, catálogos y permisos con los valores del frontend, regla privilegio ↔ módulo |
+| `002_conexion_frontend.sql` | Adjuntos como `TEXT`, catálogos y permisos con los valores del frontend, regla privilegio ↔ módulo |
 | `003_proteger_rol_administrador.sql` | Reactiva el rol Administrador y lo protege con un trigger: no se puede inactivar ni renombrar |
 | `004_proteger_usuario_admin.sql` | Reactiva el usuario `admin@parceros.ni` y lo protege con triggers: no se puede inactivar ni eliminar |
 | `005_modulo_reportes.sql` | Permiso `Reportes` (retirado en la 006) |
@@ -33,12 +33,13 @@ primer inicio de sesión (Mi cuenta > Seguridad).
 | `008_bloquear_rol_administrador.sql` | Devuelve al Administrador todos los módulos y acciones y lo bloquea con triggers: no se puede editar, cambiar de estado, eliminar ni quitarle permisos |
 | `009_usuario_admin_siempre_administrador.sql` | Devuelve el rol Administrador al usuario `admin@parceros.ni` y lo bloquea: no se le puede cambiar el rol ni el correo |
 | `010_descargar_cotizacion_en_pedidos.sql` | Privilegio `Descargar cotización` también en el módulo Pedidos |
-| `011_abonos_libres_defectuosas_categorias.sql` | Método de pago `Mixto`; abonos de monto libre sin límite (el primero de al menos el 50% del total); `defectuosas` por producto del pedido; módulo `Categorías de insumo` sobre `tipo_insumo` (descripción, estado, auditoría y permisos) |
+| `011_abonos_libres_defectuosas_categorias.sql` | Método de pago `Mixto`; abonos de monto libre sin límite (el primero de al menos el 50% del total); `defectuosas` por producto del pedido; módulo `Categorías de insumo` sobre `tipo_insumo` (descripción, estado y permisos) |
 | `012_insumos_sin_precio_y_proveedor_pais.sql` | El insumo deja de tener precio (columna opcional, 0 por defecto; la compra conserva lo pagado); el proveedor guarda `pais` y el NIT pasa a opcional |
 | `013_anulacion_compra_y_vigencia_cotizacion.sql` | `compra.motivo_anulacion` obligatorio al anular y una compra Recibida no se puede anular; una cotización vence el 31/12 de su año y deja de recibir abonos. La API ya no registra ajustes manuales de existencias |
 | `014_compra_recibida_no_vuelve_a_transito.sql` | Reemplaza la regla de la 013: una compra Recibida no vuelve a En tránsito, pero sí se puede anular (con motivo); al anularla sus insumos salen del inventario, salvo que ya se hayan gastado |
 | `015_anular_abonos.sql` | Los abonos no se eliminan, se anulan con motivo (`anulado`, `motivo_anulacion`); solo los vigentes cuentan en lo abonado y en la regla del primer abono; Abonos cambia el privilegio `Eliminar` por `Anular` |
 | `016_catalogo_tallas.sql` | Catálogo fijo de tallas: XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL y 6XL (XXL y XXXL pasan a 2XL y 3XL; se quitan las de niño y «Única» que no use ningún producto) |
+| `021_datos_empresa.sql` | Datos de ejemplo de la empresa: categorías, insumos, proveedores, productos con receta, roles Vendedor y Producción con sus usuarios (clave `Cambiar123!`), clientes y, solo si la base no tiene ninguno, compras y pedidos en cada etapa con sus abonos |
 
 `npm start` ejecuta las migraciones pendientes antes de iniciar el servidor,
 así que en Render basta con desplegar. Son idempotentes: no se repiten.

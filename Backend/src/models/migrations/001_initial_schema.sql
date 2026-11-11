@@ -7,7 +7,6 @@ CREATE TABLE rolxpermiso (id_rol INT REFERENCES rol ON DELETE CASCADE, id_permis
 CREATE TABLE rolxprivilegio (id_rol INT REFERENCES rol ON DELETE CASCADE, id_privilegio INT REFERENCES privilegio ON DELETE CASCADE, PRIMARY KEY(id_rol,id_privilegio));
 CREATE TABLE usuario (id_usuario SERIAL PRIMARY KEY, id_rol INT NOT NULL REFERENCES rol, nombre_usuario VARCHAR(40) NOT NULL UNIQUE, contrasena_hash VARCHAR(100) NOT NULL, correo_empresarial VARCHAR(120) NOT NULL UNIQUE, nombre_empleado VARCHAR(120) NOT NULL, documento VARCHAR(30) UNIQUE, telefono VARCHAR(20), cargo VARCHAR(60), fecha_ingreso DATE, activo BOOLEAN NOT NULL DEFAULT TRUE);
 CREATE TABLE recuperacion_clave (id_recuperacion SERIAL PRIMARY KEY, id_usuario INT NOT NULL REFERENCES usuario, token_hash VARCHAR(100) NOT NULL UNIQUE, vence TIMESTAMP NOT NULL, usado BOOLEAN NOT NULL DEFAULT FALSE);
-CREATE TABLE acceso (id_acceso SERIAL PRIMARY KEY, id_usuario INT REFERENCES usuario, correo VARCHAR(120) NOT NULL, resultado VARCHAR(20) NOT NULL CHECK(resultado IN ('LOGIN','LOGIN_FALLIDO','LOGOUT')), fecha TIMESTAMP NOT NULL DEFAULT NOW());
 
 CREATE TABLE tipo_insumo (id_tipo_insumo SERIAL PRIMARY KEY, nombre VARCHAR(40) NOT NULL UNIQUE);
 CREATE TABLE unidad_medida (id_unidad_medida SERIAL PRIMARY KEY, nombre VARCHAR(30) NOT NULL UNIQUE, abreviatura VARCHAR(10) NOT NULL UNIQUE);
@@ -29,17 +28,12 @@ CREATE TABLE detalle_pedido_talla (id_pedido INT REFERENCES pedido ON DELETE CAS
 CREATE TABLE historial_estado_pedido (id_historial SERIAL PRIMARY KEY, id_pedido INT NOT NULL REFERENCES pedido ON DELETE CASCADE, id_estado_pedido INT NOT NULL REFERENCES estado_pedido, fecha TIMESTAMP NOT NULL DEFAULT NOW(), id_usuario INT REFERENCES usuario);
 CREATE TABLE abono (id_abono SERIAL PRIMARY KEY, id_pedido INT NOT NULL REFERENCES pedido, id_metodo_pago INT NOT NULL REFERENCES metodo_pago, monto NUMERIC(10,2) NOT NULL CHECK(monto>0), fecha DATE NOT NULL DEFAULT CURRENT_DATE, ruta_comprobante VARCHAR(255));
 CREATE TABLE movimiento_inventario (id_movimiento_inventario SERIAL PRIMARY KEY, id_insumo INT NOT NULL REFERENCES insumo, cantidad NUMERIC(10,2) NOT NULL CHECK(cantidad<>0), origen VARCHAR(10) NOT NULL CHECK(origen IN ('COMPRA','PEDIDO','AJUSTE')), id_compra INT REFERENCES compra, id_pedido INT REFERENCES pedido, fecha TIMESTAMP NOT NULL DEFAULT NOW(), id_usuario INT REFERENCES usuario, CHECK((id_compra IS NOT NULL)::int + (id_pedido IS NOT NULL)::int <= 1));
-CREATE TABLE movimientos (id_movimiento SERIAL PRIMARY KEY, tabla VARCHAR(40) NOT NULL, id_registro INT NOT NULL, accion VARCHAR(10) NOT NULL, valor_anterior JSONB, valor_nuevo JSONB, id_usuario INT REFERENCES usuario, fecha_cambio TIMESTAMP NOT NULL DEFAULT NOW());
 
 CREATE OR REPLACE VIEW v_insumo_stock AS SELECT i.id_insumo, COALESCE(SUM(mi.cantidad),0)::NUMERIC(10,2) AS stock FROM insumo i LEFT JOIN movimiento_inventario mi ON mi.id_insumo=i.id_insumo GROUP BY i.id_insumo;
 CREATE OR REPLACE VIEW v_compra_total AS SELECT c.id_compra, COALESCE(SUM(d.cantidad*d.precio_unitario),0)::NUMERIC(12,2) AS total FROM compra c LEFT JOIN detalle_compra_insumo d ON d.id_compra=c.id_compra GROUP BY c.id_compra;
 CREATE OR REPLACE VIEW v_pedido_total AS SELECT p.id_pedido, COALESCE(SUM(d.cantidad*d.precio_unitario),0)::NUMERIC(12,2) AS total, COALESCE((SELECT SUM(a.monto) FROM abono a WHERE a.id_pedido=p.id_pedido),0)::NUMERIC(12,2) AS abonado, (COALESCE(SUM(d.cantidad*d.precio_unitario),0)-COALESCE((SELECT SUM(a.monto) FROM abono a WHERE a.id_pedido=p.id_pedido),0))::NUMERIC(12,2) AS saldo FROM pedido p LEFT JOIN detalle_pedido_insumo d ON d.id_pedido=p.id_pedido GROUP BY p.id_pedido;
 
 CREATE OR REPLACE FUNCTION app_user_id() RETURNS INT LANGUAGE sql STABLE AS $$ SELECT NULLIF(current_setting('app.user_id', true),'')::INT $$;
-CREATE OR REPLACE FUNCTION auditar() RETURNS TRIGGER LANGUAGE plpgsql AS $$ DECLARE fila JSONB; registro INT; BEGIN
-  fila := CASE WHEN TG_OP='DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
-  registro := COALESCE((fila->>'id_usuario')::INT,(fila->>'id_rol')::INT,(fila->>'id_cliente')::INT,(fila->>'id_proveedor')::INT,(fila->>'id_insumo')::INT,(fila->>'id_compra')::INT,(fila->>'id_pedido')::INT,(fila->>'id_abono')::INT);
-  INSERT INTO movimientos(tabla,id_registro,accion,valor_anterior,valor_nuevo,id_usuario) VALUES (TG_TABLE_NAME,registro,TG_OP,CASE WHEN TG_OP='INSERT' THEN NULL ELSE to_jsonb(OLD) END,CASE WHEN TG_OP='DELETE' THEN NULL ELSE to_jsonb(NEW) END,app_user_id()); RETURN COALESCE(NEW,OLD); END $$;
 CREATE OR REPLACE FUNCTION validar_abono() RETURNS TRIGGER LANGUAGE plpgsql AS $$ DECLARE saldo NUMERIC; BEGIN SELECT v.saldo INTO saldo FROM v_pedido_total v WHERE v.id_pedido=NEW.id_pedido; IF NEW.monto > saldo THEN RAISE EXCEPTION 'El abono excede el saldo pendiente'; END IF; RETURN NEW; END $$;
 CREATE OR REPLACE FUNCTION compra_kardex() RETURNS TRIGGER LANGUAGE plpgsql AS $$ BEGIN
   IF TG_OP='UPDATE' AND OLD.id_estado_compra=NEW.id_estado_compra THEN RETURN NEW; END IF;
@@ -67,12 +61,4 @@ CREATE TRIGGER trg_compra_kardex AFTER INSERT OR UPDATE OF id_estado_compra ON c
 CREATE TRIGGER trg_pedido_kardex AFTER INSERT OR UPDATE OF id_estado_pedido ON pedido FOR EACH ROW EXECUTE FUNCTION pedido_kardex();
 CREATE TRIGGER trg_detalle_compra_kardex AFTER INSERT OR UPDATE OR DELETE ON detalle_compra_insumo FOR EACH ROW EXECUTE FUNCTION recompra_kardex();
 CREATE TRIGGER trg_detalle_pedido_kardex AFTER INSERT OR UPDATE OR DELETE ON detalle_pedido_insumo FOR EACH ROW EXECUTE FUNCTION repedido_kardex();
-CREATE TRIGGER trg_audit_cliente AFTER INSERT OR UPDATE OR DELETE ON cliente FOR EACH ROW EXECUTE FUNCTION auditar();
-CREATE TRIGGER trg_audit_proveedor AFTER INSERT OR UPDATE OR DELETE ON proveedor FOR EACH ROW EXECUTE FUNCTION auditar();
-CREATE TRIGGER trg_audit_insumo AFTER INSERT OR UPDATE OR DELETE ON insumo FOR EACH ROW EXECUTE FUNCTION auditar();
-CREATE TRIGGER trg_audit_compra AFTER INSERT OR UPDATE OR DELETE ON compra FOR EACH ROW EXECUTE FUNCTION auditar();
-CREATE TRIGGER trg_audit_pedido AFTER INSERT OR UPDATE OR DELETE ON pedido FOR EACH ROW EXECUTE FUNCTION auditar();
-CREATE TRIGGER trg_audit_abono AFTER INSERT OR UPDATE OR DELETE ON abono FOR EACH ROW EXECUTE FUNCTION auditar();
-CREATE TRIGGER trg_audit_usuario AFTER INSERT OR UPDATE OR DELETE ON usuario FOR EACH ROW EXECUTE FUNCTION auditar();
-CREATE TRIGGER trg_audit_rol AFTER INSERT OR UPDATE OR DELETE ON rol FOR EACH ROW EXECUTE FUNCTION auditar();
 COMMIT;

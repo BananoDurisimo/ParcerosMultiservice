@@ -133,13 +133,6 @@ BEGIN
   RETURN COALESCE(NEW, OLD);
 END $$;
 
--- Auditoria de las tablas nuevas.
-DROP TRIGGER IF EXISTS trg_audit_categoria_producto ON categoria_producto;
-CREATE TRIGGER trg_audit_categoria_producto AFTER INSERT OR UPDATE OR DELETE ON categoria_producto
-  FOR EACH ROW EXECUTE FUNCTION auditar('id_categoria_producto');
-DROP TRIGGER IF EXISTS trg_audit_producto ON producto;
-CREATE TRIGGER trg_audit_producto AFTER INSERT OR UPDATE OR DELETE ON producto
-  FOR EACH ROW EXECUTE FUNCTION auditar('id_producto');
 
 -- ---------------------------------------------------------------------
 -- 7. Permisos de los modulos nuevos y privilegio «Exportar»

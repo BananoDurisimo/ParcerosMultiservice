@@ -35,14 +35,19 @@ export default function Sidebar({ collapsed, open, onToggleCollapse, onClose }) 
     return (visibles.find((h) => h.vista === vista) || visibles[0])?.vista;
   };
 
-  /* Cada categoria es un desplegable y solo una queda abierta, para no tener
-     que desplazarse por todo el menu. Se abre sola la del modulo actual. */
+  /* Cada categoria es un desplegable independiente: abrir una no cierra las
+     demas. Al navegar se abre (sin cerrar ninguna) la del modulo actual. */
   const grupoDe = (path) => NAV.find((g) => g.items.some((it) => it.to === path))?.section;
-  const [abierto, setAbierto] = useState(() => grupoDe(loc.pathname));
+  const [abiertos, setAbiertos] = useState(() => new Set([grupoDe(loc.pathname)].filter(Boolean)));
   useEffect(() => {
     const g = grupoDe(loc.pathname);
-    if (g) setAbierto(g);
+    if (g) setAbiertos((prev) => (prev.has(g) ? prev : new Set(prev).add(g)));
   }, [loc.pathname]);
+  const alternar = (g) => setAbiertos((prev) => {
+    const sig = new Set(prev);
+    if (!sig.delete(g)) sig.add(g);
+    return sig;
+  });
 
   return (
     <aside className={`sidebar ${collapsed ? 'is-collapsed' : ''} ${open ? 'is-open' : ''}`}>
@@ -63,7 +68,7 @@ export default function Sidebar({ collapsed, open, onToggleCollapse, onClose }) 
         {NAV.map((grupo, gi) => {
           const items = grupo.items.filter((it) => puede(it.permiso));
           if (!items.length) return null;
-          const cerrado = !!grupo.section && abierto !== grupo.section;
+          const cerrado = !!grupo.section && !abiertos.has(grupo.section);
           return (
             <div key={gi} className={`nav-grupo ${cerrado ? 'is-closed' : ''}`}>
               {grupo.section && (
@@ -71,12 +76,13 @@ export default function Sidebar({ collapsed, open, onToggleCollapse, onClose }) 
                   type="button"
                   className="nav-section"
                   aria-expanded={!cerrado}
-                  onClick={() => setAbierto(cerrado ? grupo.section : null)}
+                  onClick={() => alternar(grupo.section)}
                 >
                   {grupo.section} <Icon name="chevD" size={13} />
                 </button>
               )}
               <div className="nav-grupo-items">
+              <div className="nav-grupo-inner">
               {items.map((it) => (
                 <div key={it.to}>
                   <NavLink
@@ -105,6 +111,7 @@ export default function Sidebar({ collapsed, open, onToggleCollapse, onClose }) 
                   )}
                 </div>
               ))}
+              </div>
               </div>
             </div>
           );

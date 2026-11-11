@@ -393,9 +393,13 @@ button.nav-section { display: flex; align-items: center; justify-content: space-
 button.nav-section:hover { color: var(--text); }
 button.nav-section svg { transition: transform .2s var(--ease); }
 .nav-grupo.is-closed button.nav-section svg { transform: rotate(-90deg); }
-.nav-grupo.is-closed .nav-grupo-items { display: none; }
+/* Desplegable animado: la fila de la cuadricula pasa de 0fr a 1fr (alto real
+   del contenido, sin medirlo) y el contenido se desvanece. */
+.nav-grupo-items { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows .25s var(--ease), opacity .2s var(--ease), visibility .25s; }
+.nav-grupo-inner { min-height: 0; overflow: hidden; }
+.nav-grupo.is-closed .nav-grupo-items { grid-template-rows: 0fr; opacity: 0; visibility: hidden; }
 /* Con el menu contraido (solo iconos) no hay titulos: se ven todos los modulos. */
-@media (min-width: 901px) { .sidebar.is-collapsed .nav-grupo.is-closed .nav-grupo-items { display: block; } }
+@media (min-width: 901px) { .sidebar.is-collapsed .nav-grupo.is-closed .nav-grupo-items { grid-template-rows: 1fr; opacity: 1; visibility: visible; } }
 .nav-item {
   display: flex; align-items: center; gap: 11px;
   padding: 9px 16px; margin: 1px 0;
@@ -407,6 +411,11 @@ button.nav-section svg { transition: transform .2s var(--ease); }
 .nav-item:hover { background: var(--surface-3); color: var(--text); text-decoration: none; padding-left: 20px; }
 .nav-item .ico { flex: none; }
 .nav-item.active { background: var(--primary-soft); color: var(--primary); border-left-color: var(--primary); font-weight: 500; }
+/* Al seleccionar un modulo su icono da un pequeno pulso. */
+.nav-item.active .ico { animation: navPick .32s var(--ease); }
+.nav-hijo.active { animation: navPickHijo .25s var(--ease); }
+@keyframes navPick { from { transform: scale(.82); } to { transform: none; } }
+@keyframes navPickHijo { from { opacity: .4; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
 .sidebar.is-collapsed .nav-item { justify-content: center; padding: 11px 0; border-left-width: 0; border-radius: 0; }
 .sidebar.is-collapsed .nav-item span { display: none; }
 .sidebar.is-collapsed .nav-section, .sidebar.is-collapsed .brand-name { display: none; }

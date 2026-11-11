@@ -1,0 +1,101 @@
+# API de Parceros Multiservice
+
+Backend REST con Node.js, Express y PostgreSQL. El esquema conserva el modelo de
+DBDiagram: no almacena totales ni existencias; se calculan con vistas
+(`v_pedido_total`, `v_compra_total`, `v_insumo_stock`).
+
+## Inicio rápido
+
+1. Cree una base de datos PostgreSQL: `CREATE DATABASE parceros_multiservice;`.
+2. Copie `.env.example` como `.env` y ajuste `DATABASE_URL` y `JWT_SECRET`.
+   Para una conexión externa de Render/Supabase, configure también `DB_SSL=true`.
+3. Ejecute `npm install` dentro de esta carpeta.
+4. Ejecute `npm run migrate`: aplica en orden las migraciones de
+   `src/models/migrations` que falten y las anota en `schema_migrations`.
+5. Ejecute `npm run seed` para los tipos de insumo, las unidades, el rol
+   Administrador y su usuario.
+6. Ejecute `npm run dev`. La API queda en `http://localhost:3000/api`.
+
+El usuario inicial es `admin@parceros.ni`, con clave `Cambiar123!`. Cámbiela al
+primer inicio de sesión (Mi cuenta > Seguridad).
+
+## Migraciones
+
+| Archivo | Contenido |
+|---|---|
+| `001_initial_schema.sql` | Tablas, vistas, kardex e historial |
+| `002_conexion_frontend.sql` | Auditoría corregida (id del registro y sin contraseña), adjuntos como `TEXT`, catálogos y permisos con los valores del frontend, regla privilegio ↔ módulo |
+| `003_proteger_rol_administrador.sql` | Reactiva el rol Administrador y lo protege con un trigger: no se puede inactivar ni renombrar |
+| `004_proteger_usuario_admin.sql` | Reactiva el usuario `admin@parceros.ni` y lo protege con triggers: no se puede inactivar ni eliminar |
+| `005_modulo_reportes.sql` | Permiso `Reportes` (retirado en la 006) |
+| `006_productos_y_exportacion.sql` | Retira el módulo Reportes; tallas; categorías de producto, productos base con su receta y `detalle_pedido_producto`; la receta del pedido se copia a `detalle_pedido_insumo` con `de_receta`; total del pedido = productos + personalización; consumo de inventario agrupado por insumo; privilegio `Exportar` en abonos, cotizaciones, pedidos, ventas, insumos y compras |
+| `007_usuario_documento_y_cotizacion.sql` | Tipo de documento del usuario; `nombre_usuario` pasa a opcional (se inicia sesión con el correo); privilegio `Descargar cotización` |
+| `008_bloquear_rol_administrador.sql` | Devuelve al Administrador todos los módulos y acciones y lo bloquea con triggers: no se puede editar, cambiar de estado, eliminar ni quitarle permisos |
+| `009_usuario_admin_siempre_administrador.sql` | Devuelve el rol Administrador al usuario `admin@parceros.ni` y lo bloquea: no se le puede cambiar el rol ni el correo |
+| `010_descargar_cotizacion_en_pedidos.sql` | Privilegio `Descargar cotización` también en el módulo Pedidos |
+| `011_abonos_libres_defectuosas_categorias.sql` | Método de pago `Mixto`; abonos de monto libre sin límite (el primero de al menos el 50% del total); `defectuosas` por producto del pedido; módulo `Categorías de insumo` sobre `tipo_insumo` (descripción, estado, auditoría y permisos) |
+| `012_insumos_sin_precio_y_proveedor_pais.sql` | El insumo deja de tener precio (columna opcional, 0 por defecto; la compra conserva lo pagado); el proveedor guarda `pais` y el NIT pasa a opcional |
+| `013_anulacion_compra_y_vigencia_cotizacion.sql` | `compra.motivo_anulacion` obligatorio al anular y una compra Recibida no se puede anular; una cotización vence el 31/12 de su año y deja de recibir abonos. La API ya no registra ajustes manuales de existencias |
+| `014_compra_recibida_no_vuelve_a_transito.sql` | Reemplaza la regla de la 013: una compra Recibida no vuelve a En tránsito, pero sí se puede anular (con motivo); al anularla sus insumos salen del inventario, salvo que ya se hayan gastado |
+| `015_anular_abonos.sql` | Los abonos no se eliminan, se anulan con motivo (`anulado`, `motivo_anulacion`); solo los vigentes cuentan en lo abonado y en la regla del primer abono; Abonos cambia el privilegio `Eliminar` por `Anular` |
+| `016_catalogo_tallas.sql` | Catálogo fijo de tallas: XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL y 6XL (XXL y XXXL pasan a 2XL y 3XL; se quitan las de niño y «Única» que no use ningún producto) |
+
+`npm start` ejecuta las migraciones pendientes antes de iniciar el servidor,
+así que en Render basta con desplegar. Son idempotentes: no se repiten.
+Render despliega solo cada commit que llega a la rama `develop` (carpeta `Backend/`,
+campo *Root Directory* del servicio).
+
+## Estructura
+
+| Carpeta | Contenido |
+|---|---|
+| `src/config/` | Variables de entorno (`env.js`), conexión a PostgreSQL (`db.js`), `migrate.js` y `seed.js` |
+| `src/routes/` | Endpoints: `index.js` monta `/api/auth`, `/api/datos` y `/api/{coleccion}` |
+| `src/controllers/` | Traducen cada petición al servicio y la respuesta a HTTP |
+| `src/services/` | Lógica de negocio: sesión y recuperación de clave, lectura de `/api/datos`, escritura de cada colección y correos (Brevo) |
+| `src/models/` | `colecciones.js` (tabla, llave, campos y permisos de cada colección) y el esquema en `migrations/` |
+| `src/middlewares/` | `requireAuth` (JWT) y permisos por módulo |
+| `src/validators/` | Validación de la entrada (contraseñas, registros que no se eliminan) |
+| `src/errors/` | `HttpError` y el manejador que traduce los errores de PostgreSQL |
+| `src/utils/` | Utilidades y plantillas HTML de los correos |
+| `tests/` | Pruebas con `node --test` (`npm test`) |
+
+## Rutas
+
+Todas, salvo `health` y `login`, requieren `Authorization: Bearer <token>`.
+
+| Método | Ruta | Uso |
+|---|---|---|
+| `GET` | `/api/health` | Estado del servicio |
+| `POST` | `/api/auth/login` | `{ correo, contrasena }` → `{ token, user }` |
+| `GET` | `/api/auth/me` | Usuario de la sesión con sus acciones por módulo |
+| `PUT` | `/api/auth/clave` | `{ actual, nueva }`: cambio de la propia contraseña |
+| `GET` | `/api/datos` | Todas las tablas que usa el frontend en una sola respuesta |
+| `POST` | `/api/{coleccion}` | Crear |
+| `PUT` | `/api/{coleccion}/:id` | Editar, cambiar estado o anular |
+| `DELETE` | `/api/{coleccion}/:id` | Eliminar |
+
+Colecciones: `clientes`, `proveedores`, `insumos`, `roles` (con `permisos` y
+`privilegios`), `usuarios` (con `contrasena` al crear), `compras` (con
+`detalles`), `tipos_insumo` (categorías de insumo), `pedidos` (con `productos` y sus `defectuosas`, `insumos` de personalización e
+`insumos_receta`), `abonos`, `categorias_producto` y `productos` (con `receta`).
+
+## Seguridad
+
+- Cada escritura exige el privilegio del módulo en el servidor: crear necesita
+  "Agregar", modificar "Editar", "Cambiar estado" o "Anular", y eliminar
+  "Eliminar". Sin permiso sobre Usuarios, cada quien solo edita su perfil.
+- Las contraseñas se guardan con bcrypt y nunca salen de la base de datos.
+- Cada escritura corre en una transacción con el usuario de la petición
+  (`app.user_id`), que es el responsable que registran los triggers.
+
+## Errores
+
+Las respuestas de error traen `{ message }` y, cuando aplica, `campo` con el
+nombre de la columna (p. ej. un documento repetido devuelve `409` con
+`campo: "documento"`).
+
+## Pendiente
+
+- Archivos (diseño y comprobante) en un servicio de almacenamiento: hoy se
+  guardan como data URL en columnas `TEXT`.

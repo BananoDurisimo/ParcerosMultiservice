@@ -9,7 +9,7 @@
 --    mal. Su receta se descuenta del inventario (el frontend la suma a la
 --    copia de la receta del pedido); el precio no cambia.
 -- 4. Categorias de insumo: la tabla tipo_insumo pasa a administrarse desde
---    su propio modulo (descripcion, estado, auditoria y permisos).
+--    su propio modulo (descripcion, estado y permisos).
 -- Es idempotente: se puede ejecutar mas de una vez sin duplicar datos.
 -- =====================================================================
 BEGIN;
@@ -45,9 +45,6 @@ ALTER TABLE detalle_pedido_producto ADD CONSTRAINT detalle_pedido_producto_defec
 -- 4. Categorias de insumo
 ALTER TABLE tipo_insumo ADD COLUMN IF NOT EXISTS descripcion VARCHAR(200);
 ALTER TABLE tipo_insumo ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
-DROP TRIGGER IF EXISTS trg_audit_tipo_insumo ON tipo_insumo;
-CREATE TRIGGER trg_audit_tipo_insumo AFTER INSERT OR UPDATE OR DELETE ON tipo_insumo
-  FOR EACH ROW EXECUTE FUNCTION auditar('id_tipo_insumo');
 
 INSERT INTO permiso(nombre) VALUES ('Categorías de insumo') ON CONFLICT (nombre) DO NOTHING;
 INSERT INTO privilegio(id_permiso, nombre)

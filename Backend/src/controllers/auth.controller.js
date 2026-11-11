@@ -6,7 +6,7 @@ import { validarCambioClave, validarRestablecer } from '../validators/auth.valid
 
 export const login = async (req, res, next) => {
   try {
-    res.json(await auth.iniciarSesion(req.body.correo, req.body.contrasena));
+    res.json(await auth.iniciarSesion(req.body?.correo, req.body?.contrasena, req.ip));
   } catch (e) { next(e); }
 };
 
@@ -14,8 +14,8 @@ export const me = (req, res) => res.json({ user: req.user });
 
 export const cambiarClave = async (req, res, next) => {
   try {
-    validarCambioClave(req.body);
-    const { actual = '', nueva = '' } = req.body;
+    validarCambioClave(req.body || {});
+    const { actual = '', nueva = '' } = req.body || {};
     await auth.cambiarClave(req.user.id_usuario, actual, nueva);
     res.status(204).end();
   } catch (e) { next(e); }
@@ -23,7 +23,7 @@ export const cambiarClave = async (req, res, next) => {
 
 export const solicitarRecuperacion = async (req, res, next) => {
   try {
-    await auth.solicitarRecuperacion(req.body.correo);
+    await auth.solicitarRecuperacion(req.body?.correo, req.ip);
     res.status(204).end();
   } catch (e) { next(e); }
 };
@@ -36,8 +36,8 @@ export const validarToken = async (req, res, next) => {
 
 export const restablecer = async (req, res, next) => {
   try {
-    validarRestablecer(req.body);
-    const { token = '', nueva = '' } = req.body;
+    validarRestablecer(req.body || {});
+    const { token = '', nueva = '' } = req.body || {};
     await auth.restablecerClave(token, nueva);
     res.status(204).end();
   } catch (e) { next(e); }

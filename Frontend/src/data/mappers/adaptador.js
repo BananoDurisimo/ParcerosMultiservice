@@ -181,6 +181,8 @@ export function aServidor(col, r, cat, sid) {
         })),
         insumos: (r.insumos || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad, precio_unitario: l.precio_unitario, defectuosas: Number(l.defectuosas) || 0 })),
         insumos_receta: (r.insumos_receta || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad })),
+        /* El pedido que nace en proceso viaja con su abono inicial: el servidor guarda los dos o ninguno. */
+        ...(r.abono_inicial ? { abono_inicial: aServidor('abonos', r.abono_inicial, cat, sid) } : {}),
       };
     case 'abonos':
       return {

@@ -10,13 +10,13 @@ su README) y estas dejan de mostrarse solas.
 
 | Archivo | Uso en la página | Autoría | Origen |
 |---|---|---|---|
-| `linea-futbol.jpg` | Líneas · 01 Fútbol | Parceros Multiservice | Material propio (Instagram) |
-| `prod-futbol.jpg` | Tarjeta · Uniformes deportivos | Parceros Multiservice | Material propio (Instagram) |
-| `linea-ciclismo.jpg` | Líneas · 02 Ciclismo | Parceros Multiservice | Material propio |
-| `prod-publicitario.jpg` | Tarjeta y Líneas · 03 Patrocinio | Parceros Multiservice | Material propio (Instagram) |
-| `prod-ciclismo.jpg` | Tarjeta · Ropa de ciclismo | Parceros Multiservice | Material propio (Instagram) |
+| `linea-futbol.webp` | Líneas · 01 Fútbol | Parceros Multiservice | Material propio (Instagram) |
+| `prod-futbol.webp` | Tarjeta · Uniformes deportivos | Parceros Multiservice | Material propio (Instagram) |
+| `linea-ciclismo.webp` | Líneas · 02 Ciclismo | Parceros Multiservice | Material propio |
+| `prod-publicitario.webp` | Tarjeta y Líneas · 03 Patrocinio | Parceros Multiservice | Material propio (Instagram) |
+| `prod-ciclismo.webp` | Tarjeta · Ropa de ciclismo | Parceros Multiservice | Material propio (Instagram) |
 | `taller-video.mp4` | Portada · video del taller (360×640, H.264, ~700 KB) | Parceros Multiservice | Material propio (Instagram) |
-| `taller.jpg` | Sobre la empresa · foto del taller | Pavel Danilyuk | [Pexels 6461121](https://www.pexels.com/photo/6461121/) |
+| `taller.webp` | Sobre la empresa · foto del taller | Pavel Danilyuk | [Pexels 6461121](https://www.pexels.com/photo/6461121/) |
 
 Las publicaciones de Instagram de la sección "Redes sociales" no usan archivos
 locales: se muestran con el reproductor oficial de la red (ver

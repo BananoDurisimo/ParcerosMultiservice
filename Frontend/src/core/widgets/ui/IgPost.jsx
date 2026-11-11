@@ -50,7 +50,7 @@ export function IgFrame({ post, className = '' }) {
           title="Publicación de Instagram de Parceros Multiservice"
           loading="lazy"
           scrolling="no"
-          allowTransparency="true"
+          allowtransparency="true"
           onLoad={() => setCargado(true)}
         />
       )}

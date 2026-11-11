@@ -11,6 +11,17 @@
         "dev"
       ],
       "port": 5173
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "Backend",
+        "run",
+        "dev"
+      ],
+      "port": 3000
     }
   ]
 }

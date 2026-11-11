@@ -51,7 +51,7 @@ por defecto del repositorio, así que los Pull Request apuntan a ella.
 | Parte | Dónde vive | Cómo se publica desde `develop` |
 |---|---|---|
 | Frontend | GitHub Pages (rama `gh-pages`) | Hook `Frontend/scripts/hooks/pre-push` en cada push a `develop` |
-| API | Render, servicio `parceros-multiservice-api` | Auto-deploy de Render al llegar un commit a `develop` (carpeta `Backend/`, campo *Root Directory* del servicio); `npm start` aplica las migraciones pendientes |
+| API | Render, servicio `parceros-multiservice-api` | Auto-deploy de Render al llegar un commit a `develop` (carpeta `Backend/`, campo *Root Directory* del servicio); `npm start` aplica las migraciones pendientes. Requiere `JWT_SECRET` de al menos 32 caracteres en las variables del servicio |
 
 Flujo de trabajo: crear una rama desde `develop`, abrir el PR hacia `develop` y
 hacer merge. Si el merge se hace en GitHub (no desde el equipo), el hook no corre:
@@ -291,7 +291,52 @@ repositorios de `data/`, que usan `core/network/cliente.js`. `adaptador.js` trad
 tablas de la base de datos (`id_cliente`, `activo`, `id_estado_pedido`…) a las
 colecciones que usan las páginas (`id`, `estado`…), por eso las vistas no conocen el
 esquema SQL. El token de sesión se guarda en `sessionStorage` y se envía como
-`Authorization: Bearer`; si la API responde 401, la sesión se cierra.
+`Authorization: Bearer`; si la API responde 401, la sesión se cierra. Con
+«Recordarme» el token se guarda en `localStorage` y la sesión sigue al reabrir el
+navegador hasta que venza (8 horas).
+
+## Seguridad y reglas que valida el servidor
+
+La interfaz valida para guiar al usuario; quien decide es la API (y, donde importa
+la concurrencia, la base de datos). Están cubiertas por `Backend/tests/negocio.test.js`.
+
+**Acceso**
+
+- Lectura: `GET /api/datos` entrega a cada rol solo las colecciones de sus módulos;
+  sin Usuarios ni Roles, cada quien recibe solo su propio usuario y su rol.
+- Escritura: crear exige «Agregar»; modificar, «Editar»; eliminar, «Eliminar».
+  Quien solo tiene «Cambiar estado» o «Anular» cambia únicamente el estado, y quien
+  solo tiene «Editar» no lo cambia.
+- Las respuestas de escritura devuelven solo la llave del registro: nunca el hash
+  de la contraseña ni el adjunto.
+- Inicio de sesión: 8 intentos fallidos por correo e IP bloquean 15 minutos; la
+  recuperación de contraseña envía como máximo 3 correos en ese lapso.
+- `JWT_SECRET` es obligatorio y de al menos 32 caracteres: sin él la API no arranca.
+- Los adjuntos se validan en el servidor: imagen JPG, PNG o WEBP (o PDF en el
+  comprobante) de máximo 5 MB.
+
+**Negocio**
+
+- El pedido que nace en proceso se guarda con su abono inicial en la misma
+  transacción (`abono_inicial`): los dos o ninguno.
+- Abonos: el primero, al menos el 50% del total; ninguno pasa el saldo, tampoco si
+  llegan dos a la vez. El monto de un abono registrado no se edita.
+- El abono mueve la etapa del pedido dentro de su misma transacción: el primero
+  inicia la cotización (si hay existencias) y el que salda un pedido en «falta
+  pago» lo completa. Anular un abono de un pedido completado lo devuelve a «falta
+  pago»; no se anulan los de una venta entregada ni el único vigente de un pedido
+  en producción.
+- Estados del pedido: solo cotización → en proceso → falta pago / completado →
+  entregado; completar y entregar exigen saldo cero (migración 020).
+- Las líneas del pedido solo cambian en cotización o en proceso, y el total no
+  puede quedar por debajo de lo abonado.
+
+Las pruebas de reglas de negocio escriben datos: solo corren si `TEST_DATABASE_URL`
+apunta a una base **local** ya migrada y con la semilla.
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres:CLAVE@localhost:5432/parceros_test npm test
+```
 
 ## Licencia
 

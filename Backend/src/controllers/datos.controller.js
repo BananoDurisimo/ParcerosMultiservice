@@ -5,14 +5,14 @@ import { prohibido } from '../errors/HttpError.js';
 
 export const listarDatos = async (req, res, next) => {
   try {
-    res.json(await obtenerDatos());
+    res.json(await obtenerDatos(req.user));
   } catch (e) { next(e); }
 };
 
 export const verArchivo = async (req, res, next) => {
   try {
-    const cfg = COLECCIONES[req.params.coleccion];
-    if (cfg?.archivo && !puede(req.user, cfg.modulos, cfg.archivo.acciones)) throw prohibido();
+    const cfg = Object.hasOwn(COLECCIONES, req.params.coleccion) ? COLECCIONES[req.params.coleccion] : null;
+    if (cfg?.archivo && !puede(req.user, cfg.archivo.modulos || cfg.modulos, cfg.archivo.acciones)) throw prohibido();
     res.json(await obtenerArchivo(cfg, Number(req.params.id)));
   } catch (e) { next(e); }
 };

@@ -152,7 +152,11 @@ export function DataProvider({ children }) {
   }, []);
 
   /* Cada cambio se ve al instante; las existencias las recalcula la
-     base de datos y llegan con la recarga que sigue a la cola. */
+     base de datos y llegan con la recarga que sigue a la cola.
+
+     `{ local: true }` cambia solo la pantalla: es para lo que el servidor ya
+     hace por su cuenta dentro de la misma operacion (la etapa del pedido al
+     registrar o anular un abono). */
   const create = useCallback((col, row) => {
     const creado = { ...row, id: row.id ?? nuevoId(col) };
     sincronizar(async () => {
@@ -160,8 +164,15 @@ export function DataProvider({ children }) {
       const pk = Object.keys(fila).find((k) => k.startsWith('id_'));
       (idsServidor.current[col] ||= new Map()).set(creado.id, fila[pk]);
     });
-    aplicar((d) => ({ ...d, [col]: [creado, ...d[col]] }));
-    return creado;
+    /* El abono inicial viaja dentro del pedido; en pantalla es un abono mas. */
+    const { abono_inicial: abono, ...fila } = creado;
+    const filaAbono = col === 'pedidos' && abono ? { estado: 'Vigente', motivo_anulacion: '', ...abono, id: nuevoId('abonos'), id_pedido: creado.id } : null;
+    aplicar((d) => ({
+      ...d,
+      [col]: [fila, ...d[col]],
+      ...(filaAbono ? { abonos: [filaAbono, ...d.abonos] } : {}),
+    }));
+    return fila;
   }, [nuevoId, aplicar, sincronizar]);
 
   /* --------------------------------------------------------------
@@ -179,12 +190,12 @@ export function DataProvider({ children }) {
     return archivos.current.get(k);
   }, []);
 
-  const update = useCallback((col, id, patch) => {
+  const update = useCallback((col, id, patch, { local = false } = {}) => {
     const previo = rawRef.current[col].find((r) => r.id === id);
     if (!previo) return;
     /* Un adjunto nuevo reemplaza al que estaba en memoria. */
     if ('imagen_diseno' in patch || 'url_comprobante' in patch) archivos.current.delete(`${col}:${id}`);
-    sincronizar(() => datosRepo.actualizarRegistro(col, sid(col, id), cuerpo(col, { ...previo, ...patch })));
+    if (!local) sincronizar(() => datosRepo.actualizarRegistro(col, sid(col, id), cuerpo(col, { ...previo, ...patch })));
     aplicar((d) => ({ ...d, [col]: d[col].map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
   }, [aplicar, sincronizar, sid]);
 

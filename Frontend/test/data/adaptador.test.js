@@ -35,4 +35,13 @@ describe('mapeador de la API', () => {
     expect(aServidor('abonos', { ...con, url_comprobante: 'data:image/png;base64,AA' }, cat, sid).ruta_comprobante).toBe('data:image/png;base64,AA');
     expect(aServidor('abonos', { ...con, url_comprobante: '' }, cat, sid).ruta_comprobante).toBe('');
   });
+
+  it('el pedido en proceso lleva su abono inicial en la misma peticion', () => {
+    const cat = { tipos_documento: [], estados_compra: [], estados_pedido: [{ id_estado_pedido: 2, nombre: 'Pedido en proceso' }], metodos_pago: [{ id_metodo_pago: 1, nombre: 'Efectivo' }] };
+    const sid = (_, id) => id;
+    const pedido = { id_cliente: 3, estado: 'Pedido en proceso', productos: [], insumos: [], insumos_receta: [] };
+    expect(aServidor('pedidos', pedido, cat, sid).abono_inicial).toBeUndefined();
+    const cuerpo = aServidor('pedidos', { ...pedido, abono_inicial: { monto: 50, fecha: '2026-08-30', metodo_pago: 'Efectivo', url_comprobante: '' } }, cat, sid);
+    expect(cuerpo.abono_inicial).toMatchObject({ id_metodo_pago: 1, monto: 50, fecha: '2026-08-30', anulado: false });
+  });
 });

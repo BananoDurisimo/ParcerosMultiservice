@@ -152,11 +152,12 @@ export default function Abonos() {
       const p = pedidoDe(r.id_pedido);
       return `El abono ${r.calc_codigo} por ${money(r.monto)} de ${r.calc_pedido} quedará anulado: se conserva como registro, pero deja de contar y el saldo del pedido aumentará en ese valor.${p?.estado === COMPLETADO ? ` El pedido volverá a «${FALTA_PAGO}» y se le avisará al cliente por correo.` : ''} No se puede deshacer.`;
     },
-    /* Un pedido completado vuelve a «falta pago»: ya no esta saldado. */
+    /* Un pedido completado vuelve a «falta pago»: ya no esta saldado. Lo
+       hace el servidor al anular el abono; aqui solo se adelanta en pantalla. */
     alAnular: (r) => {
       const p = pedidoDe(r.id_pedido);
       if (p?.estado === COMPLETADO) {
-        update('pedidos', p.id, { estado: FALTA_PAGO, historial_estados: [...(p.historial_estados || []), { estado: FALTA_PAGO, fecha: hoyISO() }] });
+        update('pedidos', p.id, { estado: FALTA_PAGO, historial_estados: [...(p.historial_estados || []), { estado: FALTA_PAGO, fecha: hoyISO() }] }, { local: true });
       }
     },
   };
@@ -179,6 +180,8 @@ export default function Abonos() {
       : p.estado === FALTA_PAGO && saldo <= 0 ? COMPLETADO
       : null;
 
+    /* El servidor mueve la etapa del pedido en la misma operacion que guarda
+       el abono; aqui solo se adelanta en pantalla (`{ local: true }`). */
     const registrar = () => {
       create('abonos', { ...d, id_pedido: p.id, monto: redondear(Number(d.monto)), url_comprobante: d.url_comprobante || '' });
       toast.success('El registro de abono se guardó correctamente.');
@@ -188,10 +191,10 @@ export default function Abonos() {
           'Pedido sin iniciar'
         );
       } else if (nuevo === EN_PROCESO) {
-        update('pedidos', p.id, { estado: EN_PROCESO, fecha_inicio: d.fecha, historial_estados: etapa(EN_PROCESO) });
+        update('pedidos', p.id, { estado: EN_PROCESO, fecha_inicio: d.fecha, historial_estados: etapa(EN_PROCESO) }, { local: true });
         toast.info(`${p.calc_codigo} pasó a «${EN_PROCESO}» y sus insumos se descontaron del inventario.`, 'Pedido iniciado');
       } else if (nuevo === COMPLETADO) {
-        update('pedidos', p.id, { estado: COMPLETADO, historial_estados: etapa(COMPLETADO) });
+        update('pedidos', p.id, { estado: COMPLETADO, historial_estados: etapa(COMPLETADO) }, { local: true });
         toast.info(`${p.calc_codigo} quedó pagado y pasó a «${COMPLETADO}».`, 'Pedido completado');
       }
     };

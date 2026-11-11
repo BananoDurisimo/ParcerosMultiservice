@@ -47,12 +47,9 @@ export default function Insumos() {
         out.push({ fecha: p.fecha_inicio, tipo: 'Salida', origen: `Pedido ${p.calc_codigo}`, cantidad: -l.cantidad })
       )
     );
-    db.movimientos
-      .filter((m) => m.tabla === 'insumo' && m.id_registro === i.id && m.accion === 'UPDATE' && m.calc_cambios.some((c) => c.campo === 'stock'))
-      .forEach((m) => {
-        const n = Number(m.valor_nuevo.stock) - Number(m.valor_anterior.stock);
-        out.push({ fecha: m.calc_fecha, tipo: 'Ajuste manual', origen: m.calc_usuario, cantidad: n });
-      });
+    db.ajustes_inventario.filter((m) => m.id_insumo === i.id).forEach((m) =>
+      out.push({ fecha: m.fecha, tipo: 'Ajuste manual', origen: m.responsable, cantidad: m.cantidad })
+    );
     return out.sort((a, b) => b.fecha.localeCompare(a.fecha)).map((x, k) => ({ ...x, id: k }));
   };
 

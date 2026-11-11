@@ -34,6 +34,7 @@ primer inicio de sesión (Mi cuenta > Seguridad).
 | `009_usuario_admin_siempre_administrador.sql` | Devuelve el rol Administrador al usuario `admin@parceros.ni` y lo bloquea: no se le puede cambiar el rol ni el correo |
 | `010_descargar_cotizacion_en_pedidos.sql` | Privilegio `Descargar cotización` también en el módulo Pedidos |
 | `011_abonos_libres_defectuosas_categorias.sql` | Método de pago `Mixto`; abonos de monto libre sin límite (el primero de al menos el 50% del total); `defectuosas` por producto del pedido; módulo `Categorías de insumo` sobre `tipo_insumo` (descripción, estado, auditoría y permisos) |
+| `013_integridad_concurrencia_rendimiento.sql` | Índices en llaves foráneas; huella md5 de los adjuntos; el historial deja de guardar copias de las imágenes; abonos simultáneos validados en serie; recorrido de estados del pedido validado en la base; el kardex no se reescribe al cambiar de etapa. No borra ni modifica datos |
 | `012_insumos_sin_precio_y_proveedor_pais.sql` | El insumo deja de tener precio (columna opcional, 0 por defecto; la compra conserva lo pagado); el proveedor guarda `pais` y el NIT pasa a opcional |
 
 `npm start` ejecuta las migraciones pendientes antes de iniciar el servidor,
@@ -51,7 +52,8 @@ Todas, salvo `health` y `login`, requieren `Authorization: Bearer <token>`.
 | `GET` | `/api/auth/me` | Usuario de la sesión con sus acciones por módulo |
 | `POST` | `/api/auth/logout` | Registra el cierre de sesión |
 | `PUT` | `/api/auth/clave` | `{ actual, nueva }`: cambio de la propia contraseña |
-| `GET` | `/api/datos` | Todas las tablas que usa el frontend en una sola respuesta |
+| `GET` | `/api/datos` | Las tablas que usa el frontend en una sola respuesta: cada rol recibe solo las de sus módulos, y los adjuntos van como huella (`diseno_md5`, `comprobante_md5`) |
+| `GET` | `/api/adjuntos?pedidos=1,2&abonos=5` | Diseños y comprobantes (data URL) de los registros pedidos; el frontend los descarga una vez |
 | `POST` | `/api/{coleccion}` | Crear |
 | `PUT` | `/api/{coleccion}/:id` | Editar, cambiar estado o anular |
 | `DELETE` | `/api/{coleccion}/:id` | Eliminar |
@@ -64,12 +66,47 @@ Colecciones: `clientes`, `proveedores`, `insumos`, `roles` (con `permisos` y
 ## Seguridad
 
 - Cada escritura exige el privilegio del módulo en el servidor: crear necesita
-  "Agregar", modificar "Editar", "Cambiar estado" o "Anular", y eliminar
-  "Eliminar". Sin permiso sobre Usuarios, cada quien solo edita su perfil.
-- Las contraseñas se guardan con bcrypt y nunca salen de la base de datos ni
-  aparecen en el historial de movimientos.
+  "Agregar"; modificar, "Editar"; y eliminar, "Eliminar". Quien solo tiene
+  "Cambiar estado" o "Anular" cambia únicamente el estado, y quien solo tiene
+  "Editar" no lo cambia. Sin permiso sobre Usuarios, cada quien solo edita su perfil.
+- El pedido pertenece al módulo de su etapa: la cotización a Cotizaciones; en
+  proceso y falta pago a Pedidos; completado a Pedidos y Ventas; entregado a Ventas.
+- La lectura también se filtra: `GET /api/datos` entrega a cada rol solo las
+  colecciones de sus módulos (los demás usuarios, el historial y los adjuntos
+  no salen si el rol no los puede ver).
+- Las contraseñas se guardan con bcrypt y nunca salen de la base de datos, de
+  las respuestas ni del historial de movimientos.
+- Inicio de sesión: 8 intentos fallidos por correo e IP bloquean 15 minutos.
+- `JWT_SECRET` es obligatorio (mínimo 32 caracteres): sin él el servidor no arranca.
+- Los adjuntos se validan en el servidor: imagen JPG, PNG o WEBP (o PDF en el
+  comprobante) de máximo 5 MB.
 - Cada escritura corre en una transacción con el usuario de la petición
   (`app.user_id`), que es el responsable que registran los triggers.
+
+## Reglas de negocio que valida el servidor
+
+- Pedido en proceso: nace con su abono inicial en la misma transacción (`abono_inicial`).
+- Abonos: el primero, al menos el 50% del total; ninguno pasa el saldo, tampoco
+  si llegan dos a la vez. El monto de un abono no se edita. El primer abono
+  inicia la cotización (si hay existencias) y el que salda un pedido en "falta
+  pago" lo completa; eliminar un abono de un pedido completado lo devuelve a
+  "falta pago". No se eliminan los abonos de una venta entregada ni el abono
+  inicial de un pedido en producción.
+- Estados del pedido: solo el recorrido 1→2, 2→3, 2→4, 3→4, 4→3 y 4→5; completar
+  y entregar exigen saldo cero.
+- Las líneas del pedido solo cambian en cotización o en proceso, y el total no
+  puede quedar por debajo de lo abonado.
+- Eliminar un pedido elimina sus abonos y devuelve sus insumos, todo o nada.
+
+## Pruebas
+
+`npm test` corre siempre las de `health` y CORS. Las de reglas de negocio
+(`test/negocio.test.js`) escriben datos y solo corren si `TEST_DATABASE_URL`
+apunta a una base **local** ya migrada y con la semilla:
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres:CLAVE@localhost:5432/parceros_test npm test
+```
 
 ## Errores
 

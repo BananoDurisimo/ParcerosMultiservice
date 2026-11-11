@@ -7,6 +7,20 @@ import crud from './routes/crud.js';
 import { requireAuth } from './middleware/auth.js';
 
 const app = express();
+app.disable('x-powered-by');
+app.set('trust proxy', 1); // Render va detras de un proxy: req.ip es el cliente real
+/* Cabeceras de seguridad (sin dependencias): la API solo responde JSON. */
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+    'Cache-Control': 'no-store',
+    ...(req.secure ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' } : {}),
+  });
+  next();
+});
 /* Origenes permitidos: los de FRONTEND_URL (la pagina publicada) y siempre el
    servidor de desarrollo local, para poder probar el frontend en el equipo
    contra esta API sin tocar la configuracion. Sin FRONTEND_URL se permite todo. */
@@ -30,6 +44,9 @@ app.use((_, res) => res.status(404).json({ message: 'Ruta no encontrada.' }));
 const CAMPO = /Key \(([^)]+)\)=/;
 app.use((err, req, res, next) => {
   if (err.type === 'entity.too.large') return res.status(413).json({ message: 'El archivo adjunto es demasiado grande.' });
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ message: 'La petición no es válida.' });
+  /* Regla de negocio validada en las rutas (ErrorNegocio). */
+  if (err.negocio) return res.status(400).json({ campo: err.campo, message: err.message });
   switch (err.code) {
     case '23505': {
       const campo = err.detail?.match(CAMPO)?.[1];

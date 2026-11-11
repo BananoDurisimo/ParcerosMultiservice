@@ -42,3 +42,12 @@ export async function conUsuario(idUsuario, fn) {
     client.release();
   }
 }
+
+/** Regla de negocio incumplida: responde 400 con el mensaje (y el campo). */
+export class ErrorNegocio extends Error {
+  constructor(message, campo) {
+    super(message);
+    this.negocio = true;
+    this.campo = campo;
+  }
+}

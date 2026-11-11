@@ -26,6 +26,8 @@ const TIPOS_COMPROBANTE = ['image/jpeg', 'image/png', 'image/webp', 'application
  *  al menos el 50% del total; ninguno puede pasar el saldo. El abono mueve el
  *  estado del registro: el primero pasa la cotizacion a «Pedido en proceso»
  *  y el que salda un pedido en «falta pago» lo deja en «Pedido completado».
+ *  Ese cambio lo hace el servidor en la misma operacion que guarda el abono;
+ *  aqui solo se adelanta en pantalla (`{ local: true }`).
  *  La fecha del pago puede ser anterior a hoy, nunca posterior.
  *
  *  Con `?pedido=ID` en la direccion (accion «Agregar abono» del listado de
@@ -137,7 +139,7 @@ export default function Abonos() {
       const p = pedidoDe(r.id_pedido);
       remove('abonos', r.id);
       if (p?.estado === COMPLETADO) {
-        update('pedidos', p.id, { estado: FALTA_PAGO, historial_estados: [...(p.historial_estados || []), { estado: FALTA_PAGO, fecha: hoyISO() }] });
+        update('pedidos', p.id, { estado: FALTA_PAGO, historial_estados: [...(p.historial_estados || []), { estado: FALTA_PAGO, fecha: hoyISO() }] }, { local: true });
       }
     },
   };
@@ -165,13 +167,13 @@ export default function Abonos() {
         );
         return;
       }
-      update('pedidos', p.id, { estado: EN_PROCESO, fecha_inicio: d.fecha, historial_estados: etapa(EN_PROCESO) });
+      update('pedidos', p.id, { estado: EN_PROCESO, fecha_inicio: d.fecha, historial_estados: etapa(EN_PROCESO) }, { local: true });
       toast.info(`${p.calc_codigo} pasó a «${EN_PROCESO}» y sus insumos se descontaron del inventario.`, 'Pedido iniciado');
       return;
     }
     /* Abono que salda un pedido terminado. */
     if (p.estado === FALTA_PAGO && saldo <= 0) {
-      update('pedidos', p.id, { estado: COMPLETADO, historial_estados: etapa(COMPLETADO) });
+      update('pedidos', p.id, { estado: COMPLETADO, historial_estados: etapa(COMPLETADO) }, { local: true });
       toast.info(`${p.calc_codigo} quedó pagado y pasó a «${COMPLETADO}».`, 'Pedido completado');
     }
   };

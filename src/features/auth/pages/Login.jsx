@@ -15,6 +15,7 @@ export default function Login() {
   const [correo, setCorreo] = useState('');
   const [clave, setClave] = useState('');
   const [ver, setVer] = useState(false);
+  const [recordar, setRecordar] = useState(false);
   const [errs, setErrs] = useState({});
   const [cargando, setCargando] = useState(false);
 
@@ -29,7 +30,7 @@ export default function Login() {
     if (Object.keys(n).length) { toast.error('Revise los campos marcados.', 'Validación de campos'); return; }
 
     setCargando(true);
-    const r = await login(correo, clave);
+    const r = await login(correo, clave, recordar);
     setCargando(false);
     if (!r.ok) { toast.error(r.error, 'Error de acceso'); return; }
     toast.success(`Bienvenido(a), ${r.user.nombre}.`, 'Acceso concedido');
@@ -100,7 +101,7 @@ export default function Login() {
 
             <div className="between">
               <label className="switch">
-                <input type="checkbox" defaultChecked />
+                <input type="checkbox" checked={recordar} onChange={(e) => setRecordar(e.target.checked)} />
                 <span className="track"><span className="thumb" /></span>
                 <span style={{ fontSize: 13 }}>Recordarme</span>
               </label>

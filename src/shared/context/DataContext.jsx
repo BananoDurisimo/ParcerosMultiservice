@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { api, leerToken } from '@shared/api/cliente.js';
-import { deServidor, aServidor, VACIO } from '@shared/api/adaptador.js';
+import { deServidor, aServidor, huellasAdjuntos, VACIO } from '@shared/api/adaptador.js';
 import { useToast } from '@shared/context/ToastContext.jsx';
 import {
   COLOR_TIPO_INSUMO,
@@ -157,6 +157,32 @@ export function DataProvider({ children }) {
   /* Cada recarga lleva un numero: solo se aplica la respuesta de la ultima. */
   const recarga = useRef(0);
 
+  /* Adjuntos ya descargados (huella md5 -> data URL). GET /api/datos trae solo
+     la huella: el archivo se pide una vez y se reutiliza en cada recarga
+     mientras no cambie. `sinAdjunto` son las huellas que el servidor no
+     entrego (el rol no puede verlas): no se vuelven a pedir. */
+  const adjuntos = useRef(new Map());
+  const sinAdjunto = useRef(new Set());
+  const traerAdjuntos = useCallback(async (d) => {
+    const huellas = huellasAdjuntos(d);
+    const faltan = (m) => [...m].filter(([, md5]) => !adjuntos.current.has(md5) && !sinAdjunto.current.has(md5));
+    const pedidos = faltan(huellas.pedidos);
+    const abonos = faltan(huellas.abonos);
+    if (!pedidos.length && !abonos.length) return;
+    const lista = (pares) => pares.map(([id]) => id).join(',');
+    try {
+      const r = await api('GET', `/adjuntos?pedidos=${lista(pedidos)}&abonos=${lista(abonos)}`);
+      [[pedidos, r.pedidos], [abonos, r.abonos]].forEach(([pares, archivos]) => pares.forEach(([id, md5]) => {
+        if (archivos?.[id]) adjuntos.current.set(md5, archivos[id]);
+        else sinAdjunto.current.add(md5);
+      }));
+    } catch (e) {
+      /* Sin los archivos la pantalla funciona igual: quedan pendientes y se
+         reintentan en la siguiente recarga. Un 401 si corta la carga. */
+      if (e.status === 401) throw e;
+    }
+  }, []);
+
   /** `segundoPlano`: recarga sin bloquear la pantalla (despues de un cambio). */
   const cargar = useCallback(async ({ segundoPlano = false } = {}) => {
     const n = ++recarga.current;
@@ -165,7 +191,9 @@ export function DataProvider({ children }) {
       setErrorDatos('');
     }
     try {
-      const d = deServidor(await api('GET', '/datos'));
+      const servidor = await api('GET', '/datos');
+      await traerAdjuntos(servidor);
+      const d = deServidor(servidor, adjuntos.current);
       /* Si mientras llegaba la respuesta se hizo otro cambio (o salio otra
          recarga), estos datos ya estan viejos: pisarian lo que el usuario
          acaba de hacer. Se descartan; la cola vuelve a recargar al vaciarse. */
@@ -188,10 +216,12 @@ export function DataProvider({ children }) {
       setErrorDatos(e.message);
       setEstadoDatos(e.status === 401 ? 'inactivo' : 'error');
     }
-  }, [toast]);
+  }, [toast, traerAdjuntos]);
 
   const vaciar = useCallback(() => {
     recarga.current += 1;
+    adjuntos.current = new Map();
+    sinAdjunto.current = new Set();
     rawRef.current = VACIO;
     setRaw(VACIO);
     setEstadoDatos('inactivo');
@@ -229,7 +259,11 @@ export function DataProvider({ children }) {
   }, []);
 
   /* Cada cambio se ve al instante; existencias e historial los recalcula la
-     base de datos y llegan con la recarga que sigue a la cola. */
+     base de datos y llegan con la recarga que sigue a la cola.
+
+     `{ local: true }` cambia solo la pantalla: es para lo que el servidor ya
+     hace por su cuenta dentro de la misma operacion (el estado del pedido al
+     registrar un abono, los abonos de un pedido eliminado). */
   const create = useCallback((col, row) => {
     const creado = { ...row, id: row.id ?? nuevoId(col) };
     sincronizar(async () => {
@@ -237,19 +271,28 @@ export function DataProvider({ children }) {
       const pk = Object.keys(fila).find((k) => k.startsWith('id_'));
       (idsServidor.current[col] ||= new Map()).set(creado.id, fila[pk]);
     });
-    aplicar((d) => ({ ...d, [col]: [creado, ...d[col]] }));
-    return creado;
+    /* El abono inicial viaja dentro del pedido; en pantalla es un abono mas. */
+    const { abono_inicial: abono, ...fila } = creado;
+    const filaAbono = col === 'pedidos' && abono ? { ...abono, id: nuevoId('abonos'), id_pedido: creado.id } : null;
+    aplicar((d) => ({
+      ...d,
+      [col]: [fila, ...d[col]],
+      ...(filaAbono ? { abonos: [filaAbono, ...d.abonos] } : {}),
+    }));
+    return fila;
   }, [nuevoId, aplicar, sincronizar]);
 
-  const update = useCallback((col, id, patch) => {
+  const update = useCallback((col, id, patch, { local = false } = {}) => {
     const previo = rawRef.current[col].find((r) => r.id === id);
     if (!previo) return;
-    sincronizar(() => api('PUT', `/${col}/${sid(col, id)}`, cuerpo(col, { ...previo, ...patch })));
-    aplicar((d) => ({ ...d, [col]: d[col].map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
+    /* Si el adjunto cambia en este formulario, deja de estar pendiente. */
+    const cambio = 'imagen_diseno' in patch || 'url_comprobante' in patch ? { ...patch, adjunto_pendiente: false } : patch;
+    if (!local) sincronizar(() => api('PUT', `/${col}/${sid(col, id)}`, cuerpo(col, { ...previo, ...cambio })));
+    aplicar((d) => ({ ...d, [col]: d[col].map((r) => (r.id === id ? { ...r, ...cambio } : r)) }));
   }, [aplicar, sincronizar, sid]);
 
-  const remove = useCallback((col, id) => {
-    sincronizar(() => api('DELETE', `/${col}/${sid(col, id)}`));
+  const remove = useCallback((col, id, { local = false } = {}) => {
+    if (!local) sincronizar(() => api('DELETE', `/${col}/${sid(col, id)}`));
     aplicar((d) => ({ ...d, [col]: d[col].filter((r) => r.id !== id) }));
   }, [aplicar, sincronizar, sid]);
 
@@ -444,6 +487,7 @@ export function DataProvider({ children }) {
       })),
 
       insumos,
+      ajustes_inventario: raw.ajustes_inventario,
 
       proveedores: raw.proveedores.map((p) => ({
         ...p,

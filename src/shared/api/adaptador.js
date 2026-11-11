@@ -11,6 +11,12 @@
  *  id_metodo_pago            ->  metodo_pago (nombre)
  *  ruta_imagen_diseno        ->  imagen_diseno
  *  ruta_comprobante          ->  url_comprobante
+ *
+ * Los adjuntos no vienen en GET /api/datos: llega su huella (`diseno_md5`,
+ * `comprobante_md5`) y el archivo se toma de `cat.adjuntos` (huella -> data
+ * URL), que DataContext llena con GET /api/adjuntos. Si el archivo existe
+ * pero no se tiene (`adjunto_pendiente`), al guardar no se envia el campo,
+ * para no borrarlo en el servidor.
  *  NULL                      ->  '' (los formularios trabajan con texto)
  */
 
@@ -32,6 +38,11 @@ const COLECCION_DE_TABLA = {
 const estado = (activo) => (activo === false ? 'Inactivo' : 'Activo');
 const texto = (v) => (v === null || v === undefined ? '' : v);
 const nombrePorId = (lista, campo, id) => lista.find((x) => x[campo] === id)?.nombre ?? '';
+/** Archivo de una fila a partir de su huella. */
+const adjunto = (cat, md5) => {
+  const archivo = (md5 && cat.adjuntos?.get(md5)) || '';
+  return { archivo, pendiente: !!md5 && !archivo };
+};
 const idPorNombre = (lista, campo, nombre) => lista.find((x) => x.nombre === nombre)?.[campo] ?? null;
 
 /** Una fila de la base de datos como la espera el frontend. */
@@ -77,10 +88,13 @@ function aFrontend(col, f, cat) {
         const precio = Number(l.precio_unitario);
         return { id_insumo: l.id_insumo, cantidad, precio_unitario: precio, subtotal: Math.round(cantidad * precio * 100) / 100 };
       };
+      /* En el historial el adjunto llega resumido en la propia columna. */
+      const diseno = f.ruta_imagen_diseno !== undefined ? { archivo: texto(f.ruta_imagen_diseno) } : adjunto(cat, f.diseno_md5);
       return {
         ...base, id_cliente: f.id_cliente, estado: nombrePorId(cat.estados_pedido, 'id_estado_pedido', f.id_estado_pedido),
         fecha_creacion: texto(f.fecha_creacion), fecha_inicio: texto(f.fecha_inicio), fecha_entrega: texto(f.fecha_entrega),
-        descripcion: texto(f.descripcion), imagen_diseno: texto(f.ruta_imagen_diseno),
+        descripcion: texto(f.descripcion), imagen_diseno: diseno.archivo,
+        ...(diseno.pendiente ? { adjunto_pendiente: true } : {}),
         productos: (f.productos || []).map((l) => {
           const cantidad = Number(l.cantidad);
           const precio = Number(l.precio_unitario);
@@ -96,11 +110,14 @@ function aFrontend(col, f, cat) {
         })),
       };
     }
-    case 'abonos':
+    case 'abonos': {
+      const comprobante = f.ruta_comprobante !== undefined ? { archivo: texto(f.ruta_comprobante) } : adjunto(cat, f.comprobante_md5);
       return {
         ...base, id_pedido: f.id_pedido, monto: Number(f.monto), fecha: texto(f.fecha),
-        metodo_pago: nombrePorId(cat.metodos_pago, 'id_metodo_pago', f.id_metodo_pago), url_comprobante: texto(f.ruta_comprobante),
+        metodo_pago: nombrePorId(cat.metodos_pago, 'id_metodo_pago', f.id_metodo_pago), url_comprobante: comprobante.archivo,
+        ...(comprobante.pendiente ? { adjunto_pendiente: true } : {}),
       };
+    }
     case 'categorias_producto':
     case 'tipos_insumo':
       return { ...base, nombre: f.nombre, descripcion: texto(f.descripcion), estado: estado(f.activo) };
@@ -123,11 +140,18 @@ function valorHistorial(tabla, valor, cat) {
   return resto;
 }
 
-/** Respuesta de GET /api/datos -> estado inicial de DataContext. */
-export function deServidor(d) {
+/** Huellas de los adjuntos que trae GET /api/datos: { pedidos: Map(id -> md5), abonos: … }. */
+export const huellasAdjuntos = (d) => ({
+  pedidos: new Map((d.pedidos || []).filter((p) => p.diseno_md5).map((p) => [p.id_pedido, p.diseno_md5])),
+  abonos: new Map((d.abonos || []).filter((a) => a.comprobante_md5).map((a) => [a.id_abono, a.comprobante_md5])),
+});
+
+/** Respuesta de GET /api/datos -> estado inicial de DataContext. `adjuntos`
+ *  es el mapa huella -> data URL de los archivos ya descargados. */
+export function deServidor(d, adjuntos = new Map()) {
   const cat = {
     tipos_documento: d.tipos_documento, estados_pedido: d.estados_pedido,
-    estados_compra: d.estados_compra, metodos_pago: d.metodos_pago,
+    estados_compra: d.estados_compra, metodos_pago: d.metodos_pago, adjuntos,
   };
   const lista = (col) => (d[col] || []).map((f) => aFrontend(col, f, cat));
   return {
@@ -147,6 +171,7 @@ export function deServidor(d) {
     tallas: lista('tallas'),
     categorias_producto: lista('categorias_producto'),
     productos: lista('productos'),
+    ajustes_inventario: (d.ajustes_inventario || []).map((a) => ({ ...a, cantidad: Number(a.cantidad) })),
     /* Cambios y accesos vienen de dos tablas: se numeran por fecha para que
        el codigo MOV-0001… sea correlativo. */
     movimientos: [...(d.movimientos || [])].reverse().map((m, i) => ({
@@ -199,17 +224,19 @@ export function aServidor(col, r, cat, sid) {
       return {
         id_cliente: sid('clientes', r.id_cliente), id_estado_pedido: idPorNombre(cat.estados_pedido, 'id_estado_pedido', r.estado),
         fecha_creacion: r.fecha_creacion, fecha_inicio: r.fecha_inicio, fecha_entrega: r.fecha_entrega,
-        descripcion: r.descripcion, ruta_imagen_diseno: r.imagen_diseno,
+        descripcion: r.descripcion, ...(r.adjunto_pendiente ? {} : { ruta_imagen_diseno: r.imagen_diseno || null }),
         productos: (r.productos || []).map((l) => ({
           id_producto: sid('productos', l.id_producto), cantidad: l.cantidad, precio_unitario: l.precio_unitario, defectuosas: Number(l.defectuosas) || 0,
         })),
         insumos: (r.insumos || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad, precio_unitario: l.precio_unitario })),
         insumos_receta: (r.insumos_receta || []).map((l) => ({ id_insumo: sid('insumos', l.id_insumo), cantidad: l.cantidad })),
+        /* El pedido que nace en proceso viaja con su abono inicial: el servidor guarda los dos o ninguno. */
+        ...(r.abono_inicial ? { abono_inicial: aServidor('abonos', r.abono_inicial, cat, sid) } : {}),
       };
     case 'abonos':
       return {
         id_pedido: sid('pedidos', r.id_pedido), id_metodo_pago: idPorNombre(cat.metodos_pago, 'id_metodo_pago', r.metodo_pago),
-        monto: r.monto, fecha: r.fecha, ruta_comprobante: r.url_comprobante,
+        monto: r.monto, fecha: r.fecha, ...(r.adjunto_pendiente ? {} : { ruta_comprobante: r.url_comprobante || null }),
       };
     case 'categorias_producto':
     case 'tipos_insumo':
@@ -230,5 +257,5 @@ export const VACIO = {
   catalogos: { tipos_documento: [], estados_pedido: [], estados_compra: [], metodos_pago: [] },
   permisos: [], privilegios: [], tipos_insumo: [], unidades_medida: [], roles: [], usuarios: [],
   insumos: [], proveedores: [], compras: [], clientes: [], pedidos: [], abonos: [], movimientos: [],
-  tallas: [], categorias_producto: [], productos: [],
+  tallas: [], categorias_producto: [], productos: [], ajustes_inventario: [],
 };

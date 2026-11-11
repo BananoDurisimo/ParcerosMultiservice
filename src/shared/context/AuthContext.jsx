@@ -46,10 +46,10 @@ export function AuthProvider({ children }) {
 
   /** Inicia sesion contra la API y carga los datos. El servidor registra el
    *  acceso (exitoso o fallido) en la tabla `acceso`. */
-  const login = useCallback(async (correo, clave) => {
+  const login = useCallback(async (correo, clave, recordar = false) => {
     try {
       const r = await api('POST', '/auth/login', { correo: String(correo).trim(), contrasena: clave });
-      guardarToken(r.token);
+      guardarToken(r.token, recordar);
       setIdSesion(r.user.id);
       await cargar();
       return { ok: true, user: r.user };

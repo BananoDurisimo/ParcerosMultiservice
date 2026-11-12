@@ -1,0 +1,1 @@
+import{j as a,S as n}from"./index-DphaVaZ_.js";function m({children:s,tono:t,dot:e=!0}){const r=t||n[s]||"neutral";return a.jsxs("span",{className:`badge badge-${r}`,children:[e&&a.jsx("i",{className:"dot"}),s]})}export{m as B};

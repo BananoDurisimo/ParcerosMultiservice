@@ -21,9 +21,12 @@ app.use((req, res, next) => {
 });
 /* Origenes permitidos: los de FRONTEND_URL (la pagina publicada) y siempre el
    servidor de desarrollo local, para poder probar el frontend en el equipo
-   contra esta API sin tocar la configuracion. Sin FRONTEND_URL se permite todo. */
+   contra esta API sin tocar la configuracion.
+   Sin FRONTEND_URL solo queda localhost: el valor por defecto es cerrado, para
+   que un despliegue al que se le olvido la variable no acepte cualquier origen.
+   Una peticion sin Origin (curl, servidor a servidor) no es de navegador y pasa. */
 const LOCAL = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
-app.use(cors({ origin: (origen, cb) => cb(null, !origen || !env.frontendUrls || env.frontendUrls.includes(origen) || LOCAL.test(origen)) }));
+app.use(cors({ origin: (origen, cb) => cb(null, !origen || env.frontendUrls?.includes(origen) || LOCAL.test(origen)) }));
 /* El diseño del pedido y el comprobante del abono viajan como imagen
    (data URL) mientras no haya un servicio de archivos: hasta 5 MB cada uno. */
 app.use(express.json({ limit: '8mb' }));

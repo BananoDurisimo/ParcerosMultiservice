@@ -61,6 +61,32 @@ campo *Root Directory* del servicio).
 | `src/utils/` | Utilidades y plantillas HTML de los correos |
 | `tests/` | Pruebas con `node --test` (`npm test`) |
 
+## Pruebas
+
+```bash
+npm test            # cors · health · plantillasCorreo · validators
+```
+
+> **`npm test` NO ejecuta `tests/negocio.test.js`.** Esa prueba escribe en la base
+> de datos, así que se omite salvo que `TEST_DATABASE_URL` apunte a una base local
+> de pruebas. Son 232 de las 328 líneas de prueba del backend: un verde de `npm test`
+> deja las reglas de negocio sin comprobar.
+
+Para ejecutarla hace falta una base local ya migrada y con la semilla:
+
+```bash
+createdb parceros_test
+TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:5432/parceros_test npm run migrate
+TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:5432/parceros_test npm run seed
+TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:5432/parceros_test npm run test:negocio
+```
+
+Si sale `﹣ reglas de negocio # TEST_DATABASE_URL no apunta a una base local de
+pruebas`, la variable falta o apunta a un servidor remoto: la prueba solo corre
+contra `localhost` o `127.0.0.1`, para no escribir nunca en la base de Render.
+Antes de dar por buena una entrega que toque abonos, estados de pedido o
+anulaciones, corre esta prueba y confirma que **no** aparece como omitida.
+
 ## Rutas
 
 Todas, salvo `health` y `login`, requieren `Authorization: Bearer <token>`.
